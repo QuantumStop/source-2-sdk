@@ -35,7 +35,7 @@ partial class ViewportTools
 			var group = AddGroup();
 
 			FrameTimeLabel = group.Layout.Add( new Label( $"--- ms" ) );
-			FrameTimeLabel.SetStyles( $"font-family: '{Theme.MonospaceFont}';" );
+			FrameTimeLabel.SetStyles( $"font-family: '{Theme.DefaultFont}';" );
 			FrameTimeLabel.Alignment = TextFlag.Center;
 			FrameTimeLabel.FixedWidth = 50;
 
@@ -46,7 +46,7 @@ partial class ViewportTools
 			var group = AddGroup();
 
 			FrameRateLabel = group.Layout.Add( new Label( $"--- FPS" ) );
-			FrameRateLabel.SetStyles( $"font-family: '{Theme.MonospaceFont}';" );
+			FrameRateLabel.SetStyles( $"font-family: '{Theme.DefaultFont}';" );
 			FrameRateLabel.Alignment = TextFlag.Center;
 			FrameRateLabel.FixedWidth = 50;
 
