@@ -942,6 +942,39 @@ public sealed unsafe partial class CommandList
 	}
 
 	/// <summary>
+	/// Executes a barrier transition for the color texture of the given render target handle.
+	/// </summary>
+	/// <param name="texture">The render target color handle.</param>
+	/// <param name="state">The new resource state for the texture.</param>
+	/// <param name="mip">The mip level to transition (-1 for all mips).</param>
+	public void ResourceBarrierTransition( RenderTargetHandle.ColorTextureRef texture, ResourceState state, int mip = -1 )
+	{
+		static void Execute( ref Entry entry, CommandList commandList )
+		{
+			if ( commandList.state.GetRenderTarget( (string)entry.Object5 ) is not { } target )
+			{
+				Log.Warning( $"[{commandList.DebugName ?? "CommandList"}] Unknown rt: {(string)entry.Object5}" );
+				return;
+			}
+
+			Graphics.ResourceBarrierTransition( target.ColorTarget, (ResourceState)(int)entry.Data1.x, (int)entry.Data1.y );
+		}
+
+		AddEntry( &Execute, new Entry { Object5 = texture.Name, Data1 = new Vector4( (int)state, mip, 0, 0 ) } );
+	}
+
+	/// <summary>
+	/// Executes a barrier transition for the color texture of the given render target handle.
+	/// </summary>
+	/// <param name="handle">The render target handle.</param>
+	/// <param name="state">The new resource state for the texture.</param>
+	/// <param name="mip">The mip level to transition (-1 for all mips).</param>
+	public void ResourceBarrierTransition( RenderTargetHandle handle, ResourceState state, int mip = -1 )
+	{
+		ResourceBarrierTransition( handle.ColorTexture, state, mip );
+	}
+
+	/// <summary>
 	/// Executes a barrier transition for the given GPU Buffer Resource.
 	/// Transitions the buffer resource to a new pipeline stage and access state.
 	/// </summary>
