@@ -6,6 +6,7 @@ using Sandbox.VR;
 using Sentry;
 using Steamworks;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Sandbox.Engine;
@@ -45,6 +46,14 @@ internal static class Bootstrap
 				var culture = System.Globalization.CultureInfo.CreateSpecificCulture( "en-US" );
 				Thread.CurrentThread.CurrentCulture = culture;
 				Thread.CurrentThread.CurrentUICulture = culture;
+			}
+
+			var path = EngineFileSystem.Root.GetFullPath( $"/bin/managed" );
+
+			if ( !string.IsNullOrWhiteSpace( path ) && System.IO.Directory.Exists( path ) )
+			{
+				if ( System.IO.Directory.Exists( $"{path}/fmod.dll" ) ) NativeLibrary.Load( $"{path}/fmod.dll" );
+				if ( System.IO.Directory.Exists( $"{path}/fmodstudio.dll" ) ) NativeLibrary.Load( $"{path}/fmodstudio.dll" );
 			}
 
 			Logging.Enabled = true;
