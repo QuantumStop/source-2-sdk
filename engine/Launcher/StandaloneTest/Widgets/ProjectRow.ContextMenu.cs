@@ -36,8 +36,8 @@ public partial class ProjectRow
 	{
 		menu = new ContextMenu( this );
 		menu.AddSeparator();
-
-		menu.AddOption( $"Open with Vulkan validation layers", "developer_mode", () => OpenProject( LaunchFlags.VulkanValidation ) );
+		
+	//	menu.AddOption( $"Open with Vulkan validation layers", "developer_mode", () => OpenProject( LaunchFlags.VulkanValidation ) );
 
 		if ( Project.Config.Directory != null )
 		{

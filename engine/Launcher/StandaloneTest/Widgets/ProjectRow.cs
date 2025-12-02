@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Text;
+using System.Diagnostics;
 
 namespace Editor;
 
@@ -10,13 +12,20 @@ public partial class ProjectRow : ItemRow
 	public Action OnProjectRemove { get; set; }
 	public OpenProjectDelegate OnProjectOpen { get; set; }
 
-	protected Project Project { get; }
+	public Project Project { get; }
 	protected Package Package { get; set; }
 
 	private ControlModeSettings ControlModes => Project.Config.GetMetaOrDefault( "ControlModes", new ControlModeSettings() );
 
 	private IconButton PinButton { get; set; }
 	private IconButton MoreButton { get; set; }
+	private IconButton DefaultButton { get; set; }
+
+	public int StripeIndex { get; set; } = 0;
+
+	private HomeWidget Home => Parent as HomeWidget ?? this.FindParent<HomeWidget>();
+
+	public bool IsSelected => Home.SelectedProject == Project;
 
 	public ProjectRow( Project project, Widget parent ) : base( parent )
 	{
@@ -24,38 +33,26 @@ public partial class ProjectRow : ItemRow
 		Title = project.Config.Title;
 
 		_ = UpdatePackageAsync();
-
 		Init();
 	}
 
 	protected override List<InfoItem> GetInfo()
 	{
-		List<InfoItem> info;
+		var info = new List<InfoItem>();
 
+		// Last opened date
+		string lastOpenedText = Project.LastOpened.ToLocalTime().ToString( "g" );
 		if ( Project.Config.Org == "local" )
 		{
-			info = new()
-			{
-				// Type
-				( "folder", "Local" ),
-
-				// Last opened
-				( "schedule", Project.LastOpened.LocalDateTime.ToRelativeTimeString() ?? "never" )
-			};
+			info.Add( ("schedule", lastOpenedText) );
 		}
 		else
 		{
-			info = new()
-			{
-				// Owner
-				( "group", Project.Package?.Org.Title ),
-
-				// Last opened
-				( "schedule", Project.LastOpened.LocalDateTime.ToRelativeTimeString() ?? "never" )
-			};
+			info.Add( ("group", Project.Package?.Org.Title ?? "Unknown Org") );
+			info.Add( ("schedule", lastOpenedText) );
 		}
 
-		// Control mode info
+		// VR info
 		if ( ControlModes.VR )
 		{
 			info.Add( ("panorama_photosphere", ControlModes.IsVROnly ? "VR Only" : "VR Compatible") );
@@ -68,60 +65,56 @@ public partial class ProjectRow : ItemRow
 	{
 		Cursor = CursorShape.Finger;
 
-		// Add menu button
+		// More button
 		MoreButton = AddButton( "more_vert", "More..." );
 		MoreButton.OnClick = () =>
 		{
 			var menu = OpenContextMenu();
 			menu.OpenAt( MoreButton.ScreenPosition );
 		};
-
 		MoreButton.OnPaintOverride = () =>
 		{
 			Paint.Antialiasing = true;
 			Paint.ClearPen();
-
-			Paint.SetPen( Theme.SurfaceLightBackground );
-
-			if ( Paint.HasMouseOver )
-				Paint.SetPen( Theme.TextLight );
-
+			Paint.SetPen( Paint.HasMouseOver ? Theme.TextHighlight : Theme.TextLight );
 			Paint.DrawIcon( MoreButton.LocalRect, "more_vert", 16.0f );
-
 			return true;
 		};
-
 		MoreButton.Visible = false;
 
-		// Add pin button
-		string GetTooltip() => Project.Pinned ? "Unpin this project" : "Pin this project";
-		PinButton = AddButton( "push_pin", GetTooltip(), () =>
+		// Default button
+		DefaultButton = AddButton( "star", Project.IsDefault ? "Default" : "Set as Default", () =>
+		{
+			DefaultButton.Visible = !Project.IsDefault;
+			Home.SetDefaultProject( Project );
+			DefaultButton.ToolTip = Project.IsDefault ? "Default" : "Set as Default";
+		} );
+		DefaultButton.OnPaintOverride = () =>
+		{
+			Paint.Antialiasing = true;
+			Paint.ClearPen();
+			Paint.SetPen( Project.IsDefault ? Theme.Text : Paint.HasMouseOver ? Theme.TextHighlight : Theme.TextLight );
+			Paint.DrawIcon( PinButton.LocalRect, "star", 16.0f );
+			return true;
+		};
+		DefaultButton.Visible = Project.IsDefault;
+
+		// Pin button
+		PinButton = AddButton( "push_pin", Project.Pinned ? "Unpin this project" : "Pin this project", () =>
 		{
 			Project.Pinned = !Project.Pinned;
-			PinButton.ToolTip = GetTooltip();
-
+			PinButton.ToolTip = Project.Pinned ? "Unpin this project" : "Pin this project";
 			OnPinStateChanged?.Invoke();
 		} );
-
 		PinButton.OnPaintOverride = () =>
 		{
 			Paint.Antialiasing = true;
 			Paint.ClearPen();
-
-			if ( Project.Pinned )
-				Paint.SetPen( Theme.Text );
-			else if ( Paint.HasMouseOver )
-				Paint.SetPen( Theme.TextLight );
-			else
-				Paint.SetPen( Theme.SurfaceLightBackground );
-
+			Paint.SetPen( Project.Pinned ? Theme.Text : Paint.HasMouseOver ? Theme.TextHighlight : Theme.TextLight );
 			Paint.DrawIcon( PinButton.LocalRect, "push_pin", 16.0f );
-
 			return true;
 		};
-
-		// Only visible on mouse over or if pinned
-		PinButton.Visible = Project.Pinned || false;
+		PinButton.Visible = Project.Pinned;
 
 		_ = UpdatePackageAsync();
 	}
@@ -139,99 +132,86 @@ public partial class ProjectRow : ItemRow
 		Update();
 	}
 
-	public override void OnClick()
-	{
-		OpenProject();
-	}
-
-	private string GetLaunchArgs( LaunchFlags launchFlags )
-	{
-		var args = new StringBuilder();
-		if ( launchFlags.Contains( LaunchFlags.VR ) ) args.Append( " -vr" );
-		if ( launchFlags.Contains( LaunchFlags.VulkanValidation ) ) args.Append( " -vulkan_enable_validation -vulkan_validation_error_assert" );
-
-		return args.ToString();
-	}
-
-	private void OpenProject( LaunchFlags launchFlags = LaunchFlags.None )
-	{
-		if ( (DateTime.Now - Project.LastOpened).TotalSeconds < 2.0f )
-			return;
-
-		var args = GetLaunchArgs( launchFlags );
-		OnProjectOpen?.Invoke( args );
-
-		Update();
-	}
+	public override void OnClick() => Home.SelectProject( Project );
 
 	protected override void OnPaint()
 	{
-		base.OnPaint();
+		var horizontalInset = 2;
+		var rect = new Rect( LocalRect.Left + horizontalInset, LocalRect.Top, LocalRect.Width - horizontalInset * 2, LocalRect.Height );
 
-		var secondsSinceOpen = (float)(DateTime.Now - Project.LastOpened).TotalSeconds;
+		// Background stripes
+		var bgColor = (StripeIndex % 2 == 0) ? Color.Parse( "#2b2b2c" ).Value : Color.Parse( "#232324" ).Value;
 
-		if ( secondsSinceOpen < 2.0f )
+		if ( Project.IsDefault ) bgColor = Color.Parse( "#3d6df0" ).Value.WithAlpha( 0.2f );
+		if ( IsSelected ) bgColor = Color.Parse( "#3d6df0" ).Value.WithAlpha( 0.6f );
+
+		Paint.SetBrush( bgColor );
+		Paint.SetPen( bgColor );
+		Paint.DrawRect( rect );
+
+		// Hover highlight
+		if ( Paint.HasMouseOver )
 		{
-			var delta = secondsSinceOpen.Remap( 0, 2, 0, 1 );
-			var inout = MathX.Clamp( MathF.Sin( delta * MathF.PI ) * 2.0f, 0, 1 );
-			var alpha = MathF.Sin( RealTime.Now * 4.0f ).Remap( -1, 1, 0.5f, 0.8f ) * inout;
-			Paint.SetBrushAndPen( Theme.Green.WithAlpha( alpha * 0.5f ), Theme.Green.WithAlphaMultiplied( alpha ), 2.0f );
-			Paint.DrawRect( LocalRect.Shrink( 1 ), 4 );
-
-			var textRect = LocalRect.Shrink( 8 );
-
-
-			Paint.SetHeadingFont( 15, 500 );
-			Paint.Pen = Theme.Green.WithAlpha( inout );
-
-			textRect.Left += -600 + delta * 600.0f;
-			Paint.DrawText( textRect, "LAUNCHING LAUNCHING LAUNCHING LUNCHING LAUNCHING LAUNCHING LAUNCHING LAUNCHING LAUNCHING LAUNCHING LAUNCHING", TextFlag.LeftCenter );
-
-			Update();
-			return;
+			Paint.SetBrush( Color.White.WithAlpha( 0.05f ) );
+			Paint.SetPen( bgColor );
+			Paint.DrawRect( rect );
 		}
+
+		base.OnPaint();
 	}
 
 	protected override void OnPaintIcon( Rect iconRect )
 	{
-		bool hasThumb = !string.IsNullOrEmpty( Package?.Thumb ) && Package.Thumb.StartsWith( "http" );
+		Paint.ClearPen();
+		Paint.ClearBrush();
 
-		if ( hasThumb )
-		{
-			Paint.Draw( iconRect, Package.Thumb );
-		}
-		else
-		{
-			Paint.SetBrushAndPen( Theme.SurfaceBackground );
-			Paint.DrawRect( iconRect, 4 );
+		var iconPath = Project?.Config?.GetMetaOrDefault<string>( "ProjectIcon", null );
 
-			Paint.Pen = Theme.Text;
-			Paint.DrawIcon( iconRect, "sports_esports", iconRect.Height * 0.6f );
+		if ( string.IsNullOrEmpty( iconPath ) )
+		{
+			DrawFallbackIcon( iconRect );
+			return;
 		}
+
+		var projectDir = Project?.Config?.Directory?.FullName;
+		var fullIconPath = Path.Combine( projectDir ?? "", iconPath.Replace( '/', Path.DirectorySeparatorChar ) );
+
+		if ( File.Exists( fullIconPath ) )
+		{
+			var pixmap = Paint.LoadImage( fullIconPath, (int)iconRect.Width, (int)iconRect.Height );
+			Paint.Draw( iconRect, pixmap );
+			return;
+		}
+
+		DrawFallbackIcon( iconRect );
+	}
+
+	private void DrawFallbackIcon( Rect iconRect )
+	{
+		Pixmap pixmap = null;
+		pixmap = Paint.LoadImage( "common/logo", (int)iconRect.Width, (int)iconRect.Height );
+		Paint.Draw( iconRect, pixmap );
 	}
 
 	protected override void OnMouseEnter()
 	{
-		// Pin button is always visible if a project is pinned
-		PinButton.Visible = Project.Pinned || true;
+		PinButton.Visible = true;
 		PinButton.Update();
-
 		MoreButton.Visible = true;
 		MoreButton.Update();
-
+		DefaultButton.Visible = true;
+		DefaultButton.Update();
 		Update();
 	}
 
 	protected override void OnMouseLeave()
 	{
-		// Pin button is always visible if a project is pinned
-		PinButton.Visible = Project.Pinned || false;
+		PinButton.Visible = Project.Pinned;
 		PinButton.Update();
-
 		MoreButton.Visible = false;
 		MoreButton.Update();
-
+		DefaultButton.Visible = Project.IsDefault;
+		DefaultButton.Update();
 		Update();
 	}
 }
-
