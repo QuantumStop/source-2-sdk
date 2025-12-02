@@ -1,4 +1,8 @@
-﻿namespace Editor;
+﻿using System;
+using System.IO;
+using System.Text.Json;
+
+namespace Editor;
 
 public static partial class EditorUtility
 {
@@ -81,5 +85,41 @@ public static partial class EditorUtility
 		{
 			await Project.GenerateSolution();
 		}
+
+		/// <summary>
+		/// Resolve a project asset using a metadata key.
+		/// </summary>
+		public static Pixmap ResolveProjectAsset(
+			JsonElement root,
+			string projectFile,
+			string metadataKey,
+			string fallbackPath,
+			Func<string, Pixmap> loader )
+		{
+			if ( root.ValueKind != JsonValueKind.Object || string.IsNullOrEmpty( projectFile ) )
+				return loader( fallbackPath );
+
+			string relative = null;
+
+			// Try metadata lookup: Metadata[metadataKey]
+			if ( root.TryGetProperty( "Metadata", out var meta ) &&
+				meta.TryGetProperty( metadataKey, out var metaValue ) )
+			{
+				relative = metaValue.GetString();
+			}
+
+			// If it's missing or empty
+			if ( string.IsNullOrEmpty( relative ) )
+				return loader( fallbackPath );
+
+			string projectDir = Path.GetDirectoryName( Path.GetFullPath( projectFile ) );
+			string fullPath = Path.Combine( projectDir, relative.Replace( '/', Path.DirectorySeparatorChar ) );
+
+			// Load resolved file or fallback, just in case
+			return File.Exists( fullPath )
+				? loader( fullPath )
+				: loader( fallbackPath );
+		}
+
 	}
 }
