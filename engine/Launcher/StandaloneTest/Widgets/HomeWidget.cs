@@ -53,7 +53,7 @@ public class HomeWidget : Widget
 
 	private Pixmap BannerImage;
 
-	private readonly string BannerFallbackPath = "common/workshop_banner.png";
+	private readonly string BannerFallbackPath = "common/launcher_banner.png";
 	private const int BannerHeight = 115;
 	private const int BannerWidth = 555;
 
