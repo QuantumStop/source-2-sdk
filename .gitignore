@@ -114,3 +114,5 @@ game/sbox-standalone.runtimeconfig.json
 !game/core/tools/images/common/logo.png
 !game/core/tools/images/common/logo_rounded.png
 !game/bin/thirdparty/*
+!game/addons/base_override/.sbproj
+!game/addons/tools_override/.sbproj
