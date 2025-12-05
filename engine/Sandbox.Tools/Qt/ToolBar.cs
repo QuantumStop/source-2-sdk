@@ -15,6 +15,8 @@ namespace Editor
 	{
 		internal Native.QToolBar _toolbar;
 
+		public readonly List<Option> _options = [];
+
 		internal ToolBar( Native.QToolBar widget ) : base( false )
 		{
 			NativeInit( widget );
@@ -74,6 +76,7 @@ namespace Editor
 		{
 			option.SetParent( this );
 			_toolbar.insertAction( default, option._action );
+			_options.Add( option );
 
 			return option;
 		}
@@ -81,6 +84,7 @@ namespace Editor
 		public void Clear()
 		{
 			_toolbar.clear();
+			_options.Clear();
 		}
 
 		public Option AddSeparator()
