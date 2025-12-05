@@ -281,6 +281,8 @@ public partial class SceneNetworkSystem : GameNetworkSystem
 		MountedVPKs = await MountMaps( msg.MountedVPKs );
 	}
 
+	private static readonly GameObject.SerializeOptions _snapshotSerializeOptions = new() { SceneForNetwork = true };
+
 	/// <summary>
 	/// A client has joined and wants a snapshot of the world.
 	/// </summary>
@@ -291,16 +293,11 @@ public partial class SceneNetworkSystem : GameNetworkSystem
 
 		msg.Time = Time.Now;
 
-		var o = new GameObject.SerializeOptions
-		{
-			SceneForNetwork = true
-		};
-
 		var analytic = new Api.Events.EventRecord( "SceneNetworkSystem.GetSnapshot" );
 
 		using ( analytic.ScopeTimer( "SceneTime" ) )
 		{
-			msg.SceneData = Game.ActiveScene.Serialize( o ).ToJsonString();
+			msg.SceneData = Game.ActiveScene.Serialize( _snapshotSerializeOptions ).ToJsonString();
 		}
 
 		using ( analytic.ScopeTimer( "NetworkObjectTime" ) )

@@ -212,10 +212,19 @@ public static partial class Game
 	/// <summary>
 	/// Capture a screenshot. Saves it in Steam.
 	/// </summary>
-	[ConCmd( "screenshot" )]
+	[ConCmd( "screenshot", Help = "Take a screenshot and save it to your Steam screenshots" )]
 	public static void TakeScreenshot()
 	{
 		ScreenshotService.RequestCapture();
+	}
+
+	/// <summary>
+	/// Capture a high resolution screenshot using the active scene camera.
+	/// </summary>
+	[ConCmd( "screenshot_highres", Help = "Take a high resolution screenshot you specify the width and height" )]
+	public static void TakeHighResScreenshot( int width, int height )
+	{
+		ScreenshotService.TakeHighResScreenshot( Application.GetActiveScene(), width, height );
 	}
 
 	/// <summary>
