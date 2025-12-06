@@ -52,7 +52,7 @@ public class TerrainEditorTool : EditorTool
 	/// <summary>
 	/// Create the sidebar widget for the terrain tool
 	/// </summary>
-	public override Widget CreateToolWidget()
+	public override Widget CreateToolSidebar()
 	{
 		var sidebar = new Widget( null );
 		sidebar.Name = "TerrainToolSidebar";

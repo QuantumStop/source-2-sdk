@@ -97,8 +97,6 @@ public partial class ViewportTools : Widget
 	{
 		UpdateDimensions();
 		UpdateChildren();
-		
-		toolbarWidget.Visible = EditorToolBars.ShowLegacyToolbar;
 	}
 
 	int lastGeometryHash = -1;
