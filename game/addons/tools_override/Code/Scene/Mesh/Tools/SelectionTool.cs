@@ -167,7 +167,7 @@ public abstract class SelectionTool<T>( MeshTool tool ) : SelectionTool
 
 				using ( Gizmo.Scope( "Vertices" ) )
 				{
-					Gizmo.Draw.IgnoreDepth = true;
+					Gizmo.Draw.IgnoreDepth = false;
 					Gizmo.Draw.Color = vertexColor.Darken( 0.3f ).WithAlpha( 0.2f );
 
 					foreach ( var v in mesh.Mesh.GetVertexPositions() )
