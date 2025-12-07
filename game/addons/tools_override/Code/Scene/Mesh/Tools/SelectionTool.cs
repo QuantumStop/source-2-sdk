@@ -143,7 +143,7 @@ public abstract class SelectionTool<T>( MeshTool tool ) : SelectionTool
 				var edgeColor = new Color( 0.3137f, 0.7843f, 1.0f, 1f );
 
 				Gizmo.Draw.LineThickness = 1;
-				Gizmo.Draw.IgnoreDepth = true;
+				Gizmo.Draw.IgnoreDepth = false;
 				Gizmo.Draw.Color = edgeColor.Darken( 0.3f ).WithAlpha( 0.1f );
 
 				foreach ( var v in mesh.Mesh.GetEdges() )
