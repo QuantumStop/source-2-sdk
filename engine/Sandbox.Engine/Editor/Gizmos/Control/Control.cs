@@ -51,19 +51,19 @@ public static partial class Gizmo
 
 			Vector3 movement = Vector3.Zero;
 
-			Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Up;
+			Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Up : Sandbox.Gizmo.Colors.Local.Up;
 			if ( Arrow( "up", Vector3.Up, out var xdist ) )
 			{
 				movement += Vector3.Up * xdist;
 			}
 
-			Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Left;
+			Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Left : Sandbox.Gizmo.Colors.Local.Left;
 			if ( Arrow( "left", Vector3.Left, out var ydist ) )
 			{
 				movement += Vector3.Left * ydist;
 			}
 
-			Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Forward;
+			Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Forward : Sandbox.Gizmo.Colors.Local.Forward;
 			if ( Arrow( "forward", Vector3.Forward, out var zdist ) )
 			{
 				movement += Vector3.Forward * zdist;
@@ -89,7 +89,7 @@ public static partial class Gizmo
 				using ( Sandbox.Gizmo.Scope() )
 				{
 					Sandbox.Gizmo.Transform = Sandbox.Gizmo.Transform.ToWorld( new Transform( Vector3.Up * squareOffset + Vector3.Left * squareOffset ) );
-					Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Up;
+					Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Up : Sandbox.Gizmo.Colors.Local.Up;
 					if ( DragSquare( "left-up", squareSize, Rotation.LookAt( Vector3.Backward, Vector3.Up ), out var moved ) )
 					{
 						movement += moved;
@@ -99,7 +99,7 @@ public static partial class Gizmo
 				using ( Sandbox.Gizmo.Scope() )
 				{
 					Sandbox.Gizmo.Transform = Sandbox.Gizmo.Transform.ToWorld( new Transform( Vector3.Forward * squareOffset + Vector3.Left * squareOffset ) );
-					Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Left;
+					Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Left : Sandbox.Gizmo.Colors.Local.Left;
 					if ( DragSquare( "forward-left", squareSize, Rotation.LookAt( Vector3.Up, Vector3.Forward ), out var moved ) )
 					{
 						movement += moved;
@@ -109,7 +109,7 @@ public static partial class Gizmo
 				using ( Sandbox.Gizmo.Scope() )
 				{
 					Sandbox.Gizmo.Transform = Sandbox.Gizmo.Transform.ToWorld( new Transform( Vector3.Forward * squareOffset + Vector3.Up * squareOffset ) );
-					Sandbox.Gizmo.Draw.Color = Sandbox.Gizmo.Colors.Forward;
+					Sandbox.Gizmo.Draw.Color = Settings.GlobalSpace ? Sandbox.Gizmo.Colors.Forward : Sandbox.Gizmo.Colors.Local.Forward;
 					if ( DragSquare( "forward-up", squareSize, Rotation.LookAt( Vector3.Left, Vector3.Down ), out var moved ) )
 					{
 						movement += moved;
