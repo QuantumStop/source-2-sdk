@@ -88,6 +88,11 @@ public class MainAssetBrowser : WrappedAssetBrowser
 		return (browser, dock);
 	}
 
+	public static void ApplyAssetBrowserSidebarPreferenceToMain()
+	{
+		Instance?.ApplyAssetBrowserSidebarPreference();
+	}
+
 	CancellationTokenSource packageCTS;
 	private async Task InspectPackage( Package package )
 	{

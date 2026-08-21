@@ -24,6 +24,8 @@ public class WrappedAssetBrowser : Widget
 		Tabs.AddPage( "Local", "folder", Local, "Local" );
 		Tabs.AddPage( "Cloud", "cloud", Cloud, "Cloud" );
 		Tabs.AddPage( "Mounts", "museum", Mounts, "Mounts" );
+
+		ApplyAssetBrowserSidebarPreference();
 	}
 
 	public AssetBrowser GetBrowser( string path )
@@ -38,4 +40,12 @@ public class WrappedAssetBrowser : Widget
 	public AssetBrowser GetBrowser( AssetEntry asset ) => GetBrowser( asset.AbsolutePath );
 
 	public void SwitchTo( Widget widget ) => Tabs.SetPage( widget );
+
+	public void ApplyAssetBrowserSidebarPreference()
+	{
+		var mode = Preferences.CustomEditorPreferences.AssetBrowserSidebar;
+
+		Tabs.TabsVisible = mode != Preferences.CustomEditorPreferences.AssetBrowserSidebarMode.Disabled;
+		Tabs.SetPageVisible( "Cloud", mode == Preferences.CustomEditorPreferences.AssetBrowserSidebarMode.EnabledFull );
+	}
 }

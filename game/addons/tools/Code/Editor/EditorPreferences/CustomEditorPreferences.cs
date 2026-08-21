@@ -19,6 +19,13 @@ public static partial class CustomEditorPreferences
 		LegacyHoldFlyEyeCursor = 2
 	}
 
+	public enum AssetBrowserSidebarMode
+	{
+		EnabledFull = 0,
+		EnabledNoCloud = 1,
+		Disabled = 2
+	}
+
 	private const string Prefix = "custom_editor_prefs.";
 
 	[Title( "Viewport Toolbar Mode" )]
@@ -68,6 +75,24 @@ public static partial class CustomEditorPreferences
 	{
 		get => Get( "view.show_viewport_state_overlay", true );
 		set => Set( "view.show_viewport_state_overlay", value );
+	}
+
+	[Title( "Asset Browser Sidebar" )]
+	public static AssetBrowserSidebarMode AssetBrowserSidebar
+	{
+		get
+		{
+			var raw = Get( "asset_browser.sidebar", -1 );
+			if ( raw >= 0 )
+			{
+				return (AssetBrowserSidebarMode)raw;
+			}
+
+			return Get( "cloud_services.show_sidebar", true )
+				? AssetBrowserSidebarMode.EnabledFull
+				: AssetBrowserSidebarMode.Disabled;
+		}
+		set => Set( "asset_browser.sidebar", (int)value );
 	}
 
 	public static T Get<T>( string key, T defaultValue = default )

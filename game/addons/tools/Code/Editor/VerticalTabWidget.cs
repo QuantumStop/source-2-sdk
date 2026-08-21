@@ -9,6 +9,12 @@ public class VerticalTabWidget : Widget
 	Widget tabContainer;
 	Widget contentContainer;
 
+	public bool TabsVisible
+	{
+		get => tabContainer.Visible;
+		set => tabContainer.Visible = value;
+	}
+
 	public Widget CurrentPage
 	{
 		get => _currentPage;
@@ -108,6 +114,23 @@ public class VerticalTabWidget : Widget
 			return;
 
 		tab.Enabled = enabled;
+	}
+
+	public void SetPageVisible( string name, bool visible )
+	{
+		if ( !tabs.TryGetValue( name, out var tab ) )
+			return;
+
+		tab.Visible = visible;
+
+		if ( visible || Selected != name )
+			return;
+
+		var fallback = pages.FirstOrDefault( x => tabs.TryGetValue( x.Key, out var fallbackTab ) && fallbackTab.Visible );
+		if ( fallback.Value.IsValid() )
+		{
+			SetPage( fallback.Value );
+		}
 	}
 
 	string _cookie;

@@ -10,6 +10,7 @@ internal partial class PageInterface
 	static void RegisterGroups()
 	{
 		RegisterGroup( ViewGroup );
+		RegisterGroup( AssetBrowserGroup );
 		RegisterGroup( ToolbarsGroup );
 	}
 
@@ -105,5 +106,38 @@ internal partial class PageInterface
 			overlaySelectedIndex,
 			index => CustomEditorPreferences.ShowViewportStateOverlay = index == 0,
 			overlayOptionIcons );
+	}
+
+	private static void AssetBrowserGroup( Layout layout )
+	{
+		var assetBrowserGroup = new CollapsibleCategory( null, "Asset Browser" );
+		assetBrowserGroup.Container.Layout.Spacing = 0;
+		layout.Add( assetBrowserGroup );
+
+		var options = new List<string>
+		{
+			"Default",
+			"No Cloud",
+			"Disabled"
+		};
+		var optionIcons = new List<string>
+		{
+			"folder_open",
+			"cloud",
+			"disabled_by_default"
+		};
+		var selectedIndex = (int)CustomEditorPreferences.AssetBrowserSidebar;
+
+		AddSegmentedRow(
+			assetBrowserGroup.Container.Layout,
+			"Sidebar",
+			options,
+			selectedIndex,
+			index =>
+			{
+				CustomEditorPreferences.AssetBrowserSidebar = (CustomEditorPreferences.AssetBrowserSidebarMode)index;
+				global::Editor.MainAssetBrowser.ApplyAssetBrowserSidebarPreferenceToMain();
+			},
+			optionIcons );
 	}
 }
