@@ -789,9 +789,9 @@ public partial class TrackWidget : Widget
 			allChildrenRemoved &= RemoveEmptyCore( child );
 		}
 
-		if ( allChildrenRemoved && view.IsEmpty )
+		if ( allChildrenRemoved && view.Track.IsEmpty )
 		{
-			view.Remove();
+			view.Track.Remove();
 			return true;
 		}
 

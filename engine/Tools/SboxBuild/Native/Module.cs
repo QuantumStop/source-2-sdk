@@ -70,6 +70,7 @@ public abstract class Module
 	/// <summary>What the current run is generating for, so a module can branch on it.</summary>
 	public static bool Windows => NativePlatform.Current.IsWindows;
 	public static bool Linux => !Windows;
+	public static bool Retail { get; internal set; }
 
 	/// <summary>
 	/// A prebuilt third party library under src/thirdparty, named the way the platform being

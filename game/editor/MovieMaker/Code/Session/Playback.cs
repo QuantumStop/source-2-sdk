@@ -63,9 +63,11 @@ public sealed partial class Session
 
 		_applyNextFrame = false;
 
+		var animatorSystem = MovieBoneAnimatorSystem.Get( Player.Scene );
+
 		foreach ( var renderer in Binder.GetComponents<SkinnedModelRenderer>( Project ) )
 		{
-			MovieBoneAnimatorSystem.Current?.ClearBones( renderer );
+			animatorSystem.ClearBones( renderer );
 		}
 
 		if ( IsOpenInEditor && SyncPlayback )
