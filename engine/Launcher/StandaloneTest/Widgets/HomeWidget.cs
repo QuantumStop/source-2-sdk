@@ -419,12 +419,15 @@ public class HomeWidget : Widget
 
 	public void OpenProject( Project project, string args = null )
 	{
-		Process.Start( new ProcessStartInfo( "sbox-dev.exe",
+		Process.Start( new ProcessStartInfo( NetCore.GetExecutablePath( "sbox-dev" ),
 			$"{Environment.CommandLine} -project \"{project.ConfigFilePath}\" {args ?? ""}" )
+
+		// Only let the shell start it on Windows - on Linux UseShellExecute goes through
+		// xdg-open, which opens the editor in a web browser rather than running it.
 		{
-			UseShellExecute = true,
+			UseShellExecute = OperatingSystem.IsWindows(),
 			CreateNoWindow = true,
-			WorkingDirectory = Environment.CurrentDirectory
+			WorkingDirectory = System.Environment.CurrentDirectory
 		} );
 
 		if ( CloseOnLaunch.Value ) Parent.Destroy();

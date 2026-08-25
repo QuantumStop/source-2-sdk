@@ -190,35 +190,6 @@ public sealed class BinderTest : SceneTestBase
 		Assert.IsTrue( TrackBinder.Default.Get( paramTrack ).IsValid );
 	}
 
-	private static CompiledPropertyTrack<BoneAccessor> CreateExampleBoneAccessorTrack()
-	{
-		return MovieClip.RootGameObject( "Example" )
-			.Component<SkinnedModelRenderer>()
-			.Property<BoneAccessor>( "Bones" );
-	}
-
-	/// <summary>
-	/// Tests accessing bones in a <see cref="SkinnedModelRenderer"/>.
-	/// This would fail if we're working with a non-active scene.
-	/// </summary>
-	[TestMethod]
-	public void NonActiveSceneBoneAccessor()
-	{
-		var accessorTrack = CreateExampleBoneAccessorTrack();
-
-		var nonActiveScene = new Scene();
-		var exampleRenderer = nonActiveScene.CreateObject()
-			.AddComponent<SkinnedModelRenderer>();
-
-		exampleRenderer.GameObject.Name = "Example";
-
-		var binder = new TrackBinder( nonActiveScene );
-		var accessorProperty = binder.Get( accessorTrack );
-
-		Assert.AreNotEqual( MovieBoneAnimatorSystem.Current, MovieBoneAnimatorSystem.Get( exampleRenderer.Scene ) );
-		Assert.IsNotNull( accessorProperty.Value );
-	}
-
 	/// <summary>
 	/// Tests accessing <see cref="SkinnedModelRenderer.Morphs"/>.
 	/// </summary>

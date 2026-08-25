@@ -397,7 +397,6 @@ internal sealed class SessionInverseKinematics
 	private void ApplyBoneTransforms( SkinnedModelRenderer renderer, Func<BoneCollection.Bone, Transform?> getLocalBoneTransform )
 	{
 		var modelWorldTransform = renderer.WorldTransform;
-		var animatorSystem = MovieBoneAnimatorSystem.Get( renderer.Scene );
 
 		foreach ( var bone in _activeBones.OrderBy( x => x.Index ) )
 		{
@@ -409,7 +408,7 @@ internal sealed class SessionInverseKinematics
 
 			var parentSpaceTransform = parentTransform.ToLocal( localBoneTransform );
 
-			animatorSystem.SetParentSpaceBone( renderer, bone.Index, parentSpaceTransform );
+			MovieBoneAnimatorSystem.Current.SetParentSpaceBone( renderer, bone.Index, parentSpaceTransform );
 		}
 
 		foreach ( var bone in _activeBones.OrderBy( x => x.Index ) )

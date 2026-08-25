@@ -55,7 +55,6 @@ public sealed class BoneAccessor
 	/// </summary>
 	public void ClearOverrides()
 	{
-		_renderer.SceneModel?.ClearBoneOverrides();
 		_parentSpaceOverrides.Clear();
 	}
 
@@ -68,7 +67,7 @@ public sealed class BoneAccessor
 		if ( _renderer.SceneModel is not { } sceneModel ) return;
 		if ( _parentSpaceOverrides.Count == 0 ) return;
 
-		sceneModel.ClearBoneOverrides();
+		_renderer.ClearPhysicsBones();
 
 		// TODO: I'm assuming parent bones are always listed before child bones
 
@@ -173,7 +172,7 @@ file sealed record BoneAccessorProperty( ITrackReference<SkinnedModelRenderer> P
 	public BoneAccessor? Value
 	{
 		get => Parent.Value is { } renderer
-			? MovieBoneAnimatorSystem.Get( renderer.Scene ).GetBoneAccessor( renderer )
+			? MovieBoneAnimatorSystem.Current?.GetBoneAccessor( renderer )
 			: null;
 
 		set
@@ -259,7 +258,6 @@ public sealed class MovieBoneAnimatorSystem : GameObjectSystem<MovieBoneAnimator
 
 	internal BoneAccessor GetBoneAccessor( SkinnedModelRenderer renderer )
 	{
-		if ( renderer.Scene != Scene ) throw new InvalidOperationException( "Renderer is from a different scene!" );
 		if ( _accessors.TryGetValue( renderer, out var existing ) ) return existing;
 
 		existing = new BoneAccessor( renderer );

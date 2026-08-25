@@ -144,6 +144,7 @@ public abstract class Module
 	/// <summary>This module is only built on Windows.</summary>
 	public bool WindowsOnly;
 
+
 	/// <summary>Relax warnings for code we do not own.</summary>
 	public bool ThirdParty;
 

@@ -20,9 +20,9 @@ public class NavigationHost : Panel
 	public string CurrentUrl => Current?.Url;
 
 	/// <summary>
-	/// The query part of the url
+	/// The query part of the url we're currently viewing
 	/// </summary>
-	public string CurrentQuery;
+	public string CurrentQuery => Current?.Query;
 
 	/// <summary>
 	/// The Url we should go to when one isn't set
@@ -38,6 +38,10 @@ public class NavigationHost : Panel
 	{
 		public Panel Panel;
 		public string Url;
+
+		// Url is stored with the query cut off, but a page's properties come from that query -
+		// so keep it here, where back and forward restore it along with everything else.
+		public string Query;
 	}
 
 	/// <summary>
@@ -120,6 +124,8 @@ public class NavigationHost : Panel
 
 		if ( url == CurrentUrl )
 		{
+			if ( Current != null ) Current.Query = query;
+
 			ApplyQuery( query );
 			RunNavigatedEvent();
 			return Current?.Panel;
@@ -185,6 +191,7 @@ public class NavigationHost : Panel
 		if ( cached != null )
 		{
 			cached.Panel.RemoveClass( "hidden" );
+			cached.Query = query;
 			Current = cached;
 			Current.Panel.Parent = NavigatorCanvas;
 			RunNavigatedEvent();
@@ -199,7 +206,7 @@ public class NavigationHost : Panel
 			}
 			panel.AddClass( "navigator-body" );
 
-			Current = new HistoryItem { Panel = panel, Url = url };
+			Current = new HistoryItem { Panel = panel, Url = url, Query = query };
 			Current.Panel.Parent = NavigatorCanvas;
 
 			foreach ( var (key, value) in ExtractProperties( parts, url ) )
@@ -337,13 +344,58 @@ public class NavigationHost : Panel
 
 	public bool CurrentUrlMatches( string url )
 	{
-		if ( url != null && url.StartsWith( "~" ) )
-			return CurrentUrl?.EndsWith( url[1..] ) ?? false;
+		if ( url == null )
+			return CurrentUrl == null;
 
-		if ( CurrentUrl == null )
-			return url == null;
+		// A href carries its query - that's how the page gets its properties - but Navigate
+		// stores the url with the query cut off, so the two halves are compared separately.
+		var query = "";
+		var qi = url.IndexOf( '?' );
+		if ( qi >= 0 )
+		{
+			query = url[(qi + 1)..];
+			url = url[..qi];
+		}
 
-		return CurrentUrl.WildcardMatch( url );
+		if ( url.StartsWith( "~" ) )
+		{
+			if ( !(CurrentUrl?.EndsWith( url[1..] ) ?? false) )
+				return false;
+		}
+		else
+		{
+			if ( CurrentUrl == null )
+				return false;
+
+			if ( !CurrentUrl.WildcardMatch( url ) )
+				return false;
+		}
+
+		return QueryMatches( query );
+	}
+
+	/// <summary>
+	/// True when everything the candidate asks for is in the query we navigated with. Anything
+	/// extra on our side is fine - a link only has to name the parameters it cares about.
+	/// </summary>
+	bool QueryMatches( string query )
+	{
+		if ( string.IsNullOrWhiteSpace( query ) )
+			return true;
+
+		var wanted = System.Web.HttpUtility.ParseQueryString( query );
+		var have = System.Web.HttpUtility.ParseQueryString( CurrentQuery ?? "" );
+
+		foreach ( var key in wanted.AllKeys )
+		{
+			if ( key == null )
+				continue;
+
+			if ( have.Get( key ) != wanted.Get( key ) )
+				return false;
+		}
+
+		return true;
 	}
 
 	public override void SetProperty( string name, string value )

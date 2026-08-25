@@ -151,11 +151,10 @@ public sealed partial class MoviePlayer : Component
 		if ( Clip is not { } clip ) return;
 
 		var updateBuilder = UpdateBuilder;
-		var animatorSystem = MovieBoneAnimatorSystem.Get( Scene );
 
 		foreach ( var renderer in Binder.GetComponents<SkinnedModelRenderer>( clip ) )
 		{
-			animatorSystem.ClearBones( renderer );
+			MovieBoneAnimatorSystem.Current?.ClearBones( renderer );
 		}
 
 		updateBuilder.Clear();
