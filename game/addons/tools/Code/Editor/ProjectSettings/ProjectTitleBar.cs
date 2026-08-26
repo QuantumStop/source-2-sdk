@@ -1,5 +1,6 @@
 ﻿using Editor.Utility;
 using Editor.Wizards;
+using System.IO;
 
 namespace Editor;
 
@@ -36,18 +37,18 @@ file class ProjectTitleButton : Widget
 		}
 
 		var contentRect = LocalRect.Shrink( HorizontalPadding, 0 );
-		var package = Project.Package;
 
 		// Calculate logo rect on the left side
 		var logoRect = contentRect;
 		logoRect.Width = contentRect.Height;
 		logoRect = logoRect.Shrink( LogoShrink );
+		var icon = Path.Combine( Project.GetRootPath(), Project.Config?.ProjectIcon );
 
 		// Draw project logo
-		if ( package?.Thumb != null )
+		if ( !string.IsNullOrWhiteSpace( Project.Config?.ProjectIcon ) )
 		{
 			Paint.SetPen( Color.White );
-			Paint.Draw( logoRect, package.Thumb, borderRadius: 4 );
+			Paint.Draw( logoRect, icon, 1, 4 );
 		}
 		else
 		{
