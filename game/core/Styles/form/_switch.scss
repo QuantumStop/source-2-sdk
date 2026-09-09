@@ -1,0 +1,51 @@
+﻿
+$primary: red !default;
+$primary-alt: white !default;
+
+$switch-padding: 6px !default;
+
+.checkbox.switch
+{
+	cursor: pointer;
+
+	> .checkmark
+	{
+		font-size: 22px;
+		border: 0px solid $primary;
+		border-radius: 100px;
+		text-align: center;
+		justify-content: center;
+		align-items: center;
+		color: $primary-alt;
+		padding: $switch-padding;
+		padding-right: 32px;
+		padding-left: $switch-padding;
+		transition: all 0.3s ease;
+		background-color: rgba( $primary, 0.1 );
+
+		> .handle
+		{
+			background-color: $primary-alt;
+			width: 20px;
+			height: 20px;
+			border-radius: 100px;
+			box-shadow: 2px 2px 12px black;
+		}
+	}
+
+	&.checked
+	{
+		> .checkmark
+		{
+			background-color: $primary;
+			padding-left: 32px;
+			padding-right: $switch-padding;
+		}
+	}
+
+	&:active
+	{
+		transform: scale( 0.9 );
+		transform-origin: 20px 50%;
+	}
+}

@@ -1,0 +1,90 @@
+.videocontrols
+{
+	width: 100%;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 8px;
+	background-color: rgba( 0, 0, 0, 0.20 );
+}
+
+.videocontrols > .left
+{
+	flex-direction: row;
+	gap: 6px;
+	flex-shrink: 0;
+	align-items: center;
+}
+
+.videocontrols > .right
+{
+	flex-direction: column;
+	gap: 4px;
+	flex-grow: 1;
+	width: 0px;
+}
+
+.videocontrols .timeline
+{
+	width: 100%;
+}
+
+.videocontrols .meta
+{
+	flex-direction: row;
+	align-items: center;
+}
+
+.videocontrols .meta > .left
+{
+	flex-direction: row;
+	gap: 6px;
+	flex-shrink: 0;
+	align-items: center;
+}
+
+.videocontrols .meta > .right
+{
+	flex-grow: 1;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 4px;
+	font-family: Roboto Mono;
+	font-size: 11px;
+	opacity: 0.7;
+}
+
+.videocontrols .video-control-button
+{
+	width: 26px;
+	height: 26px;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba( 255, 255, 255, 0.06 );
+	cursor: pointer;
+	color: rgba( 255, 255, 255, 0.85 );
+}
+
+.videocontrols .video-control-button i
+{
+	font-family: Material Icons;
+	font-size: 18px;
+}
+
+.videocontrols .video-control-button:hover
+{
+	background-color: rgba( 255, 255, 255, 0.10 );
+}
+
+.videocontrols .video-control-button:active
+{
+	background-color: rgba( 255, 255, 255, 0.14 );
+}
+
+.videocontrols .video-control-button.disabled
+{
+	opacity: 0.35;
+	cursor: default;
+	pointer-events: none;
+}
+
