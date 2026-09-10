@@ -3,7 +3,6 @@ global using Sandbox.Diagnostics;
 global using Sandbox.Physics;
 global using Sandbox.Tasks;
 global using Microsoft.AspNetCore.Components;
-global using Microsoft.AspNetCore.Components.Rendering;
 global using System;
 global using System.Collections.Generic;
 global using System.Linq;

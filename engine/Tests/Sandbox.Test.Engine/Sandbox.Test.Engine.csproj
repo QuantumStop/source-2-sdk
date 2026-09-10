@@ -3,8 +3,7 @@
 	<!-- Engine-attached tests: loads the native engine DLLs (interop) but never boots the engine loop (see Assembly.cs). Needs FACEPUNCH_ENGINE. -->
 
 	<ItemGroup>
-		<Using Include="Microsoft.AspNetCore.Components" />
-		<Using Include="Microsoft.AspNetCore.Components.Rendering" />
+		<Using Include="Microsoft.AspNetCore.Components.RazorExtensions" Static="true" />
 	</ItemGroup>
 
 	<ItemGroup>
