@@ -110,6 +110,10 @@ game/sbox-standalone.runtimeconfig.json
 
 # Don't ignore our new assets or any other tool relatd image
 !game/core/tools/images/**
+!game/core/**/*.cs.scss
+!game/core/**/*.razor.scss
+!game/core/styles/**/*.scss
+!game/core/Styles/**/*.scss
 
 !game/bin/thirdparty/*
 !game/core/materials/default/default_mask.tga
@@ -125,6 +129,11 @@ game/core/maps/editor/_bakeresourcecache
 !game/addons/base/**/*.cs.scss
 !game/addons/base/**/*.razor.scss
 !game/addons/base/Assets/ui/static/**
+
+# Don't ignore our DevUI addon stuff
+!game/addons/devui/.sbproj
+!game/addons/devui/**/*.cs.scss
+!game/addons/devui/**/*.razor.scss
 
 # Need this for an example in Sweeper, we'll get rid of it in the future
 !game/samples/sweeper/Assets/c17imgseq/*
