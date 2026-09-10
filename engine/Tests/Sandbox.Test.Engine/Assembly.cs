@@ -34,7 +34,7 @@ public class TestInit
 		Application.IsUnitTest = true;
 		GlobalContext.Current.TypeLibrary = new TypeLibrary();
 
-		GlobalContext.Current.UISystem = new UISystem();
+		GlobalContext.Current.UISystem = new Sandbox.UISystem();
 
 		GlobalContext.Current.TypeLibrary.AddIntrinsicTypes();
 		GlobalContext.Current.TypeLibrary.AddAssembly( typeof( Vector3 ).Assembly, false );
