@@ -1,0 +1,50 @@
+.devcolumns
+{
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	gap: 10px;
+}
+
+.devcolumns > .devcolumns-header,
+.devcolumns > .devcolumns-footer
+{
+	width: 100%;
+	flex-shrink: 0;
+}
+
+.devcolumns > .devcolumns-grid
+{
+	display: flex;
+	flex-direction: row;
+
+	flex-wrap: wrap;
+	gap: 10px;
+	width: 100%;
+	align-items: flex-start;
+}
+
+.devcolumns > .devcolumns-grid > .devcolumns-col
+{
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex-shrink: 1;
+	width: 0px;
+}
+
+.devcolumns > .devcolumns-grid > .devcolumns-col.left
+{
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 360px;
+	max-width: 100%;
+}
+
+.devcolumns > .devcolumns-grid > .devcolumns-col.right
+{
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 240px;
+	max-width: 100%;
+}

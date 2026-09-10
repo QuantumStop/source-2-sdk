@@ -1,0 +1,24 @@
+@namespace Sandbox.UI.Dev
+@inherits Panel
+
+<root class="devrow">
+	@if ( Left is not null )
+	{
+		<div class="devrow-left">
+			@Left
+		</div>
+	}
+
+	@if ( Right is not null )
+	{
+		<div class="devrow-right">
+			@Right
+		</div>
+	}
+</root>
+
+@code
+{
+	[Parameter] public RenderFragment Left { get; set; }
+	[Parameter] public RenderFragment Right { get; set; }
+}

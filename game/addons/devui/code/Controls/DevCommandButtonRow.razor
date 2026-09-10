@@ -1,0 +1,166 @@
+@namespace Sandbox.UI.Dev
+@inherits Panel
+
+<root class="@ButtonClass">
+	@if ( Button.Kind == DevCommandButtonKind.Dropdown )
+	{
+		<div class="titlebar">
+			@if ( !string.IsNullOrWhiteSpace( Button.Icon ) )
+			{
+				<i class="button-icon">@Button.Icon</i>
+			}
+			<span>@ButtonLabel</span>
+		</div>
+		<div class="dropdown-handle">
+			<i class="dropdown-icon">arrow_drop_down</i>
+		</div>
+	}
+	else
+	{
+		@if ( !string.IsNullOrWhiteSpace( Button.Icon ) )
+		{
+			<i class="button-icon">@Button.Icon</i>
+		}
+		<span>@ButtonLabel</span>
+	}
+</root>
+
+@code
+{
+	[Parameter] public DevCommandButtonSpec Button { get; set; }
+	[Parameter] public int Index { get; set; }
+	[Parameter] public int Columns { get; set; } = 2;
+
+	private bool ToggleEnabled { get; set; }
+	private int OptionIndex { get; set; } = -1;
+
+	private string ButtonLabel
+	{
+		get
+		{
+			if ( Button.Kind != DevCommandButtonKind.Cycle && Button.Kind != DevCommandButtonKind.Dropdown )
+				return Button.Title;
+
+			if ( Button.Options is null || Button.Options.Length == 0 || OptionIndex <= 0 || OptionIndex >= Button.Options.Length )
+				return Button.Title;
+
+			return $"{Button.Title}: {Button.Options[OptionIndex].Title}";
+		}
+	}
+
+	private string ButtonClass
+	{
+		get
+		{
+			int columns = Columns.Clamp( min: 1, max: 6 );
+			string classes = "devcommand-button";
+
+			classes += columns switch
+			{
+				3 => " third",
+				4 => " quarter",
+				_ => ""
+			};
+
+			if ( Index % columns == columns - 1 )
+				classes += " right";
+
+			if ( Button is null || string.IsNullOrWhiteSpace( Button.Title ) )
+				classes += " filler";
+
+			if ( Button?.Kind == DevCommandButtonKind.Dropdown )
+				classes += " dropdown";
+
+			if ( Button?.Kind == DevCommandButtonKind.Dropdown )
+				classes += Button.DropdownHandleStyle == DevCommandDropdownHandleStyle.Compact ? " compact-handle" : " default-handle";
+
+			if ( Button?.Kind == DevCommandButtonKind.Toggle && ToggleEnabled )
+				classes += " active";
+
+			if ( Button?.Kind == DevCommandButtonKind.Dropdown && OptionIndex > 0 )
+				classes += " active";
+
+			return classes;
+		}
+	}
+
+	protected override void OnClick( MousePanelEvent e )
+	{
+		base.OnClick( e );
+
+		if ( Button is null || string.IsNullOrWhiteSpace( Button.Title ) )
+			return;
+
+		switch ( Button.Kind )
+		{
+			case DevCommandButtonKind.Toggle:
+				ToggleEnabled = !ToggleEnabled;
+				ExecuteCommand( Button.Command, ToggleEnabled ? Button.Value : Button.OffValue );
+				break;
+			case DevCommandButtonKind.Cycle:
+				ActivateNextOption();
+				break;
+			case DevCommandButtonKind.Dropdown:
+				OpenDropdown();
+				break;
+			default:
+				ExecuteCommand( Button.Command, Button.Value );
+				break;
+		}
+	}
+
+	private void ActivateNextOption()
+	{
+		if ( Button.Options is null || Button.Options.Length == 0 )
+		{
+			ExecuteCommand( Button.Command, Button.Value );
+			return;
+		}
+
+		SetOption( (OptionIndex + 1) % Button.Options.Length );
+	}
+
+	private void OpenDropdown()
+	{
+		if ( Button.Options is null || Button.Options.Length == 0 )
+		{
+			ExecuteCommand( Button.Command, Button.Value );
+			return;
+		}
+
+		var popup = new Popup( this, Popup.PositionMode.BelowStretch, 0f );
+		popup.CloseWhenParentIsHidden = true;
+
+		for ( int i = 0; i < Button.Options.Length; i++ )
+		{
+			int index = i;
+			DevCommandButtonOption option = Button.Options[index];
+			Panel row = popup.AddOption( option.Title, option.Icon, () => SetOption( index ) );
+
+			if ( index == GetSelectedOptionIndex() )
+				row.AddClass( "active" );
+		}
+	}
+
+	private void SetOption( int index )
+	{
+		OptionIndex = index;
+
+		DevCommandButtonOption option = Button.Options[OptionIndex];
+		ExecuteCommand( Button.Command, option.Value );
+		StateHasChanged();
+	}
+
+	private int GetSelectedOptionIndex()
+	{
+		return OptionIndex < 0 ? 0 : OptionIndex;
+	}
+
+	private static void ExecuteCommand( string command, string value )
+	{
+		if ( string.IsNullOrWhiteSpace( command ) )
+			return;
+
+		DevConsoleAccess.Run( string.IsNullOrWhiteSpace( value ) ? command : $"{command} {value}" );
+	}
+}

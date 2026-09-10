@@ -1,0 +1,25 @@
+{
+  "Title": "DevUI Library",
+  "Type": "library",
+  "Org": "local",
+  "Ident": "devui",
+  "Tags": null,
+  "Schema": 1,
+  "HasAssets": false,
+  "AssetsPath": "",
+  "Resources": null,
+  "MenuResources": null,
+  "HasCode": true,
+  "CodePath": "code",
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "Metadata": {
+    "CsProjName": "DevUI Library",
+    "Compiler": {
+      "RootNamespace": "Sandbox",
+      "DefineConstants": "SANDBOX;ADDON;DEBUG",
+      "NoWarn": "1701;1702;1591;",
+      "TreatWarningsAsErrors": true
+    }
+  }
+}

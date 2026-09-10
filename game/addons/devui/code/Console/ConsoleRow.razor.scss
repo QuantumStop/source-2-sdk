@@ -1,0 +1,32 @@
+ConsoleRow
+{
+    flex-shrink: 0;
+    flex-grow: 0;
+    color: #d6d6d6;
+    width: 100%;
+    cursor: pointer;
+    align-items: center;
+    white-space: pre;
+
+    .logger
+    {
+        margin-right: 5px;
+        flex-shrink: 0;
+        flex-grow: 0;
+        white-space: nowrap;
+    }
+
+    .message { white-space: nowrap; }
+
+    &.trace { opacity: 0.6; }
+
+    &.warn { color: #ffd800; }
+
+    &.error { color: #c52333; }
+
+    &:hover { background-color: #333; }
+
+    &.in { color: #68bf61; }
+
+    &.highlight { background-color: rgba(#fff, 0.02); }
+}

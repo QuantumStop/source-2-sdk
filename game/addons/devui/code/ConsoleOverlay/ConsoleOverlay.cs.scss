@@ -1,0 +1,46 @@
+consoleoverlay {
+	position: absolute;
+	left: 20px;
+	right: 20px;
+	top: 10px;
+	font-family: Roboto Mono;
+	flex-direction: column;
+	pointer-events: none;
+
+	&.hidden {
+		display: none;
+	}
+
+	.output {
+		flex-direction: column;
+		justify-content: flex-end;
+		overflow: hidden;
+		flex-grow: 1;
+
+		ConsoleEntry {
+			flex-shrink: 0;
+			color: #fff;
+			cursor: pointer;
+
+			label {
+				text-shadow: 2px 2px 0px #000;
+				padding: 2px 10px;
+				font-size: 12px;
+				font-weight: 600;
+				background-color: #000d;
+			}
+
+			&.trace {
+				color: #b6ff00;
+			}
+
+			&.warn {
+				color: #ffd800;
+			}
+
+			&.error {
+				color: #ff0000;
+			}
+		}
+	}
+}

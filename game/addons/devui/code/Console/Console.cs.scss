@@ -1,0 +1,88 @@
+
+console
+{
+	font-family: Roboto Mono;
+	font-weight: normal;
+	flex-direction: column;
+	flex-grow: 1;
+	font-size: 1rem;
+	background-color: transparent;
+
+	.console_output
+	{
+		width: 100%;
+		height: 100%;
+		font-size: 0.9rem;
+		flex-grow: 1;
+		font-family: Roboto Mono;
+		font-weight: 450;
+		background-color: #232323;
+	}
+
+	.console-scroll
+	{
+		flex-grow: 1;
+	}
+
+	.topbar
+	{
+		position: relative;
+		top: -20px;
+		flex-direction: row;
+		z-index: 10;
+		justify-content: flex-end;
+	}
+
+	Button.type
+	{
+		width: 55px;
+		height: 15px;
+		padding: 2px 2px;
+		justify-content: center;
+		align-items: center;
+		font-family: Roboto Mono;
+		font-weight: 700;
+		font-size: 10px;
+		background-color: rgba( 255, 255, 255, 0.06 );
+		color: rgba( 255, 255, 255, 0.6 );
+		cursor: pointer;
+
+		&.err { background-color: #523737; color: #f05050; }
+		&.wrn { background-color: #584336; color: #ffb14a; }
+		&.msg { background-color: #3a3f3a; color: #6adf6a; }
+
+		&.disabled
+		{
+			&.err { background-color: #302020; color: #cf4444; }
+			&.wrn { background-color: #342820; color: #e49d40; }
+			&.msg { background-color: #252825; color: #57b757; }
+		}
+	}
+
+	.inputbar
+	{
+		flex-shrink: 0;
+		height: 28px;
+		border-top: 1px solid #262525;
+		background-color: #050505;
+		align-items: center;
+		cursor: text;
+	}
+
+	.input
+	{
+		cursor: text;
+		color: rgba( 255, 255, 255, 0.9 );
+		font-family: Roboto Mono;
+		font-size: 12px;		
+
+		caret-color: #d6d6d6;
+		caret-width: 2px;
+		caret-blink: false;
+
+		&:active, &:focus, &:hover
+		{
+			// Might end up dimming input sometimes.
+		}
+	}
+}

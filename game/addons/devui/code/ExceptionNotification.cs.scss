@@ -1,0 +1,49 @@
+ExceptionNotification {
+	position: absolute;
+	left: 0;
+	right: 0;
+	pointer-events: none;
+	flex-direction: row;
+	justify-content: center;
+	color: white;
+	top: 2vh;
+
+	.inner {
+		background-color: rgba(32, 32, 32, 0.8);
+		backdrop-filter: blur(16px);
+		border: 2px #bf773b;
+		font-size: 20px;
+		font-family: "roboto";
+		padding: 5px;
+		border-radius: 5px;
+		flex-direction: row;
+		align-items: center;
+		pointer-events: none;
+		gap: 5px;
+		top: 0px;
+		position: relative;
+		transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out;
+	}
+
+	&.hidden .inner {
+		top: -20px;
+		opacity: 0;
+		transition: top 0.3s cubic-bezier(0.8, 0, 0.2, 1), opacity 0.15s ease-in;
+	}
+
+	&.fresh .inner {
+		background-color: rgba(200, 32, 32, 0.8);
+	}
+}
+
+.column {
+	flex-direction: column;
+	font-size: 20px;
+}
+
+.column *:first-child {
+	color: #bf773b;
+	font-size: 15px;
+	font-family: roboto;
+	font-weight: 6000;
+}

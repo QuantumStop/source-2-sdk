@@ -1,0 +1,27 @@
+
+StatValue
+{
+    color: rgba( 255, 255, 255, 0.65 );
+    gap: 20px;
+    white-space: nowrap;
+    font-family: Roboto Mono;
+    overflow: hidden;
+ 
+    name
+    {
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 10px;
+        opacity: 0.65;
+    }
+
+    value
+    {   
+        color: rgba( 255, 255, 255, 0.85 );
+        width: 40px;
+        flex-shrink: 0;
+        justify-content: flex-end;
+        font-weight: 700;
+        font-family: Roboto Mono;
+    }
+}

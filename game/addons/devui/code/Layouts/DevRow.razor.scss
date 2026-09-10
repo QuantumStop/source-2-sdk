@@ -1,0 +1,27 @@
+.devrow
+{
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+}
+
+.devrow > .devrow-left
+{
+	flex-grow: 1;
+	width: 0px;
+	min-width: 0px;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.devrow > .devrow-right
+{
+	flex-shrink: 0;
+	flex-direction: row;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 10px;
+}

@@ -1,0 +1,58 @@
+DevScrollBar
+{
+	position: absolute;
+	z-index: 1000;
+
+	&.hidden { display: none; }
+	.track   { flex-grow: 1;  }
+
+	.thumb {
+		background-color: #576868;		
+		opacity: 0.9;
+		
+		&:hover  { opacity: 1; }
+		&:active { opacity: 0.8; }
+	}
+
+}
+
+DevDebugTab DevScrollBar.vertical,
+.CustomTab DevScrollBar.vertical
+{
+	padding-bottom: 20px;
+}
+
+DevScrollBar.vertical
+{
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 10px;
+	cursor: ns-resize;
+
+	.track { flex-direction: column; }
+	.thumb 
+	{ 
+		border-left: 1.25px #636e6e;
+		border-right: 1.25px #394545;	
+		width: 10px; 
+	}
+}
+
+DevScrollBar.horizontal
+{
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 10px;
+	cursor: ew-resize;
+
+	.track { flex-direction: row; }
+	.thumb 
+	{ 
+		border-top: 1.25px #636e6e;
+		border-bottom: 1.25px #394545;		
+		height: 10px; 
+	}
+}
+
