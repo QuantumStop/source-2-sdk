@@ -1,0 +1,186 @@
+@namespace Sandbox.UI.Dev
+@using Sandbox.UI.Construct
+@inherits Panel
+
+<root class="@classes">
+    <div @ref="Output" class="message" AllowChildSelection="true" AcceptsFocus="true" @onkeypress="KeyPress">
+		<div class="header">
+			<div class="text">@message</div>
+			<div class="controls">
+				@if ( hasStack )
+				{
+					<div class="stacktoggle" onclick="@ToggleStackTrace" title="Toggle stack trace">
+						<i>@(StackTracesVisible ? "unfold_less" : "unfold_more")</i>
+					</div>
+				}
+				<div class="close" onclick="@Hide" title="Close"><i>close</i></div>
+			</div>
+		</div>
+        <div @ref="StackHost" class="stack"></div>
+    </div>
+</root>
+
+@code
+{
+    LogEvent entry;
+    bool visible;
+	bool hasStack;
+
+	string levelClass;
+
+	static bool StackTracesVisible { get; set; } = true;
+
+    string classes => $"logeventpanel {(visible?"visible":"hidden")} {levelClass} {(hasStack ? "hasstack" : string.Empty)} {(StackTracesVisible ? "stackenabled" : string.Empty)}".Trim();
+
+	string DisplayLogger
+	{
+		get
+		{
+			var logger = entry.Logger;
+			if ( string.IsNullOrWhiteSpace( logger ) )
+				return string.Empty;
+
+			if ( logger == "Generic" || logger == "in" )
+				return string.Empty;
+
+			return logger;
+		}
+	}
+
+	string message
+	{
+		get
+		{
+			var m = entry.Message ?? string.Empty;
+			var logger = DisplayLogger;
+			if ( string.IsNullOrEmpty( logger ) || string.IsNullOrEmpty( m ) )
+				return m;
+
+			// Avoid double-tagging when the message already includes its own logger prefix.
+			var prefix = $"[{logger}]";
+			if ( m.StartsWith( prefix, StringComparison.Ordinal ) )
+				return m;
+
+			return $"{prefix} {m}";
+		}
+	}
+    Panel Output = default;
+    Panel StackHost = default;
+    DevScrollPanel StackScroll = default;
+    Label StackText = default;
+
+    public void Switch( LogEvent e )
+    {
+        entry = e;
+		levelClass = ClassForLevel( e.Level );
+		hasStack = !string.IsNullOrWhiteSpace( entry.Stack );
+        visible = true;
+        StateHasChanged();
+        UnselectAllInChildren();
+
+        UpdateStackText();
+    }
+
+    void Hide()
+    {
+        visible = false;
+        StateHasChanged();
+    }
+
+	void ToggleStackTrace()
+	{
+		StackTracesVisible = !StackTracesVisible;
+		UpdateStackHeight( entry.Stack ?? string.Empty );
+		StateHasChanged();
+	}
+
+    protected override void OnAfterTreeRender( bool firstTime )
+    {
+        base.OnAfterTreeRender( firstTime );
+
+        if ( !firstTime )
+            return;
+
+        if ( !StackHost.IsValid() )
+            return;
+
+        // Use DevScrollPanel so stack traces can scroll both ways.
+        StackScroll = StackHost.AddChild<DevScrollPanel>();
+        StackScroll.AddClass( "compact" );
+
+        StackText = StackScroll.Canvas.Add.Label( string.Empty, "stacktext" );
+
+        UpdateStackText();
+    }
+
+    void UpdateStackText()
+    {
+        if ( !StackText.IsValid() )
+            return;
+
+		var stack = entry.Stack ?? string.Empty;
+        StackText.Text = stack;
+		hasStack = !string.IsNullOrWhiteSpace( stack );
+		UpdateStackHeight( stack );
+
+        // Reset scroll position when switching entries.
+        if ( StackScroll.IsValid() )
+            StackScroll.ScrollOffset = Vector2.Zero;
+    }
+
+    void UpdateStackHeight( string stack )
+    {
+        if ( !StackHost.IsValid() )
+            return;
+
+		if ( !StackTracesVisible )
+		{
+			StackHost.Style.Height = 0;
+			StackHost.Style.Dirty();
+			return;
+		}
+
+        if ( string.IsNullOrWhiteSpace( stack ) )
+        {
+            StackHost.Style.Height = 0;
+            StackHost.Style.Dirty();
+			return;
+		}
+
+		// DevScrollPanel uses an absolutely positioned canvas, so it won't naturally size-to-content.
+		// Approximate a sensible height based on line count (clamped).
+		var lineCount = 1;
+		for ( var i = 0; i < stack.Length; i++ )
+		{
+			if ( stack[i] == '\n' )
+				lineCount++;
+		}
+
+		const float lineHeight = 12f; // font-size is 11px; 12px is a reasonable line height
+		var desired = 10f + (lineCount * lineHeight);
+		desired = desired.Clamp( 48f, 200f );
+
+		StackHost.Style.Height = desired;
+		StackHost.Style.Dirty();
+	}
+
+	static string ClassForLevel( LogLevel level )
+	{
+		return level switch
+		{
+			LogLevel.Error => "err",
+			LogLevel.Warn => "wrn",
+			LogLevel.Info => "msg",
+			LogLevel.Trace => "msg",
+			_ => "msg"
+		};
+	}
+
+    public override void OnButtonEvent(ButtonEvent e)
+    {
+        if ( e.HasCtrl && e.Button == "a" && e.Pressed )
+        {
+            Output.SelectAllInChildren();
+        }
+    }
+}

@@ -1,0 +1,94 @@
+@using System
+@namespace Sandbox.UI
+@attribute [StyleSheet]
+@inherits Sandbox.UI.Panel
+
+<root class="videocontrols">
+	<div class="left">
+		@if ( Player?.IsPaused ?? true )
+		{
+			<div class="video-control-button" onclick="@(() => Player?.Resume())">
+				<i>play_arrow</i>
+			</div>
+		}
+		else
+		{
+			<div class="video-control-button" onclick="@(() => Player?.Pause())">
+				<i>pause</i>
+			</div>
+		}
+
+		<div class="video-control-button" onclick="@(() => Player?.Stop())">
+			<i>stop</i>
+		</div>
+	</div>
+
+	<div class="right">
+		<div class="timeline">
+			<SliderControl NumberFormat="0.0" Min="@(0f)" Max="@(Player?.Duration ?? 0f)" Value="@(Player?.PlaybackTime ?? 0f)" OnValueChanged="@TimelineChanged" />
+		</div>
+
+		<div class="meta">
+			<div class="left">
+				@if ( !(Player?.HasAudio ?? false) )
+				{
+					<div class="video-control-button disabled">
+						<i>volume_off</i>
+					</div>
+				}
+				else if ( Player?.Muted ?? true )
+				{
+					<div class="video-control-button" onclick="@( () => { if ( Player is not null ) Player.Muted = false; } )">
+						<i>volume_off</i>
+					</div>
+				}
+				else
+				{
+					<div class="video-control-button" onclick="@( () => { if ( Player is not null ) Player.Muted = true; } )">
+						<i>volume_up</i>
+					</div>
+				}
+			</div>
+
+			<div class="right">
+				<span>@GetPlayback()</span>
+				<span> / </span>
+				<span>@GetDuration()</span>
+			</div>
+		</div>
+	</div>
+</root>
+
+@code
+{
+	[Parameter] public VideoHandle Handle { get; set; }
+	[Parameter] public Sandbox.VideoPlayer VideoPlayer { get; set; }
+
+	Sandbox.VideoPlayer Player => Handle?.VideoPlayer ?? VideoPlayer;
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(
+			Player,
+			Player?.PlaybackTime,
+			Player?.Duration,
+			Player?.IsPaused,
+			Player?.Muted
+		);
+	}
+
+	void TimelineChanged( float value )
+	{
+		Player?.Seek( value );
+	}
+
+	string GetPlayback()
+	{
+		return TimeSpan.FromSeconds( Player?.PlaybackTime ?? 0f ).ToString( "mm\\:ss" );
+	}
+
+	string GetDuration()
+	{
+		return TimeSpan.FromSeconds( Player?.Duration ?? 0f ).ToString( "mm\\:ss" );
+	}
+}

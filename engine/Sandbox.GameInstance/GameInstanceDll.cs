@@ -62,7 +62,6 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			else
 			{
 				FileSystem.Mounted.CreateAndMount( EngineFileSystem.Addons, "/base/Assets/" );
-				FileSystem.Mounted.CreateAndMount( EngineFileSystem.Addons, "/base/code/" );
 				FileSystem.Mounted.CreateAndMount( EngineFileSystem.Root, "/core/" );
 			}
 		}
@@ -98,8 +97,8 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			return;
 
 		//
-		// Our Game TypeLibrary gets rebuilt during ResetEnvironment and doesn't include addon assemblies.
-		// Ensure the base UI system assembly is enrolled before we try to create it.
+		// Our Game TypeLibrary gets rebuilt during ResetEnvironment.
+		// Ensure the UI system assembly is enrolled before we try to create it.
 		//
 		try
 		{

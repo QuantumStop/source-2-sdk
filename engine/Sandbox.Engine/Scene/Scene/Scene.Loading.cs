@@ -12,6 +12,7 @@ public partial class Scene : GameObject
 	bool _loadingScreenRequireInput;
 	string _loadingScreenContinueInputAction;
 	bool _loadingScreenActive;
+	int _loadingScreenVisibilityCycle;
 
 	internal void BeginLoadingScreen( SceneLoadOptions options )
 	{
@@ -19,6 +20,7 @@ public partial class Scene : GameObject
 		LoadingScreen.EnsureContext( LoadingScreen.Context.SceneTransition );
 
 		_loadingScreenActive = true;
+		_loadingScreenVisibilityCycle = LoadingScreen.VisibilityCycle + (LoadingScreen.IsVisible ? 0 : 1);
 		_loadingScreenShownAt = RealTime.Now;
 		var settings = ProjectSettings.Loading;
 		var context = LoadingScreen.CurrentContext switch
@@ -59,7 +61,7 @@ public partial class Scene : GameObject
 
 	async Task WaitForLoadingScreenGate()
 	{
-		if ( !_loadingScreenActive )
+		if ( !OwnsLoadingScreenCycle() )
 			return;
 
 		// No UI/input - don't ever block scene completion on a server/headless instance.
@@ -70,23 +72,27 @@ public partial class Scene : GameObject
 
 		// Prefer measuring minimum visible time from when the UI system actually displayed the loading overlay.
 		// This avoids a fast startup load "consuming" the minimum time while a native splash screen is still up.
-		if ( minSeconds > 0.0f && LoadingScreen.IsVisible && LoadingScreen.VisibleSince <= 0.0f )
+		if ( minSeconds > 0.0f && LoadingScreen.VisibleSince <= 0.0f )
 		{
 			var startedWaitingForUi = RealTime.Now;
-			while ( LoadingScreen.IsVisible && LoadingScreen.VisibleSince <= 0.0f && (RealTime.Now - startedWaitingForUi) < 2.0f )
+			while ( OwnsLoadingScreenCycle() && LoadingScreen.VisibleSince <= 0.0f && (RealTime.Now - startedWaitingForUi) < 2.0f )
 			{
 				await Task.DelayRealtime( 16 );
 			}
 		}
 
+		if ( !OwnsLoadingScreenCycle() )
+			return;
+
 		var shownAt = LoadingScreen.VisibleSince > 0.0f ? LoadingScreen.VisibleSince : _loadingScreenShownAt;
 		var holdUntil = shownAt + minSeconds;
-		var remaining = holdUntil - RealTime.Now;
-
-		if ( remaining > 0.0f )
+		while ( OwnsLoadingScreenCycle() && RealTime.Now < holdUntil )
 		{
-			await Task.DelayRealtime( (int)MathF.Ceiling( remaining * 1000.0f ) );
+			await Task.DelayRealtime( 16 );
 		}
+
+		if ( !OwnsLoadingScreenCycle() )
+			return;
 
 		if ( !_loadingScreenRequireInput )
 			return;
@@ -94,25 +100,31 @@ public partial class Scene : GameObject
 		LoadingScreen.IsAwaitingInput = true;
 
 		// Ensure we don't consume input on the same continuation as load completion.
-		await Task.Yield();
+		await Task.DelayRealtime( 16 );
 
 		// Small debounce so the press that dismisses a native splash / focuses the window doesn't instantly continue.
 		var ignoreInputUntil = RealTime.Now + 0.15f;
-		while ( IsValid && LoadingScreen.IsVisible && RealTime.Now < ignoreInputUntil )
+		while ( OwnsLoadingScreenCycle() && RealTime.Now < ignoreInputUntil )
 		{
-			await Task.Yield();
+			await Task.DelayRealtime( 16 );
 		}
 
-		while ( IsValid && LoadingScreen.IsVisible )
+		while ( OwnsLoadingScreenCycle() )
 		{
 			if ( ShouldContinueFromLoadingScreen() )
 				break;
 
-			await Task.Yield();
+			await Task.DelayRealtime( 16 );
 		}
 
 		LoadingScreen.IsAwaitingInput = false;
 	}
+
+	bool OwnsLoadingScreenCycle()
+		=> _loadingScreenActive
+			&& IsValid
+			&& LoadingScreen.IsVisible
+			&& LoadingScreen.VisibilityCycle == _loadingScreenVisibilityCycle;
 
 	internal void AddLoadingTask( LoadingContext loadingTask )
 	{
@@ -222,16 +234,16 @@ public partial class Scene : GameObject
 		finally
 		{
 			_loadingMainTask = default;
-			// If the scene system enabled the loading overlay, make sure it gets turned off once loading completes.
-			// (Menu/game loading and networking also manage this, but scene loads need to be self-contained.)
-			LoadingScreen.IsVisible = false;
-			LoadingScreen.IsAwaitingInput = false;
-			LoadingScreen.ClearContext();
-
-			if ( _loadingScreenActive )
+			// A stopped scene may finish this task after another Editor Play has started. Only
+			// the scene that owns the current cycle is allowed to dismiss the global overlay.
+			if ( _loadingScreenActive && LoadingScreen.VisibilityCycle == _loadingScreenVisibilityCycle )
 			{
-				_loadingScreenActive = false;
+				LoadingScreen.IsVisible = false;
+				LoadingScreen.IsAwaitingInput = false;
+				LoadingScreen.ClearContext();
 			}
+
+			_loadingScreenActive = false;
 		}
 	}
 }

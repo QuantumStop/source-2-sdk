@@ -19,6 +19,7 @@ public static partial class Graphics
 		{
 			using ( new Graphics.Scope( in setup ) )
 			{
+				RenderUiOverlay();
 				DebugOverlay.Render();
 				ScreenCaptureUtility.CaptureFrame();
 				ScreenCaptureUtility.DrawRecordingBorder();
@@ -44,6 +45,12 @@ public static partial class Graphics
 		{
 			currentCamera.OnRenderStage( renderStage );
 		}
+	}
+
+	static void RenderUiOverlay()
+	{
+		using var _ = GlobalContext.GameScope();
+		UI.Overlay.UISystemOverlay.RenderFinalOverlay();
 	}
 
 	/// <summary>

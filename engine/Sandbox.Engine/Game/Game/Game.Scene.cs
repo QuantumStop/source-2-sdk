@@ -75,17 +75,15 @@ public static partial class Game
 
 		if ( ActiveScene.IsLoading || LoadingScreen.IsVisible || Networking.IsConnecting )
 		{
-			// While loading, still render at least one camera so UI overlays (loading screen, console, etc)
-			// can draw. Otherwise the swapchain can appear "stuck" on the last pre-load frame in standalone.
-			ActiveScene.UpdateMainCamera();
+			ActiveScene.RenderEnvmaps();
 
-			if ( ActiveScene.Camera.IsValid() )
+			// Make sure overlays are rendered even when we are loading.
+			if ( ActiveScene.Camera is not null )
 			{
 				ActiveScene.Camera.SceneCamera.EnableEngineOverlays = true;
-				SceneCamera.RecordingCamera = ActiveScene.Camera.SceneCamera;
+				ActiveScene.Camera.AddToRenderList( swapChain, default );
 			}
 
-			ActiveScene.Render( swapChain, default );
 			return;
 		}
 

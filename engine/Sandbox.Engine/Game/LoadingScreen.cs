@@ -7,6 +7,7 @@ public static class LoadingScreen
 {
 	private static bool _loading;
 	private static float _visibleSince;
+	private static int _visibilityCycle;
 
 	public enum Context
 	{
@@ -34,6 +35,11 @@ public static class LoadingScreen
 	/// player can see (eg, after a native splash screen has finished).
 	/// </summary>
 	public static float VisibleSince => _visibleSince;
+
+	/// <summary>
+	/// Identifies the current visible loading cycle so an old scene cannot dismiss a newer one.
+	/// </summary>
+	internal static int VisibilityCycle => _visibilityCycle;
 
 	/// <summary>
 	/// Called by the UI system when the loading overlay is actually being rendered.
@@ -97,9 +103,22 @@ public static class LoadingScreen
 	/// </summary>
 	public static bool IsAwaitingInput { get; internal set; }
 
+#if DEBUG
+	/// <summary>
+	/// Preview a loading overlay without starting a load. 0 disables the preview, 1 shows the
+	/// configured scene-transition overlay, and 2 shows the engine default overlay.
+	/// </summary>
+	[ConVar( "loading_overlay_debug", Help = "Preview loading overlays: 0 = off, 1 = scene transition, 2 = engine default" )]
+	public static int DebugOverlayMode { get; set; }
+
+	internal static int EffectiveDebugOverlayMode => Math.Clamp( DebugOverlayMode, 0, 2 );
+#else
+	internal static int EffectiveDebugOverlayMode => 0;
+#endif
+
 	public static bool IsVisible
 	{
-		get => _loading;
+		get => _loading || EffectiveDebugOverlayMode != 0;
 		set
 		{
 			if ( _loading == value )
@@ -108,6 +127,12 @@ public static class LoadingScreen
 			//Log.Info( $"Loading: {value}\n{new StackTrace( true ).ToString()}" );
 
 			_loading = value;
+
+			if ( _loading )
+			{
+				_visibilityCycle++;
+				_visibleSince = 0.0f;
+			}
 
 			if ( !_loading )
 			{

@@ -1,0 +1,199 @@
+@namespace Sandbox.UI
+@attribute [StyleSheet]
+@inherits Sandbox.UI.Panel
+
+<root class="videopanel" />
+
+@code
+{
+	sealed class SharedVideo
+	{
+		public string Source;
+		public VideoPlayer Player;
+		public int RefCount;
+	}
+
+	static readonly Dictionary<string, SharedVideo> SharedPlayers = new( StringComparer.OrdinalIgnoreCase );
+
+	string _source;
+	float _lastAspectRatio;
+	bool _repeat;
+
+	SharedVideo _shared;
+
+	[Parameter] public VideoHandle Handle { get; set; }
+
+	[Parameter]
+	public string Source
+	{
+		get => _source;
+		set
+		{
+			if ( _source == value ) return;
+			_source = value;
+
+			if ( string.IsNullOrWhiteSpace( _source ) )
+			{
+				ReleaseShared();
+				return;
+			}
+
+			AttachShared( _source );
+		}
+	}
+
+	[Parameter]
+	public bool Repeat
+	{
+		get => _repeat;
+		set
+		{
+			_repeat = value;
+
+			if ( _videoPlayer is not null )
+				_videoPlayer.Repeat = _repeat;
+		}
+	}
+
+	Sandbox.VideoPlayer _videoPlayer;
+
+	/// <summary>
+	/// Access to the underlying video player for advanced controls (pause/resume/stop/seek, etc).
+	/// </summary>
+	public Sandbox.VideoPlayer VideoPlayer => _videoPlayer;
+
+	public VideoPanel()
+	{
+		_lastAspectRatio = 16.0f / 9.0f;
+		Style.AspectRatio = _lastAspectRatio;
+	}
+
+	public override void OnDeleted()
+	{
+		base.OnDeleted();
+
+		ReleaseShared();
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		// Rebuild the command list so the texture updates.
+		if ( _videoPlayer is not null )
+			MarkRenderDirty();
+
+		// Keep player settings in sync with parameters (hotload/rebuilds).
+		if ( _videoPlayer is not null && _videoPlayer.Repeat != _repeat )
+		{
+			_videoPlayer.Repeat = _repeat;
+		}
+
+		// Try to match the aspect ratio of the video (avoid dirtying every frame).
+		if ( _videoPlayer is not null && _videoPlayer.Width > 4 && _videoPlayer.Height > 4 )
+		{
+			var ar = (float)_videoPlayer.Width / (float)_videoPlayer.Height;
+			if ( MathF.Abs( ar - _lastAspectRatio ) > 0.001f )
+			{
+				_lastAspectRatio = ar;
+				Style.AspectRatio = ar;
+				Style.Dirty();
+			}
+		}
+	}
+
+	public override void OnDraw()
+	{
+		if ( _videoPlayer is null )
+			return;
+
+		_videoPlayer.Present();
+
+		var tex = _videoPlayer.Texture;
+		if ( tex is null )
+			return;
+
+		var fit = ComputedStyle?.ObjectFit switch
+		{
+			ObjectFit.Cover => Length.Cover,
+			ObjectFit.Fill => Length.Percent( 100 ).Value,
+			ObjectFit.Contain => Length.Contain,
+			_ => Length.Contain,
+		};
+
+		DrawBackgroundTexture( tex, fit );
+	}
+
+	void AttachShared( string source )
+	{
+		if ( string.IsNullOrWhiteSpace( source ) )
+			return;
+
+		source = source.Trim();
+
+		if ( _shared is not null && string.Equals( _shared.Source, source, StringComparison.OrdinalIgnoreCase ) )
+			return;
+
+		ReleaseShared();
+
+		if ( !SharedPlayers.TryGetValue( source, out var shared ) )
+		{
+			shared = new SharedVideo
+			{
+				Source = source,
+				Player = new VideoPlayer
+				{
+					Muted = true
+				},
+				RefCount = 0
+			};
+
+			shared.Player.Repeat = _repeat;
+			shared.Player.Play( FileSystem.Mounted, source );
+			SharedPlayers[source] = shared;
+		}
+
+		shared.RefCount++;
+		_shared = shared;
+		_videoPlayer = shared.Player;
+
+		// Ensure parameters are applied.
+		_videoPlayer.Repeat = _repeat;
+
+		if ( Handle is not null )
+			Handle.VideoPlayer = _videoPlayer;
+	}
+
+	void ReleaseShared()
+	{
+		SharedVideo shared = _shared;
+		if ( shared is null )
+		{
+			_videoPlayer = null;
+			return;
+		}
+
+		_shared = null;
+		_videoPlayer = null;
+
+		if ( Handle is not null && ReferenceEquals( Handle.VideoPlayer, shared.Player ) )
+			Handle.VideoPlayer = null;
+
+		shared.RefCount = Math.Max( 0, shared.RefCount - 1 );
+
+		// Defer disposal to the next main-thread turn so a rebuild/hotload can reattach
+		// without forcing a full reload (prevents "flicker" on minor UI diffs/hover rebuilds).
+		if ( shared.RefCount == 0 )
+		{
+			var key = shared.Source;
+			MainThread.Queue( () =>
+			{
+				if ( SharedPlayers.TryGetValue( key, out var s ) && ReferenceEquals( s, shared ) && s.RefCount == 0 )
+				{
+					s.Player?.Dispose();
+					SharedPlayers.Remove( key );
+				}
+			} );
+		}
+	}
+}
