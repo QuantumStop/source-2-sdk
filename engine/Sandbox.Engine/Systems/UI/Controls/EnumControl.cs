@@ -1,11 +1,98 @@
-﻿namespace Sandbox.UI;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Sandbox.UI;
 
 /// <summary>
 /// A control for editing enum properties. Can either display a dropdown or a button group depending on the number of options.
 /// </summary>
 [CustomEditor( typeof( Enum ) )]
+[StyleSheet.Inline( "enumcontrol", Styles )]
 public partial class EnumControl : BaseControl
 {
+	const string Styles = """
+		EnumControl
+		{
+			gap: 2px;
+			flex-grow: 1;
+		}
+
+		EnumControl DropDown,
+		EnumControl ButtonGroup
+		{
+			border-radius: 8px;
+			background-color: #000a;
+			flex-grow: 1;
+		}
+
+		EnumControl DropDown
+		{
+			flex-grow: 1;
+			min-height: 32px;
+		}
+
+		EnumControl ButtonGroup
+		{
+			border-radius: 12px;
+			overflow: hidden;
+			min-height: 32px;
+
+			Button
+			{
+				flex-grow: 1;
+				justify-content: center;
+				align-items: center;
+				gap: 4px;
+				color: #aaa;
+				font-size: 1rem;
+				cursor: pointer;
+
+				.icon
+				{
+					color: #08f;
+				}
+
+				&:hover
+				{
+					color: #ddd;
+
+					.icon
+					{
+						color: #3af;
+					}
+				}
+
+				&:active
+				{
+					background-color: #04a;
+					color: white;
+					transform: translateX( 1px ) translateY( 1px );
+
+					.icon
+					{
+						color: #fff;
+					}
+				}
+
+				&.active
+				{
+					background-color: #08f;
+					color: white;
+					pointer-events: none;
+
+					.icon
+					{
+						color: #fff;
+					}
+				}
+			}
+		}
+		""";
+
 	public override bool SupportsMultiEdit => true;
 
 	public EnumControl()
@@ -18,7 +105,7 @@ public partial class EnumControl : BaseControl
 		if ( Property == null ) return;
 		if ( !Property.PropertyType.IsEnum ) return;
 
-		var options = Game.TypeLibrary.GetEnumDescription( Property.PropertyType );
+		var options = Sandbox.Internal.GlobalGameNamespace.TypeLibrary.GetEnumDescription( Property.PropertyType );
 		if ( options == null )
 		{
 			Log.Warning( $"Couldn't get enum description for {Property.PropertyType}" );
@@ -47,6 +134,9 @@ public partial class EnumControl : BaseControl
 		{
 			dd.Options.Add( new Option( o.Title, o.Icon, o.ObjectValue ) );
 		}
+
+		// Show what the property is already set to, the same as the button group does
+		dd.Value = Property.GetValue<object>();
 
 		dd.ValueChanged = ( val ) => Property.SetValue( val );
 	}

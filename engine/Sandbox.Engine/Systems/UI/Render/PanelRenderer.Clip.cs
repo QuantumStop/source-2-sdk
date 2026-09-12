@@ -102,6 +102,25 @@ internal partial class PanelRenderer
 		}
 
 		/// <summary>
+		/// Every clip lets the whole quad through, so its pixels can skip the clip test. Only for untransformed
+		/// clips; a rounded one is shrunk by its largest radius, plus the pixel the edge ramps over.
+		/// </summary>
+		public readonly bool Contains( in Rect quad )
+		{
+			if ( Invert ) return false;
+
+			for ( int i = 0; i < Count; i++ )
+			{
+				ref readonly var c = ref Clips[i];
+				if ( c.Matrix != Matrix.Identity ) return false;
+
+				if ( !c.Rect.Shrink( c.Radii.Largest + 1 ).IsInside( quad, fullyInside: true ) ) return false;
+			}
+
+			return true;
+		}
+
+		/// <summary>
 		/// Panel layers draw in their own space, where layout space is pixel space
 		/// </summary>
 		public void ClearMatrices()
@@ -139,15 +158,16 @@ internal partial class PanelRenderer
 	/// </summary>
 	internal ref struct ClipScope
 	{
+		PanelRenderer Renderer;
 		Rect Previous;
 		GPUScissor PreviousGPU;
 		bool _disposed = false; // Whether this scope actually set a new scissor or not. If the panel had overflow: visible then we won't set a new scissor, so we can skip restoring the old one.
 
-		public ClipScope( Rect scissorRect, BorderRadii radii, Matrix globalMatrix )
+		public ClipScope( PanelRenderer renderer, Rect scissorRect, BorderRadii radii, Matrix globalMatrix )
 		{
 			_disposed = true;
 
-			var renderer = GlobalContext.Current.UISystem.Renderer;
+			Renderer = renderer;
 
 			Previous = renderer.Scissor;
 			PreviousGPU = renderer.ScissorGPU;
@@ -178,9 +198,8 @@ internal partial class PanelRenderer
 			if ( !_disposed ) return;
 			_disposed = false;
 
-			var renderer = GlobalContext.Current.UISystem.Renderer;
-			renderer.Scissor = Previous;
-			renderer.ScissorGPU = PreviousGPU;
+			Renderer.Scissor = Previous;
+			Renderer.ScissorGPU = PreviousGPU;
 		}
 	}
 
@@ -188,7 +207,12 @@ internal partial class PanelRenderer
 	/// Create a clip scope for a panel's children. This updates the renderer's scissor state
 	/// so child panels will inherit the correct scissor when their command lists are built.
 	/// </summary>
-	public ClipScope Clip( Panel panel )
+	public ClipScope Clip( Panel panel ) => Clip( panel, panel.Box.ClipRect );
+
+	/// <summary>
+	/// Create a clip scope for a panel's children, clipping to the given rect
+	/// </summary>
+	public ClipScope Clip( Panel panel, Rect clipRect )
 	{
 		var overflow = panel.ComputedStyle?.Overflow ?? OverflowMode.Visible;
 		if ( overflow == OverflowMode.Visible || overflow == OverflowMode.ClipWhole ) return default;
@@ -198,7 +222,7 @@ internal partial class PanelRenderer
 		var size = (rect.Width + rect.Height) * 0.5f;
 		var radii = BorderRadii.FromStyle( panel.ComputedStyle, rect ).Inner( GetBorderWidths( panel.ComputedStyle, size ) );
 
-		return new ClipScope( panel.Box.ClipRect, radii, panel.GlobalMatrix ?? Matrix.Identity );
+		return new ClipScope( this, clipRect, radii, panel.GlobalMatrix ?? Matrix.Identity );
 	}
 
 	static readonly string[] ScissorRectAttribute = ["ScissorRect0", "ScissorRect1", "ScissorRect2", "ScissorRect3"];

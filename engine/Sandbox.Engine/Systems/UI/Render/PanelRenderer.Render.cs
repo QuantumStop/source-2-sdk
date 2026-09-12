@@ -8,6 +8,50 @@ internal partial class PanelRenderer
 	bool backdropGrabActive;
 	BlendMode pendingBlendMode = BlendMode.Normal;
 
+	internal static void MarkPresented( Texture texture, Panel panel, Matrix transform, in GPUScissor scissor, ref bool? panelIsOnScreen, bool? playbackPaused = null )
+	{
+		var player = texture.ParentObject as VideoPlayer;
+		if ( player is null )
+		{
+			if ( texture.IsAnimated ) texture.MarkUsed();
+			return;
+		}
+
+		var presented = playbackPaused switch
+		{
+			true => false,
+			false => true,
+			_ => panelIsOnScreen ??= OverlapsScissor( panel.Box.Rect, transform, scissor )
+		};
+
+		player.TrackPresentation( presented );
+		if ( presented ) texture.MarkUsed();
+	}
+
+	internal static bool OverlapsScissor( Rect rect, Matrix transform, in GPUScissor scissor )
+	{
+		var panelTl = transform.Transform( rect.TopLeft );
+		var panelTr = transform.Transform( rect.TopRight );
+		var panelBl = transform.Transform( rect.BottomLeft );
+		var panelBr = transform.Transform( rect.BottomRight );
+
+		for ( int i = 0; i < scissor.Count; i++ )
+		{
+			ref readonly var clip = ref scissor.Clips[i];
+			var tl = clip.Matrix.Transform( panelTl );
+			var tr = clip.Matrix.Transform( panelTr );
+			var bl = clip.Matrix.Transform( panelBl );
+			var br = clip.Matrix.Transform( panelBr );
+			var min = Vector2.Min( Vector2.Min( tl, tr ), Vector2.Min( bl, br ) );
+			var max = Vector2.Max( Vector2.Max( tl, tr ), Vector2.Max( bl, br ) );
+
+			if ( max.x <= clip.Rect.Left || max.y <= clip.Rect.Top || min.x >= clip.Rect.Right || min.y >= clip.Rect.Bottom )
+				return false;
+		}
+
+		return true;
+	}
+
 	void DrawPanel( Panel panel, CommandList cl )
 	{
 		if ( panel?.ComputedStyle == null || !panel.IsVisible )
@@ -25,7 +69,7 @@ internal partial class PanelRenderer
 		while ( i < children.Count )
 		{
 			var child = children[i];
-			if ( child?.ComputedStyle == null || !child.IsVisible ) { i++; continue; }
+			if ( child?.ComputedStyle == null || !child.IsVisible || child.IsFixed ) { i++; continue; }
 
 			switch ( child.CachedRenderMode )
 			{
@@ -53,10 +97,9 @@ internal partial class PanelRenderer
 		public GPUBoxInstance Instance;
 		public BlendMode BlendMode;
 		public int Pass;
-		public int Order;
 	}
 
-	int deferredOrder;
+	ulong[] deferredKeys = new ulong[256];
 
 	// Tracks accumulated z-index while walking panels. Used as the high bits of the
 	// sort key so z-indexed children don't get reshuffled by the blend-mode sort.
@@ -65,7 +108,7 @@ internal partial class PanelRenderer
 	int CollectBatchedRun( List<Panel> children, int start, CommandList cl )
 	{
 		int groupZ = children[start].ComputedStyle.ZIndex ?? 0;
-		bool groupAbsolute = children[start].ComputedStyle?.Position == PositionMode.Absolute;
+		bool groupAbsolute = children[start].IsOutOfFlow;
 		int end = start;
 
 		int savedDepth = zDepth;
@@ -73,11 +116,11 @@ internal partial class PanelRenderer
 		while ( end < children.Count )
 		{
 			var c = children[end];
-			if ( c?.ComputedStyle == null || !c.IsVisible ) { end++; continue; }
+			if ( c?.ComputedStyle == null || !c.IsVisible || c.IsFixed ) { end++; continue; }
 			if ( c.CachedRenderMode != Panel.RenderMode.Batched ) break;
 
 			int z = c.ComputedStyle.ZIndex ?? 0;
-			bool isAbsolute = c.ComputedStyle?.Position == PositionMode.Absolute;
+			bool isAbsolute = c.IsOutOfFlow;
 
 			if ( z != groupZ || isAbsolute != groupAbsolute )
 			{
@@ -108,7 +151,7 @@ internal partial class PanelRenderer
 		// frame grab across consecutive siblings at the same z-depth.
 		if ( desc.Backdrops.Count > 0 )
 		{
-			if ( deferredInstances.Count > 0 && panel.ComputedStyle?.Position == PositionMode.Absolute )
+			if ( deferredInstances.Count > 0 && panel.IsOutOfFlow )
 			{
 				// Absolute-positioned panels overlap previous content;
 				// flush and re-grab so the backdrop sees the correct framebuffer
@@ -149,7 +192,7 @@ internal partial class PanelRenderer
 		for ( int i = 0; i < children.Count; i++ )
 		{
 			var child = children[i];
-			if ( child?.ComputedStyle == null || !child.IsVisible ) continue;
+			if ( child?.ComputedStyle == null || !child.IsVisible || child.IsFixed ) continue;
 
 			int childZ = child.ComputedStyle.ZIndex ?? 0;
 			zDepth = savedDepth + Math.Max( 0, childZ );
@@ -182,6 +225,7 @@ internal partial class PanelRenderer
 	{
 		var desc = panel.CachedDescriptors;
 		if ( desc == null ) return;
+		bool? panelIsOnScreen = null;
 
 		int scissorIndex = batcher.GetOrAddScissor( scissor );
 		int transformIndex = batcher.GetOrAddTransform( transform );
@@ -195,14 +239,12 @@ internal partial class PanelRenderer
 
 			if ( ri.BackgroundImage is not null )
 			{
-				if ( ri.BackgroundImage.IsAnimated )
-					ri.BackgroundImage.MarkUsed();
+				MarkPresented( ri.BackgroundImage, panel, transform, scissor, ref panelIsOnScreen, panel.ComputedStyle?.BackgroundPlaybackPaused );
 				gpu.TextureIndex = ri.BackgroundImage.Index > 0 ? ri.BackgroundImage.Index : Texture.Transparent.Index;
 			}
 			if ( ri.BorderImage is not null )
 			{
-				if ( ri.BorderImage.IsAnimated )
-					ri.BorderImage.MarkUsed();
+				MarkPresented( ri.BorderImage, panel, transform, scissor, ref panelIsOnScreen );
 				gpu.BorderImageIndex = ri.BorderImage.Index > 0 ? ri.BorderImage.Index : Texture.Transparent.Index;
 			}
 
@@ -211,14 +253,16 @@ internal partial class PanelRenderer
 			if ( !ri.BackgroundGradient.ColorOffsets.IsDefaultOrEmpty )
 				gpu.TextureIndex = -batcher.GetOrAddGradient( in ri.BackgroundGradient ) - 1;
 
-			gpu.ScissorIndex = scissorIndex;
+			gpu.ScissorIndex = Unclipped( gpu, scissor, transform ) ? -1 : scissorIndex;
 			gpu.TransformIndex = transformIndex;
 			gpu.InverseScissorIndex = ri.HasExtraScissor ? batcher.GetOrAddScissor( ri.ExtraScissor ) : -1;
+			gpu.ShapeIndex = batcher.GetOrAddShape( ri.BorderShapeData );
+			if ( gpu.Mode == GpuFontText.ModeGlyphRun ) batcher.AddGlyphs( desc.Glyphs, ref gpu );
 
 			// Pack z-depth in the high bits, per-panel intra-pass in the low bits.
 			int sortPass = zDepth * 256 + (ri.Pass & 0xFF);
 
-			deferredInstances.Add( new DeferredInstance { Instance = gpu, BlendMode = ri.BlendMode, Pass = sortPass, Order = deferredOrder++ } );
+			deferredInstances.Add( new DeferredInstance { Instance = gpu, BlendMode = ri.BlendMode, Pass = sortPass } );
 			Stats.InstanceCount++;
 		}
 	}
@@ -230,19 +274,20 @@ internal partial class PanelRenderer
 	{
 		if ( deferredInstances.Count == 0 ) return;
 
+		// Sort keys with the index in the low bits, the 300 byte instances stay put. Pass keeps all 32 bits (z-index
+		// reaches 99999 in the menu), sign flipped so a negative one still sorts first.
 		var span = CollectionsMarshal.AsSpan( deferredInstances );
-		span.Sort( ( a, b ) =>
-		{
-			int cmp = a.Pass - b.Pass;
-			if ( cmp != 0 ) return cmp;
-			cmp = (int)a.BlendMode - (int)b.BlendMode;
-			if ( cmp != 0 ) return cmp;
-			return a.Order - b.Order;
-		} );
+		int n = span.Length;
+		if ( deferredKeys.Length < n ) deferredKeys = new ulong[n * 2];
 
-		for ( int i = 0; i < span.Length; i++ )
+		for ( int i = 0; i < n; i++ )
+			deferredKeys[i] = (ulong)((uint)span[i].Pass ^ 0x80000000u) << 32 | (uint)(int)span[i].BlendMode << 24 | (uint)i; // index in the low 24 bits
+
+		Array.Sort( deferredKeys, 0, n );
+
+		for ( int i = 0; i < n; i++ )
 		{
-			ref var d = ref span[i];
+			ref var d = ref span[(int)(deferredKeys[i] & 0xFFFFFF)];
 
 			if ( d.BlendMode != pendingBlendMode && pendingInstances.Count > 0 )
 				FlushBatch( cl );
@@ -254,7 +299,6 @@ internal partial class PanelRenderer
 		FlushBatch( cl );
 
 		deferredInstances.Clear();
-		deferredOrder = 0;
 		zDepth = 0;
 	}
 
@@ -301,6 +345,7 @@ internal partial class PanelRenderer
 	{
 		var desc = panel.CachedDescriptors;
 		if ( desc == null ) return;
+		bool? panelIsOnScreen = null;
 
 		var customIdx = 0;
 
@@ -330,14 +375,12 @@ internal partial class PanelRenderer
 			var gpu = ri.GPU;
 			if ( ri.BackgroundImage is not null )
 			{
-				if ( ri.BackgroundImage.IsAnimated )
-					ri.BackgroundImage.MarkUsed();
+				MarkPresented( ri.BackgroundImage, panel, transform, scissor, ref panelIsOnScreen, panel.ComputedStyle?.BackgroundPlaybackPaused );
 				gpu.TextureIndex = ri.BackgroundImage.Index > 0 ? ri.BackgroundImage.Index : Texture.Transparent.Index;
 			}
 			if ( ri.BorderImage is not null )
 			{
-				if ( ri.BorderImage.IsAnimated )
-					ri.BorderImage.MarkUsed();
+				MarkPresented( ri.BorderImage, panel, transform, scissor, ref panelIsOnScreen );
 				gpu.BorderImageIndex = ri.BorderImage.Index > 0 ? ri.BorderImage.Index : Texture.Transparent.Index;
 			}
 
@@ -347,8 +390,9 @@ internal partial class PanelRenderer
 				gpu.TextureIndex = -batcher.GetOrAddGradient( in ri.BackgroundGradient ) - 1;
 
 			gpu.InverseScissorIndex = ri.HasExtraScissor ? batcher.GetOrAddScissor( ri.ExtraScissor ) : -1;
+			gpu.ShapeIndex = batcher.GetOrAddShape( ri.BorderShapeData );
 
-			AddInstance( gpu, scissor, transform );
+			AddInstance( gpu, scissor, transform, desc.Glyphs );
 		}
 
 		// Fire any custom draws that come after all instances
@@ -382,10 +426,15 @@ internal partial class PanelRenderer
 			cl.Attributes.Set( "WorldMat", worldPanelMat.Value );
 	}
 
-	void AddInstance( GPUBoxInstance inst, GPUScissor scissor, Matrix transform )
+	// The vertex shader bloats quads by a pixel; world panels have no fixed layout to screen pixel ratio to measure the ramp in
+	bool Unclipped( in GPUBoxInstance inst, in GPUScissor scissor, in Matrix transform )
+		=> !isWorldPanelContext && transform == Matrix.Identity && scissor.Contains( new Rect( inst.Rect.x, inst.Rect.y, inst.Rect.z, inst.Rect.w ).Grow( 1 ) );
+
+	void AddInstance( GPUBoxInstance inst, GPUScissor scissor, Matrix transform, List<GPUGlyphInstance> glyphs )
 	{
-		inst.ScissorIndex = batcher.GetOrAddScissor( scissor );
+		inst.ScissorIndex = Unclipped( inst, scissor, transform ) ? -1 : batcher.GetOrAddScissor( scissor );
 		inst.TransformIndex = batcher.GetOrAddTransform( transform );
+		if ( inst.Mode == GpuFontText.ModeGlyphRun ) batcher.AddGlyphs( glyphs, ref inst );
 		pendingInstances.Add( inst );
 		Stats.InstanceCount++;
 	}
@@ -398,11 +447,10 @@ internal partial class PanelRenderer
 			ApplyDebugBatchVisualization();
 
 		Stats.FlushCount++;
-		Stats.DrawCalls++;
 
 		int combo = LayerStack.Count > 0 ? 0 : WorldPanelCombo;
 
-		batcher.Draw( pendingInstances, cl, combo, pendingBlendMode );
+		if ( batcher.Draw( pendingInstances, cl, combo, pendingBlendMode ) ) Stats.DrawCalls++;
 		pendingInstances.Clear();
 		pendingBlendMode = BlendMode.Normal;
 
@@ -421,6 +469,17 @@ internal partial class PanelRenderer
 		var span = CollectionsMarshal.AsSpan( pendingInstances );
 		for ( int i = 0; i < span.Length; i++ )
 		{
+			// A run's glyphs carry their own colour, they were placed when the instance was collected
+			if ( span[i].Mode == GpuFontText.ModeGlyphRun )
+			{
+				foreach ( ref var glyph in batcher.GlyphSpan( span[i].GlyphStart, span[i].GlyphCount ) )
+				{
+					glyph.SetColor( batchColor );
+				}
+
+				continue;
+			}
+
 			span[i].Color = batchColor;
 			span[i].TextureIndex = 0;
 		}

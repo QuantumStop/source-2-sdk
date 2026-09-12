@@ -1,10 +1,56 @@
+using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
 namespace Sandbox.UI;
 
 /// <summary>
 /// A group for ControlSheet, consists of a title and a body containing properties.
 /// </summary>
+[StyleSheet.Inline( "controlsheetgroup", Styles )]
 public class ControlSheetGroup : Panel
 {
+	const string Styles = """
+		.controlgroup
+		{
+			border-radius: 8px;
+			padding: 0.5rem;
+			flex-direction: column;
+			flex-shrink: 0;
+
+			&.hidden
+			{
+				display: none;
+			}
+		}
+
+		.controlgroup > .header
+		{
+			font-weight: 550;
+			color: #fff;
+			flex-shrink: 0;
+			padding: 8px 0;
+			text-shadow: 1px 1px 1px #0004;
+		}
+
+		.controlgroup > .body
+		{
+			flex-direction: column;
+			flex-shrink: 0;
+			gap: 2px;
+			padding-left: 16px;
+
+			&.hidden
+			{
+				display: none;
+			}
+		}
+		""";
+
 	public ControlSheetGroupHeader Header { get; set; }
 	public Panel ToggleContainer { get; set; }
 	public Panel Body { get; set; }

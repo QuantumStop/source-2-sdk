@@ -84,6 +84,7 @@ public sealed class SceneSpriteSystem : GameObjectSystem<SceneSpriteSystem>
 		foreach ( var particleSystem in spriteRenderers )
 		{
 			particleSystem.RenderTexture?.MarkUsed( ushort.MaxValue );
+			if ( particleSystem is ParticleTextRenderer text ) text.PrepareText();
 
 			var particleRenderer = (ParticleRenderer)particleSystem;
 			int particleCount = particleRenderer.ParticleEffect.Particles.Count;

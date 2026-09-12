@@ -1,4 +1,12 @@
-﻿using Microsoft.AspNetCore.Components.Rendering;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using Microsoft.AspNetCore.Components.Rendering;
 using Sandbox.UI.Navigation;
 
 namespace Sandbox.UI;
@@ -7,8 +15,40 @@ namespace Sandbox.UI;
 /// A simple button <see cref="Panel"/>.
 /// </summary>
 [Library( "Button" )]
+[StyleSheet.Inline( "button", Styles )]
 public class Button : Panel, INavigationEvent
 {
+	const string Styles = """
+		button
+		{
+			cursor: pointer;
+		}
+
+		.button
+		{
+			position: relative;
+
+			> .button-right-column
+			{
+				flex-direction: column;
+			}
+		}
+
+		//  default menu position is below
+		.button-hover-menu
+		{
+			position: absolute;
+			top: 100%;
+			flex-direction: column;
+
+			&.hidden
+			{
+				opacity: 0;
+				pointer-events: none;
+			}
+		}
+		""";
+
 	/// <summary>
 	/// The <see cref="Label"/> that displays <see cref="Text"/>.
 	/// </summary>
@@ -47,6 +87,7 @@ public class Button : Panel, INavigationEvent
 	public Button()
 	{
 		AddClass( "button" );
+		AcceptsFocus = true;
 
 		IconPanel = AddChild( new IconPanel( "people", "icon" ) );
 		IconPanel.Style.Display = DisplayMode.None;
@@ -150,6 +191,14 @@ public class Button : Panel, INavigationEvent
 			RightColumn.Style.Display = DisplayMode.Flex;
 			HelpLabel.Text = value;
 		}
+	}
+
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		if ( !Disabled && TryClickFromKeyboard( e ) )
+			return;
+
+		base.OnButtonTyped( e );
 	}
 
 	/// <summary>

@@ -49,6 +49,11 @@ internal class UIDrawBuffer
 		ActiveLayer.AddShadow( d );
 	}
 
+	public void AddText( List<GPUBoxInstance> instances )
+	{
+		ActiveLayer.AddText( instances, OverrideBlendMode, default );
+	}
+
 	public void AddOutline( in OutlineDrawDescriptor desc )
 	{
 		ActiveLayer.AddOutline( desc );

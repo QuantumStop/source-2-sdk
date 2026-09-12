@@ -35,27 +35,10 @@ public class ProjectTest
 
 	}
 
-	/// <summary>
-	/// Find and load a local package
-	/// </summary>
-	[TestMethod]
-	public async Task AddBaseAddon()
-	{
-		var project = Project.AddFromFileBuiltIn( "addons/base/.sbproj" );
-
-		Assert.IsNotNull( project.ConfigFilePath );
-		Assert.IsNotNull( project.GetRootPath() );
-		Assert.IsNotNull( project.GetAssetsPath() );
-
-		await Project.SyncWithPackageManager();
-		await Project.CompileAsync();
-	}
-
 	/*
 	[TestMethod]
 	public async Task OpenGameProject()
 	{
-		Project.AddFromFileBuiltIn( "addons/base/.sbproj" );
 
 		var project = Project.AddFromFile( "unittest/addons/spacewars", false );
 

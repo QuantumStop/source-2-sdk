@@ -82,6 +82,7 @@ public partial class Scene : GameObject
 			}
 
 			ProcessDeletes();
+			NavMesh.Reset();
 		}
 
 		// In editor we usually don't want to show the loading overlay for every scene operation,
@@ -215,6 +216,17 @@ public partial class Scene : GameObject
 		json.Add( "GameObjects", children );
 
 		return json;
+	}
+
+	internal void Reload()
+	{
+		var json = Serialize();
+
+		_physicsWorld?.Delete();
+		_physicsWorld = null;
+
+		ReloadSystems();
+		Deserialize( json );
 	}
 
 	public override void Deserialize( JsonObject node, DeserializeOptions option )

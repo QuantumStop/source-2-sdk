@@ -30,9 +30,6 @@ partial class PanelRenderer
 					ImageSizeX = style.BackgroundSizeX,
 					ImageSizeY = style.BackgroundSizeY,
 				} ).Rect;
-
-				if ( texture.IsDirty )
-					texture.IsDirty = false;
 			}
 			else if ( desc.HasGradient )
 			{
@@ -76,6 +73,7 @@ partial class PanelRenderer
 		foreach ( var label in panel.Descendants.Prepend( panel ).OfType<Label>() )
 		{
 			if ( !label.IsVisible ) continue;
+			if ( label.VisualRoot != panel.VisualRoot ) continue;
 			if ( !label.GetTextMask( out var texture, out var rect ) ) continue;
 
 			desc.TextMask = texture;

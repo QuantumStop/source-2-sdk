@@ -1523,26 +1523,22 @@ public sealed unsafe partial class CommandList
 	{
 		// Resolve the TextBlock at entry-add time so we store a class reference instead of
 		// boxing the Scope struct and TextFlag enum into object fields.
-		var tb = TextRendering.GetOrCreateTextBlock( scope, flags, 8096 );
-		if ( tb is null ) return;
+		var tb = TextRendering.GetOrCreateTextBlock( scope, flags );
+		if ( tb is not null ) DrawText( tb, rect, flags, angleDegrees );
+	}
 
+	/// <summary>Draws an already resolved text block, for callers that measured it first.</summary>
+	internal void DrawText( TextRendering.TextBlock block, Rect rect, TextFlag flags, float angleDegrees = 0f )
+	{
 		static void Execute( ref Entry entry, CommandList commandList )
 		{
 			var position = new Rect( entry.Data1.x, entry.Data1.y, entry.Data1.z, entry.Data1.w );
-			var flags = (TextFlag)(int)entry.Data2.x;
-			var angle = entry.Data2.y;
-			var tb = (TextRendering.TextBlock)entry.Object1;
-
-			// MakeReady resets TimeSinceUsed, preventing Tick() from evicting this block
-			tb.MakeReady();
-
-			var rect = position.Align( tb.Texture.Size, flags );
-			Graphics.DrawTextTexture( tb.Texture, tb.FilterMode, rect.Floor(), angle );
+			Graphics.DrawText( (TextRendering.TextBlock)entry.Object1, position, (TextFlag)(int)entry.Data2.x, entry.Data2.y );
 		}
 
 		AddEntry( &Execute, new Entry
 		{
-			Object1 = tb,
+			Object1 = block,
 			Data1 = new Vector4( rect.Left, rect.Top, rect.Width, rect.Height ),
 			Data2 = new Vector4( (float)(int)flags, angleDegrees, 0, 0 )
 		} );

@@ -83,12 +83,22 @@ internal class BuildManaged( bool clean = false )
 				{
 					var output = Path.Combine( publishRoot, Path.GetFileNameWithoutExtension( project ) );
 					var launcherDir = Path.Combine( engineDir, "Launcher" );
+
+					// Linux has no .NET redistributable the way game/_redist covers Windows, so the
+					// runtime ships in game/bin/dotnet and the apphost is told to look there
+					// relative to itself. Without this it falls through to /usr/share/dotnet and
+					// runs against whatever the machine happens to have, or nothing at all. It
+					// survives PublishSingleFile, though it has to be on the restore too: publish
+					// runs --no-restore, and if only one of the pair sets it the single file
+					// bundler is handed no apphost and fails with "Must specify the host binary".
+					var relativeDotnet = OperatingSystem.IsLinux() ? " -p:AppHostRelativeDotNet=bin/dotnet" : "";
+
 					if ( !Utility.RunDotnetCommand( launcherDir,
-						$"restore {project} -r {launcherRid} -p:Configuration=Release -p:SelfContained=false -p:RestoreRecursive=false" ) )
+						$"restore {project} -r {launcherRid} -p:Configuration=Release -p:SelfContained=false -p:RestoreRecursive=false{relativeDotnet}" ) )
 						return ExitCode.Failure;
 
 					if ( !Utility.RunDotnetCommand( launcherDir,
-						$"publish {project} -c Release -r {launcherRid} -p:SelfContained=false -p:PublishSingleFile=true -p:EnableSingleFileAnalyzer=false -p:BuildProjectReferences=false --no-restore -o \"{output}\"" ) )
+						$"publish {project} -c Release -r {launcherRid} -p:SelfContained=false -p:PublishSingleFile=true -p:EnableSingleFileAnalyzer=false -p:BuildProjectReferences=false{relativeDotnet} --no-restore -o \"{output}\"" ) )
 						return ExitCode.Failure;
 
 					var name = project switch
@@ -105,6 +115,9 @@ internal class BuildManaged( bool clean = false )
 				}
 
 				Directory.Delete( publishRoot, true );
+
+				if ( OperatingSystem.IsLinux() && !StageLinuxRuntime( rootDir ) )
+					return ExitCode.Failure;
 
 				// delete any old .runtimeconfig.json that are hanging around
 				foreach ( var name in new[] { "sbox", "sbox-dev", "sbox-launcher", "sbox-standalone", "sbox-server", "benchmark" } )
@@ -125,6 +138,85 @@ internal class BuildManaged( bool clean = false )
 			Log.Error( $"Build failed with error: {ex}" );
 			return ExitCode.Failure;
 		}
+	}
+
+	/// <summary>
+	/// Lays the shared framework the Linux launchers resolve against into game/bin/dotnet.
+	///
+	/// Taken from the SDK running this build rather than downloaded, so what ships is the runtime
+	/// the assemblies were compiled against, and the build needs no network for it. Only
+	/// Microsoft.NETCore.App: every launcher's runtimeconfig.json asks for that alone, and
+	/// Microsoft.AspNetCore.App would add 27MB nothing loads.
+	/// </summary>
+	private static bool StageLinuxRuntime( string rootDir )
+	{
+		// DOTNET_ROOT when something set it, otherwise walk up from the dotnet on PATH, which is
+		// where dotnet-install.sh puts it and how CI reaches it.
+		var dotnetRoot = Environment.GetEnvironmentVariable( "DOTNET_ROOT" );
+		if ( string.IsNullOrEmpty( dotnetRoot ) )
+			dotnetRoot = Path.GetDirectoryName( FindDotnetOnPath() );
+
+		if ( string.IsNullOrEmpty( dotnetRoot ) || !Directory.Exists( Path.Combine( dotnetRoot, "shared" ) ) )
+		{
+			Log.Error( "Could not locate a .NET root to take the shared framework from. Set DOTNET_ROOT." );
+			return false;
+		}
+
+		var framework = Path.Combine( dotnetRoot, "shared", "Microsoft.NETCore.App" );
+		var source = Directory.Exists( framework )
+			? Directory.GetDirectories( framework )
+				// TryParse, not the constructor: prerelease folder names (10.0.0-rc.1.25451.107) are not a
+				// Version and would throw out of the whole enumeration rather than fall through to the
+				// error below.
+				.Select( d => Version.TryParse( Path.GetFileName( d ), out var v ) ? new { Dir = d, Version = v } : null )
+				.Where( x => x is not null && x.Version.Major == 10 )
+				.OrderBy( x => x.Version )
+				.LastOrDefault()
+				?.Dir
+			: null;
+
+		if ( source is null )
+		{
+			Log.Error( $"No Microsoft.NETCore.App found under {framework}." );
+			return false;
+		}
+
+		var version = Path.GetFileName( source );
+		var target = Path.Combine( rootDir, "game", "bin", "dotnet" );
+		Log.Info( $"Step 7: Stage .NET {version} runtime into game/bin/dotnet" );
+
+		RecreateDirectory( target );
+		CopyDirectory( source, Path.Combine( target, "shared", "Microsoft.NETCore.App", version ) );
+		// libhostfxr.so, which the apphost loads first and which then finds the framework above.
+		CopyDirectory( Path.Combine( dotnetRoot, "host" ), Path.Combine( target, "host" ) );
+		return true;
+	}
+
+	/// <summary>The dotnet on PATH, with symlinks followed: distributions commonly put a link in
+	/// /usr/bin pointing at the real root, and it is the root we want.</summary>
+	private static string FindDotnetOnPath()
+	{
+		foreach ( var dir in (Environment.GetEnvironmentVariable( "PATH" ) ?? "")
+			.Split( Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries ) )
+		{
+			var candidate = Path.Combine( dir, "dotnet" );
+			if ( !File.Exists( candidate ) ) continue;
+
+			return File.ResolveLinkTarget( candidate, returnFinalTarget: true )?.FullName ?? candidate;
+		}
+
+		return null;
+	}
+
+	private static void CopyDirectory( string source, string destination )
+	{
+		Directory.CreateDirectory( destination );
+
+		foreach ( var file in Directory.GetFiles( source ) )
+			File.Copy( file, Path.Combine( destination, Path.GetFileName( file ) ), true );
+
+		foreach ( var directory in Directory.GetDirectories( source ) )
+			CopyDirectory( directory, Path.Combine( destination, Path.GetFileName( directory ) ) );
 	}
 
 	private static void RecreateDirectory( string path )

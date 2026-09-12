@@ -1,4 +1,12 @@
-﻿using Sandbox.UI.Construct;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using Sandbox.UI.Construct;
 
 namespace Sandbox.UI
 {
@@ -6,8 +14,61 @@ namespace Sandbox.UI
 	/// A UI control which provides multiple options via a dropdown box.
 	/// </summary>
 	[Library( "select" ), Alias( "dropdown" )]
+	[StyleSheet.Inline( "dropdown", Styles )]
 	public class DropDown : PopupButton
 	{
+		const string Styles = """
+			.dropdown
+			{
+				gap: 2px;
+				flex-grow: 1;
+				cursor: pointer;
+
+				// Reads like a text box - icon then text from the left, chevron on the right
+				flex-direction: row;
+				justify-content: flex-start;
+				align-items: center;
+				padding: 0px 12px;
+
+				.button-right-column
+				{
+					flex-grow: 1;
+					flex-direction: row;
+					align-items: center;
+				}
+			}
+
+			.button.popupbutton.dropdown
+			{
+				cursor: pointer;
+				transition: all .1s ease-out;
+				position: relative;
+
+				> .dropdown_indicator
+				{
+					position: absolute;
+					right: 8px;
+				}
+
+				&.open
+				{
+					border-bottom-left-radius: 1px;
+					border-bottom-right-radius: 1px;
+					transition: border-radius 0.2s ease-out;
+				}
+			}
+
+			select
+			{
+				min-height: 40px;
+
+				> option
+				{
+					display: none;
+				}
+			}
+			""";
+
 		/// <summary>
 		/// The icon of an arrow pointing down on the right of the element.
 		/// </summary>

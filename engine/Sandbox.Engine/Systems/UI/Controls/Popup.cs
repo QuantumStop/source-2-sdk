@@ -1,4 +1,12 @@
-﻿using Sandbox.UI.Construct;
+using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using Sandbox.UI.Construct;
 namespace Sandbox.UI;
 
 public partial class Popup : BasePopup
@@ -29,6 +37,12 @@ public partial class Popup : BasePopup
 	public bool CloseWhenParentIsHidden { get; set; } = false;
 
 	/// <summary>
+	/// What's showing this popup, when it's in an OS window of its own rather than floating in
+	/// the root. Null means the popup positions itself.
+	/// </summary>
+	internal IPopupHost Host { get; private set; }
+
+	/// <summary>
 	/// Dictates where a <see cref="Popup"/> is positioned.
 	/// </summary>
 	public enum PositionMode
@@ -52,6 +66,11 @@ public partial class Popup : BasePopup
 		/// To the right of the source panel, aligned to the bottom.
 		/// </summary>
 		RightBottom,
+
+		/// <summary>
+		/// To the right of the source panel, aligned to the top. Where a submenu goes.
+		/// </summary>
+		RightTop,
 
 		/// <summary>
 		/// Above the source panel, aligned to the left.
@@ -114,14 +133,23 @@ public partial class Popup : BasePopup
 	/// <param name="offset">Offset away from the <paramref name="sourcePanel"/>.</param>
 	public void SetPositioning( Panel sourcePanel, PositionMode position, float offset )
 	{
-		Parent = sourcePanel.FindPopupPanel();
 		PopupSource = sourcePanel;
 		Position = position;
 		PopupSourceOffset = offset;
 
 		AddClass( "popup-panel" );
-		// Popups often need wheel scrolling but "drag-to-pan" is undesirable and interferes with selection drags.
-		CanDragScroll = false;
+
+		// The surface may want popups in windows of their own - then it's the window that's
+		// positioned, and the popup just fills it
+		Host = sourcePanel.UISystem.PopupHost;
+
+		if ( Host is not null )
+		{
+			Host.ShowPopup( this, sourcePanel, position, offset );
+			return;
+		}
+
+		Parent = sourcePanel.FindPopupPanel();
 		PositionMe( true );
 
 		switch ( Position )
@@ -140,6 +168,10 @@ public partial class Popup : BasePopup
 
 			case PositionMode.RightBottom:
 				AddClass( "right-bottom" );
+				break;
+
+			case PositionMode.RightTop:
+				AddClass( "right-top" );
 				break;
 
 			case PositionMode.AboveLeft:
@@ -281,20 +313,47 @@ public partial class Popup : BasePopup
 	{
 		base.Tick();
 
+		if ( !this.IsValid() ) return;
+
 		if ( CloseWhenParentIsHidden && !PopupSource.IsValid() )
 		{
 			Delete();
 			return;
 		}
 
-		PositionMe( false );
+		if ( Host is null ) PositionMe( false );
+	}
+
+	/// <summary>
+	/// Keys the popup doesn't use go to the panel that opened it, and up its tree from there - a
+	/// popup floats in the root, or in a window of its own, so its parent chain isn't its owner's.
+	/// </summary>
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		if ( PopupSource.IsValid() ) PopupSource.OnButtonTyped( e );
+		else base.OnButtonTyped( e );
+	}
+
+	public override void Delete( bool immediate = false )
+	{
+		// The window it's in goes with it. The host's teardown may delete us again on the way
+		var host = Host;
+		Host = null;
+		host?.HidePopup( this );
+
+		base.Delete( immediate );
 	}
 
 	public override void OnLayout( ref Rect layoutRect )
 	{
+		if ( Host is not null ) return;
+
+		var size = ScreenSurfaceSize;
+		if ( size.x < 1 || size.y < 1 ) return;
+
 		var padding = 10;
-		var h = Screen.Height - padding;
-		var w = Screen.Width - padding;
+		var h = size.y - padding;
+		var w = size.x - padding;
 
 		if ( layoutRect.Bottom > h )
 		{
@@ -313,11 +372,12 @@ public partial class Popup : BasePopup
 	{
 		var rect = PopupSource.Box.Rect * PopupSource.ScaleFromScreen;
 
-		var w = Screen.Width * PopupSource.ScaleFromScreen;
-		var h = Screen.Height * PopupSource.ScaleFromScreen;
+		var surface = ScreenSurfaceSize;
+		var w = surface.x * PopupSource.ScaleFromScreen;
+		var h = surface.y * PopupSource.ScaleFromScreen;
 
-
-		Style.MaxHeight = Screen.Height - 50;
+		if ( surface.y > 100 )
+			Style.MaxHeight = surface.y - 50;
 
 		switch ( Position )
 		{
@@ -349,6 +409,13 @@ public partial class Popup : BasePopup
 					Style.Right = ((w - rect.Left) + PopupSourceOffset);
 					Style.Top = null;
 					Style.Bottom = (h - rect.Bottom);
+					break;
+				}
+			case PositionMode.RightTop:
+				{
+					Style.Right = null;
+					Style.Left = rect.Right + PopupSourceOffset;
+					Style.Top = rect.Top;
 					break;
 				}
 
@@ -408,8 +475,8 @@ public partial class Popup : BasePopup
 				{
 					if ( isInitial )
 					{
-						Style.Left = Mouse.Position.x * PopupSource.ScaleFromScreen;
-						Style.Top = (Mouse.Position.y + PopupSourceOffset) * PopupSource.ScaleFromScreen;
+						Style.Left = ScreenMousePosition.x * PopupSource.ScaleFromScreen;
+						Style.Top = (ScreenMousePosition.y + PopupSourceOffset) * PopupSource.ScaleFromScreen;
 					}
 					break;
 				}

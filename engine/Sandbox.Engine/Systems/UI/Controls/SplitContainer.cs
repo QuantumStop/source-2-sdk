@@ -1,4 +1,11 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using System;
 
 namespace Sandbox.UI
 {
@@ -6,8 +13,55 @@ namespace Sandbox.UI
 	/// A control that has two panes with a splitter in between. You can drag the splitter to change the size of the two panels.
 	/// </summary>
 	[Library( "split" )]
+	[StyleSheet.Inline( "splitcontainer", Styles )]
 	public class SplitContainer : Panel
 	{
+		const string Styles = """
+
+			.splitcontainer
+			{
+				flex-grow: 1;
+
+				> .split-left, > .split-right
+				{
+					flex-grow: 1;
+				}
+
+				> .split-left
+				{
+					height: 100%;
+				}
+
+				> .splitter
+				{
+					flex-grow: 0;
+					flex-shrink: 0;
+					width: 8px;
+					cursor: ew-resize;
+
+					&:hover
+					{
+					}
+				}
+
+				&.dragging > .splitter
+				{
+				}
+
+				&.vertical
+				{
+					flex-direction: column;
+
+					> .splitter
+					{
+						height: 8px;
+						width: 100%;
+						cursor: ns-resize;
+					}
+				}
+			}
+			""";
+
 		/// <summary>
 		/// The left, or top panel. Has class "split-left".
 		/// </summary>
@@ -120,7 +174,7 @@ namespace Sandbox.UI
 		{
 			if ( IsDragging )
 			{
-				var local = ScreenPositionToPanelDelta( Mouse.Position );
+				var local = ScreenPositionToPanelDelta( ScreenMousePosition );
 				UpdateSplitFraction( Vertical ? local.y : local.x );
 			}
 

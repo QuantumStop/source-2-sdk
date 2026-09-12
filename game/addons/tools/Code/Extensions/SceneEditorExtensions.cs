@@ -164,7 +164,7 @@ public static class SceneEditorExtensions
 			Application.UnscaledCursorPosition = self.GetValue<Vector2>( "fly.centered.cursor.restore" );
 		}
 
-		if ( ((rightMouse && !camera.Orthographic) || middleMouse) && self.Input.IsHovered )
+		if ( (rightMouse || middleMouse) && self.Input.IsHovered )
 		{
 			EditorShortcuts.AllowShortcuts = false;
 			canvas.Focus();
@@ -230,7 +230,7 @@ public static class SceneEditorExtensions
 				else
 					canvas.PixmapCursor = EyeCursor;
 			}
-			else if ( middleMouse )
+			else if ( middleMouse || (rightMouse && camera.Orthographic) )
 			{
 				cameraVelocity = default;
 				cameraTarget = default;

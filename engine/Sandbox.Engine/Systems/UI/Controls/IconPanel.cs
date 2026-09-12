@@ -1,11 +1,29 @@
-﻿namespace Sandbox.UI
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+namespace Sandbox.UI
 {
 	/// <summary>
 	/// A panel containing an icon, typically a <a href="https://fonts.google.com/icons">material icon</a>.
 	/// </summary>
-	[Library( "IconPanel" ), Alias( "icon", "i" ),]
+	[Library( "IconPanel" ), Alias( "icon", "i" )]
+	[StyleSheet.Inline( "iconpanel", Styles )]
 	public class IconPanel : Label
 	{
+		const string Styles = """
+			IconPanel
+			{
+				font-family: Material Icons;
+				text-transform: none;
+				letter-spacing: 0px;
+			}
+			""";
+
 		public IconPanel()
 		{
 			AddClass( "iconpanel" );

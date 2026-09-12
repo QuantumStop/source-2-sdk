@@ -212,19 +212,48 @@ public class HomeWidget : Widget
 	private void UpdateProjectList( List<Project> projects )
 	{
 		using var suspend = SuspendUpdates.For( this );
-		LocalProjectLayout.Clear( true );
-		LocalProjectLayout.Margin = new Sandbox.UI.Margin( 16, 0, 16, 16 );
 
-		// Sorting
-		projects = Sort switch
+		List<Project> sampleProjects = new List<Project>();
+		// An install that never got the content depot has no samples folder at all
+		try
 		{
-			SortMethod.Name => projects.OrderBy( x => x.Config.Title ).ToList(),
-			SortMethod.Org => projects.OrderBy( x => x.Package.Org.Title ).ToList(),
-			_ => projects.OrderByDescending( x => x.LastOpened ).ToList()
-		};
+			foreach ( var dir in System.IO.Directory.EnumerateDirectories( "samples/" ) )
+			{
+				var projFile = System.IO.Directory.EnumerateFiles( dir, "*.sbproj" ).FirstOrDefault();
+				if ( projFile is null ) continue;
+				var project = ProjectList.TryAddFromFile( projFile );
+				if ( project is null ) continue;
 
-		// Filtering
-		if ( !string.IsNullOrEmpty( Filter ) )
+				sampleProjects.Add( project );
+			}
+		}
+		catch ( Exception e )
+		{
+			Log.Info( $"Couldn't read the samples folder: {e.Message}" );
+		}
+
+		//
+		// Sort everything
+		//
+		switch ( Sort )
+		{
+			case SortMethod.Name:
+				projects = projects.OrderBy( x => x.Config.Title ).ToList();
+				break;
+			case SortMethod.Org:
+				projects = projects.OrderBy( x => x.Package.Org.Title ).ToList();
+				break;
+			case SortMethod.Date:
+			default:
+				projects = projects.OrderByDescending( x => x.LastOpened ).ToList();
+				break;
+		}
+
+		//
+		// Filter everything
+		//
+		var filter = Filter?.ToLower();
+		if ( !string.IsNullOrEmpty( filter ) )
 		{
 			var f = Filter.ToLower();
 			projects = projects.Where( x => x.Config.Title.ToLower().Contains( f ) || x.Package.Title.ToLower().Contains( f ) ).ToList();

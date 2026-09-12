@@ -1,4 +1,12 @@
-﻿namespace Sandbox.UI;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+namespace Sandbox.UI;
 
 public partial class TextEntry
 {
@@ -31,6 +39,12 @@ public partial class TextEntry
 	/// </summary>
 	[Category( "Validation" )]
 	public bool Numeric { get; set; } = false;
+
+	/// <summary>
+	/// With <see cref="Numeric"/>, only allow whole numbers - no decimal point.
+	/// </summary>
+	[Category( "Validation" )]
+	public bool WholeNumbers { get; set; } = false;
 
 	/// <summary>
 	/// If true then this control has validation errors and the input shouldn't be accepted.
@@ -90,12 +104,13 @@ public partial class TextEntry
 			if ( c == '\r' ) return false;
 		}
 
-		if ( Numeric && c != '.' && c != '-' && c != ',' )
+		if ( Numeric )
 		{
 			if ( char.IsDigit( c ) ) return true;
-			if ( c == '-' ) return true;
-			if ( c == ',' ) return true;
-			if ( c == '.' ) return true;
+
+			// One decimal separator, and a minus only when negatives are allowed at all
+			if ( c == '.' || c == ',' ) return !WholeNumbers && !Text.Contains( '.' ) && !Text.Contains( ',' );
+			if ( c == '-' ) return !Text.Contains( '-' ) && (MinValue is null || MinValue < 0);
 
 			return false;
 		}

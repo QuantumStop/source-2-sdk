@@ -1,4 +1,11 @@
-﻿using Sandbox.Html;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+using Sandbox.Html;
 
 namespace Sandbox.UI.Navigation;
 
@@ -7,8 +14,19 @@ namespace Sandbox.UI.Navigation;
 /// but it will cache other views that you visit, and allow forward/backward navigation.
 /// </summary>
 [Library( "navigator" )]
+[StyleSheet.Inline( "navigator", Styles )]
 public class NavigationHost : Panel
 {
+	const string Styles = """
+		.navigator-body
+		{
+			&.hidden
+			{
+				display: none;
+			}
+		}
+		""";
+
 	/// <summary>
 	/// The currently visible panel
 	/// </summary>
@@ -88,7 +106,7 @@ public class NavigationHost : Panel
 	/// </summary>
 	public void AddDestination( string url, Type type )
 	{
-		var td = Game.TypeLibrary.GetType( type );
+		var td = Sandbox.Internal.GlobalGameNamespace.TypeLibrary.GetType( type );
 		Assert.NotNull( td );
 		destinations[url] = td;
 	}

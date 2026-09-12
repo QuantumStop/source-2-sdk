@@ -1,11 +1,68 @@
+using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
 namespace Sandbox.UI;
 
 /// <summary>
 /// Used by ControlSheet to display a single row of a property. This is created from a SerializedProperty
 /// and contains a label and a control for editing the property. Controls are created using BaseControl.CreateFor.
 /// </summary>
+[StyleSheet.Inline( "controlsheetrow", Styles )]
 public class ControlSheetRow : Panel
 {
+	const string Styles = """
+
+		ControlSheetRow
+		{
+			flex-direction: row;
+			flex-shrink: 0;
+			max-height: 32px;
+			border-radius: 4px;
+
+			&.hidden
+			{
+				display: none;
+			}
+		}
+
+		ControlSheetRow > .left
+		{
+			width: 150px;
+			flex-shrink: 0;
+			flex-grow: 0;
+			padding: 6px;
+		}
+
+		ControlSheetRow > .right
+		{
+			flex-grow: 1;
+		}
+
+		ControlSheetRow > .left > .title
+		{
+			width: 150px;
+			flex-shrink: 0;
+			flex-grow: 0;
+			font-size: 13px;
+			white-space: nowrap;
+			overflow: hidden;
+		}
+
+		ControlSheetRow > .right > textentry,
+		ControlSheetRow > .right numberentry
+		{
+			background-color: #000a;
+			flex-grow: 1;
+			padding: 4px 8px;
+			border-radius: 2px;
+		}
+		""";
+
 	[Parameter]
 	public SerializedProperty Property { get; set; }
 

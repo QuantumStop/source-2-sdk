@@ -161,13 +161,11 @@ public readonly ref struct HudPainter
 	/// <param name="flags">Text alignment flags (optional).</param>
 	public Rect DrawText( in TextRendering.Scope scope, Rect rect, TextFlag flags = TextFlag.LeftTop )
 	{
-		var texture = TextRendering.GetOrCreateTexture( scope, flag: flags );
-		if ( texture is null ) return rect;
+		var block = TextRendering.GetOrCreateTextBlock( scope, flags );
+		if ( block is null ) return rect;
 
-		rect = rect.Align( texture.Size, flags );
-		rect = rect.SnapToGrid();
-
-		list.DrawText( scope, rect, flags );
+		rect = rect.Align( block.Size, flags ).SnapToGrid();
+		list.DrawText( block, rect, flags );
 		return rect;
 	}
 

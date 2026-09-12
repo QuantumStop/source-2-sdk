@@ -1,4 +1,12 @@
-﻿using Sandbox.UI.Construct;
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using Sandbox.UI.Construct;
 
 namespace Sandbox.UI;
 
@@ -76,7 +84,16 @@ public class Checkbox : Panel
 	public Checkbox()
 	{
 		AddClass( "checkbox" );
+		AcceptsFocus = true;
 		CheckMark = Add.Icon( "check", "checkmark" );
+	}
+
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		if ( TryClickFromKeyboard( e ) )
+			return;
+
+		base.OnButtonTyped( e );
 	}
 
 	public override void SetProperty( string name, string value )

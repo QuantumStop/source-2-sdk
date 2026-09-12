@@ -209,27 +209,6 @@ public partial class StandaloneExporter
 		// Copy core compiled files
 		//
 		{
-			void QueueCompiled( string dir, BuildStep type )
-			{
-				foreach ( var subdir in Directory.GetDirectories( dir ) )
-				{
-					QueueCompiled( subdir, type );
-				}
-
-				foreach ( var file in Directory.GetFiles( dir ) )
-				{
-					var relativePath = Path.GetRelativePath( engineDir, file );
-					var targetPath = Path.Combine( baseDir, relativePath );
-
-					if ( Path.GetExtension( file ).EndsWith( "_c", StringComparison.OrdinalIgnoreCase ) )
-						QueueCopy( file, targetPath, type );
-				}
-			}
-
-			// Copy all from enabled addons, in case they reference anything at runtime
-			// (e.g. UI shaders in base)
-			QueueCompiled( $"{engineDir}/addons/base", BuildStep.CopyProjectAssets );
-
 			// Get all core files - only the ones we absolutely need, because everything else should
 			// already have been copied into the addon itself.
 			// This is mainly stuff like dev textures that are necessary for the engine to run.
@@ -266,32 +245,6 @@ public partial class StandaloneExporter
 		}
 
 		//
-		// Copy:
-		// - addons/base/ui/*
-		// - addons/base/fonts/*
-		//
-		{
-			void QueueAll( string dir, BuildStep type )
-			{
-				foreach ( var subdir in Directory.GetDirectories( dir ) )
-				{
-					QueueAll( subdir, type );
-				}
-
-				foreach ( var file in Directory.GetFiles( dir ) )
-				{
-					var relativePath = Path.GetRelativePath( engineDir, file );
-					var targetPath = Path.Combine( baseDir, relativePath );
-
-					QueueCopy( file, targetPath, type );
-				}
-			}
-
-			QueueAll( $"{engineDir}/addons/base/assets/ui", BuildStep.CopyBaseAssets ); // Necessary
-			QueueAll( $"{engineDir}/addons/base/assets/fonts", BuildStep.CopyBaseAssets ); // Necessary
-		}
-
-		//
 		// Copy exe
 		//
 		{
@@ -299,12 +252,11 @@ public partial class StandaloneExporter
 		}
 
 		//
-		// Copy sbproj for base + addon - ideally we should store these in an embedded resource inside the exe
+		// Copy sbproj for the addon - ideally we should store this in an embedded resource inside the exe
 		//
 		{
 			var sbprojPath = Path.Combine( baseDir, Standalone.GamePath, ".sbproj" );
 			QueueCopy( $"{_exportConfig.Project.ConfigFilePath}", sbprojPath, BuildStep.CopyMisc );
-			QueueCopy( $"{engineDir}/addons/base/.sbproj", $"{baseDir}/addons/base/.sbproj", BuildStep.CopyMisc );
 		}
 
 		//

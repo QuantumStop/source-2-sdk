@@ -25,20 +25,19 @@ public static partial class TextRendering
 		if ( Application.IsHeadless )
 			return Texture.Invalid;
 
-		if ( clip == default ) clip = 8096;
-
 		var tb = GetOrCreateTextBlock( scope, flag, clip );
 		tb.MakeReady();
-		return tb.Texture;
+		return tb.Texture ?? Texture.Invalid;
 	}
 
 	/// <summary>
-	/// Resolves or creates a fully initialized <see cref="TextBlock"/> for the given scope.
-	/// Safe to call from any thread. MakeReady() must still be called on the render thread before drawing.
+	/// Resolves or creates a laid out <see cref="TextBlock"/> for the given scope, null when headless. Safe to call
+	/// from any thread. MakeReady() must still be called on the render thread before drawing its texture.
 	/// </summary>
-	internal static TextBlock GetOrCreateTextBlock( in Scope scope, TextFlag flag, Vector2 clip )
+	internal static TextBlock GetOrCreateTextBlock( in Scope scope, TextFlag flag, Vector2 clip = default )
 	{
 		if ( Application.IsHeadless ) return null;
+		if ( clip == default ) clip = 8096;
 
 		var hc = new HashCode();
 		hc.Add( scope );
@@ -56,6 +55,7 @@ public static partial class TextRendering
 		candidate.Clip = clip;
 		candidate.Flags = flag;
 		candidate.Initialize( scope );
+		candidate.EnsureLayout();
 
 		// GetOrAdd is race-safe: only one instance wins the slot.
 		// Set CacheKey on the winner so MakeReady can re-register if Tick() evicts it.
@@ -73,6 +73,8 @@ public static partial class TextRendering
 	/// </summary>
 	internal static void Tick()
 	{
+		GpuFontText.PreloadShader();
+
 		Assert.False( Application.IsHeadless );
 
 		if ( _timeSinceCleanup < 0.5f ) return;

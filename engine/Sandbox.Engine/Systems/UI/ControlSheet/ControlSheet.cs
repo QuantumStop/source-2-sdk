@@ -1,11 +1,41 @@
+using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using Sandbox.Internal;
 namespace Sandbox.UI;
 
 /// <summary>
 /// A controlsheet is a panel that you can populate with a SerializedObject's properties.
 /// </summary>
+[StyleSheet.Inline( "controlsheet", Styles )]
 public class ControlSheet : Panel, IControlSheet
 {
+	const string Styles = """
+		ControlSheet
+		{
+			flex-direction: column;
+			font-family: Poppins;
+			font-size: 14px;
+		}
+
+		ControlSheet > .body
+		{
+			flex-direction: column;
+			flex-grow: 1;
+			overflow: scroll;
+			gap: 1px;
+		}
+
+		ControlSheet > .body > *
+		{
+			flex-shrink: 0;
+		}
+		""";
+
 	/// <summary>
 	/// The object we're trying to display properties for.
 	/// </summary>

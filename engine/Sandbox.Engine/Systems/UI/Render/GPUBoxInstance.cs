@@ -4,8 +4,48 @@ using System.Runtime.InteropServices;
 namespace Sandbox.UI;
 
 /// <summary>
+/// A glyph packed for the UI shader's glyph path, 32 bytes instead of a whole box. The shader looks the outline
+/// up in GlyphTable. Must match GlyphInstanceData in ui_cssbox_batched.shader.
+/// </summary>
+[StructLayout( LayoutKind.Sequential )]
+struct GPUGlyphInstance
+{
+	/// <summary>Set on an InstanceRefs entry when the quad is a glyph rather than a box; GLYPH_REF in the shader.</summary>
+	internal const uint RefBit = 0x80000000u;
+
+	/// <summary>Set on <see cref="Glyph"/> for unantialiased text; GLYPH_ALIASED in the shader.</summary>
+	internal const uint AliasedBit = 0x80000000u;
+
+	public Vector2 Origin;          // layout px
+	public uint Glyph;              // GlyphTable index, bit 31 set for aliased text
+	public uint Size;               // half font size px | half blur sigma px << 16
+	public uint ColorRG;            // half floats
+	public uint ColorBA;
+	public uint ScissorTransform;   // scissor index | transform index << 16, both 16 bit, stamped per frame by UIBatcher
+	public uint Dilate;             // half outline dilation px
+
+	internal static GPUGlyphInstance From( in GPUBoxInstance b ) => new()
+	{
+		Origin = new Vector2( b.BackgroundRect.x, b.BackgroundRect.y ),
+		Glyph = (uint)b.Flags | ((b.BorderImageMode & GpuFontText.FlagAliased) != 0 ? AliasedBit : 0),
+		Size = Half( b.BackgroundRect.z ) | Half( b.BorderRadiusV.x ) << 16,
+		ColorRG = Half( b.Color.r ) | Half( b.Color.g ) << 16,
+		ColorBA = Half( b.Color.b ) | Half( b.Color.a ) << 16,
+		Dilate = Half( b.BackgroundRect.w ),
+	};
+
+	internal void SetColor( Color c )
+	{
+		ColorRG = Half( c.r ) | Half( c.g ) << 16;
+		ColorBA = Half( c.b ) | Half( c.a ) << 16;
+	}
+
+	static uint Half( float f ) => BitConverter.HalfToUInt16Bits( (Half)f );
+}
+
+/// <summary>
 /// Per-box data uploaded to a StructuredBuffer for the batched UI box shader.
-/// Must match BoxInstanceData in ui_cssbox_batched.shader.
+/// Must match BoxInstanceData in ui/text.hlsl.
 /// </summary>
 [StructLayout( LayoutKind.Sequential )]
 struct GPUBoxInstance
@@ -31,7 +71,7 @@ struct GPUBoxInstance
 	public int BorderImageFill;
 	public Vector4 BorderImageSlice;
 	public Color BorderImageTint;
-	public int Flags; // unused, kept for layout
+	public int Flags; // a glyph's GlyphTable index
 	public int ScissorIndex;
 	public int Mode;
 	public int TransformIndex;
@@ -40,6 +80,18 @@ struct GPUBoxInstance
 	public int TextMaskSamplerIndex;
 	public int BackgroundClip;
 	public Vector4 BackgroundClipRect;
+
+	/// <summary>Index into the border shape table, or -1 for a plain rounded rect.</summary>
+	public int ShapeIndex;
+
+	/// <summary>
+	/// On a <see cref="GpuFontText.ModeGlyphRun"/> instance, the run's packed glyphs. Nothing else in the
+	/// instance means anything there - the run never reaches the GPU, UIBatcher expands it into its glyphs.
+	/// </summary>
+	internal int GlyphStart { readonly get => Flags; set => Flags = value; }
+
+	/// <inheritdoc cref="GlyphStart"/>
+	internal int GlyphCount { readonly get => TextMaskIndex; set => TextMaskIndex = value; }
 
 	// Mode 1/2 (shadow): BackgroundRect = the blurred shape as (x, y, w, h) relative to Rect, BackgroundAngle = blur,
 	//                    BorderRadius/V = the shape's corners
@@ -69,6 +121,7 @@ struct GPUBoxInstance
 			BackgroundRect = new Vector4( shape.Left - quad.Left, shape.Top - quad.Top, shape.Width, shape.Height ),
 			Mode = desc.Inset ? 2 : 1,
 			InverseScissorIndex = -1,
+			ShapeIndex = -1,
 		};
 	}
 
@@ -90,6 +143,7 @@ struct GPUBoxInstance
 			BackgroundAngle = bloat,
 			Mode = 3,
 			InverseScissorIndex = -1,
+			ShapeIndex = -1,
 		};
 	}
 
@@ -140,6 +194,8 @@ struct GPUBoxInstance
 			BackgroundClipRect = desc.BackgroundClip == UI.BackgroundClip.Text ? desc.TextMaskRect : desc.BackgroundClipInset,
 			TextMaskIndex = desc.HasTextMask ? desc.TextMask.Index : 0,
 			TextMaskSamplerIndex = desc.HasTextMask ? GetClampSamplerIndex( FilterMode.Bilinear ) : 0,
+			// The caller resolves this against the batcher's table, like ScissorIndex and TransformIndex
+			ShapeIndex = -1,
 		};
 	}
 
@@ -182,7 +238,7 @@ internal struct GradientStopOffsets
 
 /// <summary>
 /// Per-gradient data uploaded to a StructuredBuffer for shader-evaluated background
-/// gradients. Must match GradientData in ui_cssbox_batched.shader. Colors are straight
+/// gradients. Must match GradientData in ui/text.hlsl. Colors are straight
 /// alpha in sRGB space, exactly as authored; Angle is radians, 0 pointing down the panel
 /// for linear and straight up for conic.
 /// </summary>
@@ -252,6 +308,23 @@ internal struct GPUGradientInstance
 		// leaves a pixel length alone.
 		return length.GetPixels( 1f );
 	}
+}
+
+/// <summary>
+/// One border shape, uploaded to a StructuredBuffer and pointed at by <see cref="GPUBoxInstance.ShapeIndex"/>.
+/// Must match BorderShapeData in ui_cssbox_batched.shader. Vertices are relative to the box's
+/// top-left, which keeps a shape identical wherever its panel sits so the table can dedupe it;
+/// unused slots are zero and the shader only reads the first <see cref="PolygonCount"/> of them.
+/// </summary>
+[StructLayout( LayoutKind.Sequential )]
+internal struct GPUBorderShape
+{
+	public Vector4 Polygon01, Polygon23, Polygon45, Polygon67;
+	public int PolygonCount;
+	public Vector4 Circle;
+	public int Kind;
+
+	internal readonly int GetHash() => HashCode.Combine( Polygon01, Polygon23, Polygon45, Polygon67, PolygonCount, Circle, Kind );
 }
 
 /// <summary>

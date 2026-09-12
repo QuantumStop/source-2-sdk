@@ -38,6 +38,7 @@ public class SceneInspector : InspectorWidget
 		cs.Margin = 8;
 		cs.AddRow( so.GetProperty( nameof( Scene.TimeScale ) ) );
 		cs.AddRow( so.GetProperty( nameof( Scene.WantsSystemScene ) ) );
+		cs.AddRow( SerializedObject.GetProperty( nameof( Scene.PhysicsMode ) ) );
 
 		var metaLabel = new Label( "Metadata" );
 		metaLabel.SetStyles( "font-weight: bold; padding: 5px 8px;" );

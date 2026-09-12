@@ -1,3 +1,12 @@
+﻿using Microsoft.AspNetCore.Components;
+using Sandbox.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static Sandbox.Internal.GlobalGameNamespace;
+
+using Sandbox.Rendering;
 using Sandbox.UI.Construct;
 using System.Globalization;
 
@@ -21,8 +30,6 @@ public partial class TextEntry : BaseControl
 	/// The <see cref="Label"/> that contains the text of this text entry.
 	/// </summary>
 	protected Label Label { get; init; }
-	internal Label CaretLabel => Label;
-	readonly CaretOverlay Caret;
 
 	bool _disabled;
 
@@ -41,6 +48,28 @@ public partial class TextEntry : BaseControl
 			SetClass( "disabled", value );
 		}
 	}
+
+	/// <summary>
+	/// The text can be selected and copied, but not changed. Unlike <see cref="Disabled"/> this
+	/// still takes focus, so it reads and behaves like text rather than like a dead control.
+	/// </summary>
+	[Parameter]
+	public bool ReadOnly
+	{
+		get => _readOnly;
+		set
+		{
+			_readOnly = value;
+			SetClass( "readonly", value );
+		}
+	}
+
+	bool _readOnly;
+
+	/// <summary>
+	/// Whether the text can be changed at all right now.
+	/// </summary>
+	protected bool CanEdit => !ReadOnly && !Disabled;
 
 	/// <summary>
 	/// Access to the raw text in the text entry.
@@ -66,11 +95,16 @@ public partial class TextEntry : BaseControl
 			if ( HasFocus )
 				return;
 
+			if ( Label.Text == value ) return;
+
 			Label.Text = value;
 			if ( Numeric )
 			{
 				Label.Text = FixNumeric();
 			}
+
+			// Someone else replaced the text, so there's nothing of the user's left to undo
+			ClearUndoHistory();
 		}
 	}
 
@@ -104,11 +138,27 @@ public partial class TextEntry : BaseControl
 	[Category( "Presentation" )]
 	public string NumberFormat { get; set; } = null;
 
+	private bool _multiline;
+
 	/// <summary>
 	/// Makes it possible to enter new lines into the text entry. (By pressing the Enter key, which no longer acts as the submit key)
 	/// </summary>
 	[Property, Parameter]
-	public bool Multiline { get; set; } = false;
+	public bool Multiline
+	{
+		get => _multiline;
+		set
+		{
+			if ( _multiline == value ) return;
+
+			_multiline = value;
+
+			// Straight through to the label rather than waiting for a tick - this decides
+			// whether the text wraps, and a frame of wrapped text is a frame of wrong layout
+			if ( Label.IsValid() ) Label.Multiline = value;
+			SetClass( "is-multiline", value );
+		}
+	}
 
 	/// <summary>
 	/// If we're numeric, this is the lowest numeric value allowed
@@ -199,24 +249,23 @@ public partial class TextEntry : BaseControl
 		AcceptsFocus = true;
 		AddClass( "textentry" );
 
+		// Dragging selects text, it never scrolls
+		CanDragScroll = false;
+
 		Label = Add.Label( "", "content-label" );
 		Label.Tokenize = false;
 		Label.Style.WhiteSpace = WhiteSpace.Pre;
-
-		// Draw the caret as a dedicated child so it renders on top of the label text.
-		// TextEntry's content renders before children, which can cause wide carets to be covered by glyphs.
-		Caret = AddChild<CaretOverlay>();
-		Caret.Style.Position = PositionMode.Absolute;
-		Caret.Style.Left = 0;
-		Caret.Style.Top = 0;
-		Caret.Style.Right = 0;
-		Caret.Style.Bottom = 0;
-		Caret.Style.PointerEvents = PointerEvents.None;
-		Caret.Style.Dirty();
+		Label.Multiline = _multiline;
 	}
 
 	public override void OnPaste( string text )
 	{
+		if ( !CanEdit ) return;
+
+		RecordEdit( EditKind.Single );
+
+		SetImePreview( "" );
+
 		if ( Label.HasSelection() )
 		{
 			Label.ReplaceSelection( "" );
@@ -239,7 +288,9 @@ public partial class TextEntry : BaseControl
 
 		Text ??= "";
 		Label.InsertText( pasteResult, CaretPosition );
-		Label.MoveCaretPos( pasteResult.Length );
+
+		// Caret positions count text elements, not chars - an emoji is one step, not two
+		Label.MoveCaretPos( new StringInfo( pasteResult ).LengthInTextElements );
 
 		OnValueChanged();
 	}
@@ -248,8 +299,10 @@ public partial class TextEntry : BaseControl
 	{
 		var value = Label.GetClipboardValue( cut );
 
-		if ( cut )
+		if ( cut && CanEdit )
 		{
+			RecordEdit( EditKind.Single );
+
 			Label.ReplaceSelection( "" );
 			OnValueChanged();
 		}
@@ -276,8 +329,10 @@ public partial class TextEntry : BaseControl
 		//Log.Info( $"OnButtonTyped {button}" );
 		var button = e.Button;
 
-		if ( Label.HasSelection() && (button == "delete" || button == "backspace") )
+		if ( Label.HasSelection() && (button == "delete" || button == "backspace") && CanEdit )
 		{
+			RecordEdit( EditKind.Single );
+
 			Label.ReplaceSelection( "" );
 			OnValueChanged();
 
@@ -286,8 +341,10 @@ public partial class TextEntry : BaseControl
 
 		if ( button == "delete" )
 		{
-			if ( CaretPosition < TextLength )
+			if ( CaretPosition < TextLength && CanEdit )
 			{
+				RecordEdit( EditKind.Deleting );
+
 				if ( e.HasCtrl )
 				{
 					Label.MoveToWordBoundaryRight( true );
@@ -305,8 +362,10 @@ public partial class TextEntry : BaseControl
 
 		if ( button == "backspace" )
 		{
-			if ( CaretPosition > 0 )
+			if ( CaretPosition > 0 && CanEdit )
 			{
+				RecordEdit( EditKind.Deleting );
+
 				if ( e.HasCtrl )
 				{
 					Label.MoveToWordBoundaryLeft( true );
@@ -323,10 +382,25 @@ public partial class TextEntry : BaseControl
 			return;
 		}
 
+		if ( button == "z" && e.HasCtrl )
+		{
+			if ( e.HasShift ) Redo(); else Undo();
+			return;
+		}
+
+		if ( button == "y" && e.HasCtrl )
+		{
+			Redo();
+			return;
+		}
+
 		if ( button == "a" && e.HasCtrl )
 		{
-			Label.SelectionStart = 0;
-			Label.SelectionEnd = TextLength;
+			Label.SetSelection( 0, TextLength );
+
+			// The caret goes to the end of what got selected, so typing replaces it and an
+			// arrow key carries on from there
+			CaretPosition = TextLength;
 			return;
 		}
 
@@ -360,8 +434,9 @@ public partial class TextEntry : BaseControl
 		{
 			if ( !e.HasCtrl )
 			{
-				if ( Label.HasSelection() )
-					Label.SetCaretPosition( Label.SelectionStart );
+				// A plain arrow collapses the selection to its edge - with shift held it keeps extending
+				if ( Label.HasSelection() && !e.HasShift )
+					Label.SetCaretPosition( Math.Min( Label.SelectionStart, Label.SelectionEnd ) );
 				else
 					Label.MoveCaretPos( -1, e.HasShift );
 			}
@@ -376,8 +451,8 @@ public partial class TextEntry : BaseControl
 		{
 			if ( !e.HasCtrl )
 			{
-				if ( Label.HasSelection() )
-					Label.SetCaretPosition( Label.SelectionEnd );
+				if ( Label.HasSelection() && !e.HasShift )
+					Label.SetCaretPosition( Math.Max( Label.SelectionStart, Label.SelectionEnd ) );
 				else
 					Label.MoveCaretPos( 1, e.HasShift );
 			}
@@ -464,14 +539,103 @@ public partial class TextEntry : BaseControl
 		CreateEvent( "oncancel" );
 	}
 
+	bool IsPressOnSelection()
+	{
+		if ( !Label.HasSelection() ) return false;
+
+		var letter = Label.GetLetterAtScreenPosition( ScreenMousePosition );
+		if ( letter < 0 ) return false;
+
+		var start = Math.Min( Label.SelectionStart, Label.SelectionEnd );
+		var end = Math.Max( Label.SelectionStart, Label.SelectionEnd );
+
+		return letter >= start && letter < end;
+	}
+
+	// This press landed on the selection, so moving away from it carries the text out rather
+	// than starting a new selection. Where it went down, to measure that move against.
+	bool _pressedOnSelection;
+	Vector2 _pressPosition;
+
+	/// <summary>
+	/// Pressing on selected text and moving away carries it out of the entry, the way it does
+	/// anywhere else - so a selection can be dropped in another entry, or another app.
+	/// </summary>
+	void DragSelectionOut()
+	{
+		var selected = Label.GetClipboardValue( false );
+
+		_pressedOnSelection = false;
+		if ( string.IsNullOrEmpty( selected ) ) return;
+
+		var drag = new Drag( this );
+		drag.SetText( selected );
+
+		// A move means it was taken somewhere else, so it leaves here
+		if ( drag.Start() == DropAction.Move && !Disabled )
+		{
+			Label.ReplaceSelection( "" );
+			OnValueChanged();
+		}
+	}
+
+	protected override void OnDrop( PanelEvent e )
+	{
+		if ( e is not DropEvent drop ) return;
+		if ( string.IsNullOrEmpty( drop.Text ) ) return;
+		if ( !CanEdit ) return;
+
+		drop.Action = DropAction.Copy;
+		drop.StopPropagation();
+
+		if ( !drop.IsDrop ) return;
+
+		Focus();
+
+		// The text lands where it was dropped, not wherever the caret happened to be left
+		var letter = Label.GetLetterAtScreenPosition( drop.Position );
+		if ( letter >= 0 ) Label.SetCaretPosition( letter );
+
+		OnPaste( drop.Text );
+	}
+
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
+		// Stopping a press on the scrollbar here would stop its drag from starting
+		if ( ScrollBar.Owns( e.Target ) ) return;
+
 		e.StopPropagation();
+
+		// Shift extends what's already selected instead of starting again, so a click picks
+		// the far end of the selection and keeps the anchor where it was
+		if ( e.HasShift && !string.IsNullOrEmpty( Text ) )
+		{
+			var to = Label.GetLetterAtScreenPosition( ScreenMousePosition );
+			if ( to < 0 ) return;
+
+			// Without a selection to grow, the caret is the anchor
+			var anchor = Label.HasSelection() ? Label.SelectionStart : CaretPosition;
+
+			Label.SelectionStart = anchor;
+			Label.SelectionEnd = to;
+			Label.CaretPosition = to;
+
+			Label.ScrollToCaret();
+			return;
+		}
+
+		// Pressing on a selection might be the start of carrying it out - the selection has
+		// to survive the press for that, so this one leaves it alone
+		_pressedOnSelection = IsPressOnSelection();
+		_pressPosition = ScreenMousePosition;
+
+		if ( _pressedOnSelection )
+			return;
 
 		if ( string.IsNullOrEmpty( Text ) )
 			return;
 
-		var pos = Label.GetLetterAtScreenPosition( Mouse.Position );
+		var pos = Label.GetLetterAtScreenPosition( ScreenMousePosition );
 
 		Label.SelectionStart = 0;
 		Label.SelectionEnd = 0;
@@ -487,11 +651,36 @@ public partial class TextEntry : BaseControl
 
 	protected override void OnMouseUp( MousePanelEvent e )
 	{
+		if ( ScrollBar.Owns( e.Target ) ) return;
+
 		SelectingWords = false;
 
-		var pos = Label.GetLetterAtScreenPosition( Mouse.Position );
-		if ( Label.SelectionEnd > 0 ) pos = Label.SelectionEnd;
-		Label.CaretPosition = pos.Clamp( 0, TextLength );
+		// Released on the selection without having dragged it anywhere - that's a plain click,
+		// so it collapses the selection and places the caret
+		if ( _pressedOnSelection )
+		{
+			_pressedOnSelection = false;
+
+			var letter = Label.GetLetterAtScreenPosition( ScreenMousePosition );
+
+			Label.SelectionStart = 0;
+			Label.SelectionEnd = 0;
+
+			if ( letter >= 0 ) Label.SetCaretPosition( letter );
+
+			Label.ScrollToCaret();
+			e.StopPropagation();
+			return;
+		}
+
+		// A drag already put the caret at the selection's focus end - only a plain click
+		// places it here
+		if ( !Label.HasSelection() )
+		{
+			var pos = Label.GetLetterAtScreenPosition( ScreenMousePosition );
+			if ( pos >= 0 )
+				Label.SetCaretPosition( pos );
+		}
 
 		Label.ScrollToCaret();
 		e.StopPropagation();
@@ -500,25 +689,50 @@ public partial class TextEntry : BaseControl
 	protected override void OnMouseMove( MousePanelEvent e )
 	{
 		base.OnMouseMove( e );
+
+		if ( ScrollBar.Owns( e.Target ) ) return;
+
 		e.StopPropagation();
+
+		// Far enough from a press that grabbed the selection - that's a drag, not a click
+		if ( _pressedOnSelection && (ScreenMousePosition - _pressPosition).Length > 5.0f )
+		{
+			DragSelectionOut();
+		}
 	}
 
 	protected override void OnFocus( PanelEvent e )
 	{
 		UpdateAutoComplete();
-		TimeSinceNotInFocus = 0;
-		Caret?.MarkRenderDirty();
+		TimeSinceCaretMoved = 0;
 	}
 
 	protected override void OnBlur( PanelEvent e )
 	{
 		//UpdateAutoComplete();
-		Caret?.MarkRenderDirty();
 
 		if ( Numeric )
 		{
 			Text = FixNumeric();
 		}
+	}
+
+	/// <summary>
+	/// A third click takes the whole line - which is everything, when there's only one line.
+	/// </summary>
+	protected override void OnTripleClick( MousePanelEvent e )
+	{
+		if ( string.IsNullOrEmpty( Text ) ) return;
+		if ( e.Button != "mouseleft" ) return;
+
+		var letter = Label.GetLetterAtScreenPosition( ScreenMousePosition );
+		if ( letter >= 0 ) Label.CaretPosition = letter;
+
+		Label.MoveToLineStart();
+		Label.MoveToLineEnd( true );
+
+		SelectingWords = false;
+		e.StopPropagation();
 	}
 
 	private bool SelectingWords = false;
@@ -529,31 +743,81 @@ public partial class TextEntry : BaseControl
 
 		if ( e.Button == "mouseleft" )
 		{
-			Label.SelectWord( Label.GetLetterAtScreenPosition( Mouse.Position ) );
+			Label.SelectWord( Label.GetLetterAtScreenPosition( ScreenMousePosition ) );
 			SelectingWords = true;
 		}
 	}
 
+	char _pendingSurrogate;
+
 	public override void OnKeyTyped( char k )
 	{
+		// A character outside the basic plane arrives as two surrogate chars - hold the
+		// first until its partner lands, then insert them as one character
+		if ( char.IsHighSurrogate( k ) )
+		{
+			_pendingSurrogate = k;
+			return;
+		}
+
+		if ( char.IsLowSurrogate( k ) )
+		{
+			if ( _pendingSurrogate == default ) return;
+
+			var pair = $"{_pendingSurrogate}{k}";
+			_pendingSurrogate = default;
+
+			if ( CanEnterPair( pair ) )
+				InsertTyped( pair );
+
+			return;
+		}
+
+		_pendingSurrogate = default;
+
 		if ( !CanEnterCharacter( k ) )
 			return;
 
-		if ( MaxLength.HasValue && TextLength >= MaxLength )
+		InsertTyped( k.ToString() );
+	}
+
+	// CanEnterCharacter for a character that doesn't fit in one char
+	bool CanEnterPair( string pair )
+	{
+		if ( Numeric ) return false;
+		if ( CharacterRegex != null && !System.Text.RegularExpressions.Regex.IsMatch( pair, CharacterRegex ) ) return false;
+
+		return true;
+	}
+
+	void InsertTyped( string text )
+	{
+		if ( !CanEdit ) return;
+
+		// Whitespace ends a run, so undo takes back a word at a time rather than the lot
+		var whitespace = text.Length > 0 && char.IsWhiteSpace( text[0] );
+		RecordEdit( whitespace ? EditKind.Single : EditKind.Typing );
+
+		// A committed IME string arrives as typed text while its preview can still be spliced
+		// in - the preview goes first, the commit replaces it
+		SetImePreview( "" );
+
+		// Replacing a selection never grows the text, so that's fine at max length
+		if ( MaxLength.HasValue && TextLength >= MaxLength && !Label.HasSelection() )
 			return;
 
 		if ( Label.HasSelection() )
 		{
-			Label.ReplaceSelection( k.ToString() );
+			Label.ReplaceSelection( text );
 		}
 		else
 		{
 			Text ??= "";
-			Label.InsertText( k.ToString(), CaretPosition );
+			Label.InsertText( text, CaretPosition );
 			Label.MoveCaretPos( 1 );
 		}
 
-		if ( k == ':' )
+		if ( text == ":" )
 		{
 			RealtimeEmojiReplace();
 		}
@@ -562,12 +826,51 @@ public partial class TextEntry : BaseControl
 	}
 
 
+	/// <summary>
+	/// How long the caret sits solid after typing or moving before it starts blinking again,
+	/// the way a native text box does it.
+	/// </summary>
+	const float CaretSolidTime = 0.5f;
+	const float CaretBlinkRate = 1.0f;
+
 	public override void OnDraw()
 	{
 		Label.ShouldDrawSelection = HasFocus;
-	}
 
-	internal float CaretBlinkTime => TimeSinceNotInFocus;
+		if ( !HasFocus )
+			return;
+
+		if ( !Label.HasSelection() )
+		{
+			var caret = Label.GetCaretRect( CaretPosition );
+			caret.Left = MathF.Floor( caret.Left ); // avoid subpixel positions (blurry and ass)
+			caret.Width = 1;
+
+			// The caret belongs to the text, so it's only drawn where the text is - and trimmed
+			// to the edge rather than hanging outside the box
+			var visible = Box.RectInner;
+
+			caret.Left = MathF.Max( caret.Left, visible.Left );
+			caret.Top = MathF.Max( caret.Top, visible.Top );
+			caret.Right = MathF.Min( caret.Right, visible.Right );
+			caret.Bottom = MathF.Min( caret.Bottom, visible.Bottom );
+
+			if ( caret.Width > 0 && caret.Height > 0 )
+			{
+				// Solid right after doing something, blinking once it's been left alone
+				var solid = TimeSinceCaretMoved < CaretSolidTime;
+				var blink = ((TimeSinceCaretMoved - CaretSolidTime) * CaretBlinkRate) % 1.0f < 0.5f;
+
+				var color = ComputedStyle.CaretColor ?? ComputedStyle.FontColor ?? Color.Black;
+				color.a *= (solid || blink) ? 1.0f : 0f;
+
+				Draw.Rect( caret, color );
+			}
+		}
+
+		// Redraw every frame while focused, so the caret blinks
+		MarkRenderDirty();
+	}
 
 	void RealtimeEmojiReplace()
 	{
@@ -577,11 +880,14 @@ public partial class TextEntry : BaseControl
 		if ( CaretPosition == 0 )
 			return;
 
-		string lookup = null;
+		// The char index just past the ':' that was typed, which sits right before the caret
 		var arr = StringInfo.ParseCombiningCharacters( Text );
-		var caretStringPosition = arr[CaretPosition - 1];
+		var caretChar = arr[CaretPosition - 1] + 1;
 
-		for ( int i = caretStringPosition - 2; i >= 0; i-- )
+		string lookup = null;
+		var start = 0;
+
+		for ( int i = caretChar - 3; i >= 0; i-- )
 		{
 			var c = Text[i];
 
@@ -590,12 +896,10 @@ public partial class TextEntry : BaseControl
 
 			if ( c == ':' )
 			{
-				lookup = Text.Substring( i, caretStringPosition - i + 1 );
+				start = i;
+				lookup = Text[i..caretChar];
 				break;
 			}
-
-			if ( i == 0 )
-				return;
 		}
 
 		if ( lookup == null )
@@ -605,8 +909,12 @@ public partial class TextEntry : BaseControl
 		if ( replace == null )
 			return;
 
-		CaretPosition -= lookup.Length - 1; // set this first so we don't get abused by CaretSanity
-		Text = Text.Replace( lookup, replace );
+		// Splice just this occurrence, and step the caret in text elements - the emoji is
+		// one element however many chars it takes
+		var caret = CaretPosition - new StringInfo( lookup ).LengthInTextElements + new StringInfo( replace ).LengthInTextElements;
+
+		Text = string.Concat( Text.AsSpan( 0, start ), replace, Text.AsSpan( caretChar ) );
+		CaretPosition = caret;
 	}
 
 	void ReplaceEmojisInText( ref string text )
@@ -656,10 +964,13 @@ public partial class TextEntry : BaseControl
 	}
 
 	/// <summary>
-	/// Keep tabs of when we were focused so we can flash the caret relative to that time.
-	/// We want the caret to be visible immediately on focus
+	/// How long since the caret last moved or the text changed. The caret stays solid for a
+	/// moment after either, so it isn't blinking out from under someone who is typing.
 	/// </summary>
-	protected RealTimeSince TimeSinceNotInFocus;
+	protected RealTimeSince TimeSinceCaretMoved;
+
+	int _lastCaretPosition;
+	string _lastText;
 
 	public override void Tick()
 	{
@@ -670,23 +981,26 @@ public partial class TextEntry : BaseControl
 			Value = Property.As.String;
 		}
 
-		SetClass( "is-multiline", Multiline );
-
 		bool isPlaceholder = string.IsNullOrEmpty( Text ) && !string.IsNullOrEmpty( Placeholder );
 		Label.SetClass( "placeholder", isPlaceholder );
 		Label.Style.Content = isPlaceholder ? Placeholder : null;
 		Label.Selectable = !isPlaceholder;
 
-		if ( Label.IsValid() )
-			Label.Multiline = Multiline;
+		// Anything that moves the caret or changes the text restarts the blink, whichever of
+		// the many ways in it took
+		if ( _lastCaretPosition != CaretPosition || _lastText != Text )
+		{
+			// Moving the caret without changing the text is navigation, and that ends the run -
+			// so typing, clicking elsewhere, then typing again is two undo steps
+			if ( _lastText == Text ) BreakEditRun();
 
-		Label.ShouldDrawSelection = HasFocus;
-
-		if ( HasFocus )
-			Caret?.MarkRenderDirty();
+			_lastCaretPosition = CaretPosition;
+			_lastText = Text;
+			TimeSinceCaretMoved = 0;
+		}
 
 		if ( !HasFocus )
-			TimeSinceNotInFocus = 0;
+			TimeSinceCaretMoved = 0;
 	}
 
 	public override void SetProperty( string name, string value )
@@ -715,10 +1029,10 @@ public partial class TextEntry : BaseControl
 			//
 			if ( Numeric )
 			{
-				if ( !float.TryParse( value, out var floatValue ) )
+				if ( !float.TryParse( value, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue ) )
 					return;
 
-				Text = floatValue.ToString( NumberFormat );
+				Text = floatValue.ToString( NumberFormat, CultureInfo.InvariantCulture );
 				return;
 			}
 
@@ -737,14 +1051,19 @@ public partial class TextEntry : BaseControl
 	/// <returns>The correctly formatted version of <see cref="Text"/>.</returns>
 	public virtual string FixNumeric()
 	{
-		if ( !float.TryParse( Text, out var floatValue ) )
-		{
-			var val = 0.0f.Clamp( MinValue ?? floatValue, MaxValue ?? floatValue );
-			return val.ToString();
-		}
+		// Invariant culture with comma tolerated as a decimal separator, so the result
+		// doesn't change with the user's locale
+		var text = Text?.Replace( ',', '.' );
+
+		if ( !float.TryParse( text, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue ) )
+			floatValue = 0;
 
 		floatValue = floatValue.Clamp( MinValue ?? floatValue, MaxValue ?? floatValue );
-		return floatValue.ToString( NumberFormat );
+
+		if ( WholeNumbers )
+			return MathF.Round( floatValue ).ToString( "0", CultureInfo.InvariantCulture );
+
+		return floatValue.ToString( NumberFormat, CultureInfo.InvariantCulture );
 	}
 
 	protected override void OnDragSelect( SelectionEvent e )
@@ -752,61 +1071,96 @@ public partial class TextEntry : BaseControl
 		if ( string.IsNullOrEmpty( Text ) )
 			return;
 
+		if ( ScrollBar.Owns( e.Target ) )
+			return;
+
+		// This press grabbed the selection to carry it somewhere - it mustn't turn into a
+		// new selection under the cursor
+		if ( _pressedOnSelection )
+			return;
+
 		Label.ShouldDrawSelection = true;
 
-		var tl = new Vector2( e.SelectionRect.Left, e.SelectionRect.Top );
-		var br = new Vector2( e.SelectionRect.Right, e.SelectionRect.Bottom );
-		Label.SelectionStart = Label.GetLetterAtScreenPosition( tl );
-		Label.SelectionEnd = Label.GetLetterAtScreenPosition( br );
+		// The selection runs from where the drag started to where the mouse is - a rectangle's
+		// corners can't describe that once the drag spans lines
+		var anchor = Label.GetLetterAtScreenPosition( e.StartPoint );
+		var focus = Label.GetLetterAtScreenPosition( e.EndPoint );
 
 		if ( SelectingWords )
 		{
+			// Grow both ends outward to whole words
 			var boundaries = Label.GetWordBoundaryIndices();
+			var left = boundaries.LastOrDefault( x => x <= Math.Min( anchor, focus ) );
+			var right = boundaries.FirstOrDefault( x => x >= Math.Max( anchor, focus ) );
 
-			var left = boundaries.LastOrDefault( x => x < Label.SelectionStart );
-			var right = boundaries.FirstOrDefault( x => x > Label.SelectionEnd );
-
-			left = Math.Min( left, Label.SelectionStart );
-			right = Math.Max( right, Label.SelectionEnd );
-
-			Label.SelectionStart = left;
-			Label.SelectionEnd = right;
+			(anchor, focus) = focus >= anchor ? (left, right) : (right, left);
 		}
 
-		Label.CaretPosition = Label.GetLetterAtScreenPosition( Mouse.Position );
+		Label.SelectionStart = anchor;
+		Label.SelectionEnd = focus;
+		Label.CaretPosition = focus;
 		Label.ScrollToCaret();
 	}
 
-	int? ImeInputPos;
-	string ImeInputStart;
+	// The composition preview currently spliced into the text - where it starts and how many
+	// elements it covers. Start is -1 while nothing is spliced in.
+	int _imePreviewStart = -1;
+	int _imePreviewLength;
+
+	internal override Rect ImeCaretRect
+		=> Label._textBlock is not null ? Label.GetCaretRect( CaretPosition ) : Box.Rect;
+
+	/// <summary>
+	/// Splice the IME composition preview into the text at the caret, replacing the previous
+	/// one. The committed text never comes through here - it arrives as ordinary typed text,
+	/// which is why removal has to be by position rather than restoring a snapshot.
+	/// </summary>
+	void SetImePreview( string text )
+	{
+		if ( _imePreviewStart >= 0 && _imePreviewLength > 0 )
+		{
+			Label.RemoveText( _imePreviewStart, _imePreviewLength );
+			CaretPosition = _imePreviewStart;
+		}
+
+		if ( string.IsNullOrEmpty( text ) )
+		{
+			_imePreviewStart = -1;
+			_imePreviewLength = 0;
+			return;
+		}
+
+		_imePreviewStart = CaretPosition;
+		_imePreviewLength = new StringInfo( text ).LengthInTextElements;
+
+		Text ??= "";
+		Label.InsertText( text, CaretPosition );
+		CaretPosition = _imePreviewStart + _imePreviewLength;
+	}
 
 	protected override void OnEvent( PanelEvent e )
 	{
-		// Ime input started
-		if ( e.Name == "onimestart" )
+		// Composing replaces the selection, the same as typing does
+		if ( e.Name == "onimestart" && CanEdit )
 		{
-			ImeInputStart = Label.Text;
-			ImeInputPos = CaretPosition;
+			if ( Label.HasSelection() )
+			{
+				Label.ReplaceSelection( "" );
+				OnValueChanged();
+			}
+
+			_imePreviewStart = -1;
+			_imePreviewLength = 0;
 		}
 
-		// Ime input ended
+		if ( e.Name == "onime" && CanEdit )
+		{
+			SetImePreview( (string)e.Value );
+		}
+
 		if ( e.Name == "onimeend" )
 		{
-			ImeInputStart = default;
-			ImeInputPos = default;
-		}
-
-		// ime input changed
-		if ( e.Name == "onime" )
-		{
-			if ( ImeInputPos == null ) return;
-
-			var str = (string)e.Value;
-			var info = new StringInfo( str );
-
-			Label.Text = ImeInputStart;
-			Label.InsertText( str, ImeInputPos.Value );
-			CaretPosition = ImeInputPos.Value + info.LengthInTextElements;
+			SetImePreview( "" );
 		}
 
 		base.OnEvent( e );
@@ -815,57 +1169,9 @@ public partial class TextEntry : BaseControl
 	/// <summary>
 	/// The TextEntry has the :empty style when the text is unset
 	/// </summary>
-protected override bool IsPanelEmpty()
+	protected override bool IsPanelEmpty()
 	{
 		return TextLength == 0;
 	}
 
-}
-
-sealed class CaretOverlay : Panel
-{
-	TextEntry Owner => Parent as TextEntry;
-
-	public override void OnDraw()
-	{
-		var owner = Owner;
-		if ( owner is null || !owner.IsValid )
-			return;
-
-		if ( !owner.HasFocus )
-			return;
-
-		if ( owner.CaretLabel.HasSelection() )
-			return;
-
-		var blinkEnabled = owner.ComputedStyle.CaretBlink ?? true;
-		var blinkPeriod = owner.ComputedStyle.CaretBlinkRate ?? 1.0f;
-		blinkPeriod = MathF.Max( 0.05f, blinkPeriod );
-
-		var t = owner.CaretBlinkTime;
-		var blink = !blinkEnabled || (t % blinkPeriod) < (blinkPeriod * 0.5f);
-
-		var caret = owner.CaretLabel.GetCaretRect( owner.CaretPosition );
-
-		// Snap in screen-space so caret thickness/position stays stable across ScaleToScreen values.
-		var caretLeftScreen = caret.Left * owner.ScaleToScreen;
-		caret.Left = MathX.FloorToInt( caretLeftScreen ) * owner.ScaleFromScreen;
-
-		var caretWidth = owner.ComputedStyle.CaretWidth?.GetPixels( owner.Box.RectInner.Width ) ?? 1.0f;
-		var caretWidthScreen = caretWidth * owner.ScaleToScreen;
-		caret.Width = MathF.Max( 1.0f, MathF.Round( caretWidthScreen ) ) * owner.ScaleFromScreen;
-
-		// Keep the caret fully inside the visible region so wider carets don't get clipped at edges.
-		var inner = owner.Box.RectInner;
-		var maxLeft = inner.Right - caret.Width;
-		if ( maxLeft < inner.Left ) maxLeft = inner.Left;
-		caret.Left = caret.Left.Clamp( inner.Left, maxLeft );
-
-		var color = owner.ComputedStyle.CaretColor ?? owner.ComputedStyle.FontColor ?? Color.Black;
-		color.a *= blink ? 1.0f : 0f;
-
-		Draw.Rect( caret, color );
-
-		MarkRenderDirty();
-	}
 }

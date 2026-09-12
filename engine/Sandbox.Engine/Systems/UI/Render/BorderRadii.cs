@@ -199,4 +199,12 @@ internal struct BorderRadii
 	/// Vertical radii packed as (top-left, top-right, bottom-left, bottom-right).
 	/// </summary>
 	public readonly Vector4 Vertical => new( TopLeft.y, TopRight.y, BottomLeft.y, BottomRight.y );
+
+	/// <summary>
+	/// The largest radius on any corner, on either axis - how far in from the box's edge the rounding
+	/// can reach.
+	/// </summary>
+	public readonly float Largest => MathF.Max(
+		MathF.Max( MathF.Max( TopLeft.x, TopLeft.y ), MathF.Max( TopRight.x, TopRight.y ) ),
+		MathF.Max( MathF.Max( BottomLeft.x, BottomLeft.y ), MathF.Max( BottomRight.x, BottomRight.y ) ) );
 }

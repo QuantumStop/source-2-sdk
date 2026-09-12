@@ -37,7 +37,7 @@ internal class DownloadThirdParty( bool force = false )
 				// Per dependency, not per directory: several share game/bin. The platform is
 				// in the stamp because a dependency's headers can differ between platforms.
 				var marker = Path.Combine( targetDir, $".sbox-thirdparty-{dep.Name}" );
-				var stamp = $"{dep.Tag} {platform}";
+				var stamp = $"{dep.Tag} {platform} r{dep.Rebuild}";
 
 				if ( !force && IsCurrent( marker, stamp ) )
 				{
@@ -110,7 +110,9 @@ internal class DownloadThirdParty( bool force = false )
 		// private repo where that URL 404s.
 		var cdnUrl = $"https://github.com/{Repo}/releases/download/{dep.Tag}/{asset}";
 
-		var tempRoot = Path.Combine( Path.GetTempPath(), $"sbox-thirdparty-{Guid.NewGuid():N}" );
+		// If OSX, then use this
+		var temp = NativePlatform.Current.IsOsx ? Paths.Absolute( "obj" ) : Path.GetTempPath();
+		var tempRoot = Path.Combine( temp, $"sbox-thirdparty-{Guid.NewGuid():N}" );
 		var archive = Path.Combine( tempRoot, asset );
 		var extracted = Path.Combine( tempRoot, "extracted" );
 

@@ -1,0 +1,33 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using System.Collections.Immutable;
+@namespace MenuProject.UI
+@inherits Panel
+
+@* Flair badges over a thumbnail. Unlike the web, the flair colour goes on the glyph, not the badge. *@
+
+@if (Flair.Length > 0)
+{
+    <root>
+        @foreach (var flair in Flair)
+        {
+            <div class="flair flair-@flair.Kind" tooltip="@flair.Tooltip">
+                <icon style="@GlyphStyle( flair )">@flair.Icon</icon>
+            </div>
+        }
+    </root>
+}
+
+@code {
+    [Parameter] public ImmutableArray<Package.PackageFlair> Flair { get; set; } = ImmutableArray<Package.PackageFlair>.Empty;
+
+    static readonly System.Text.RegularExpressions.Regex BackgroundColor = new( @"background-color\s*:\s*([^;]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled );
+
+    static string GlyphStyle( Package.PackageFlair flair )
+    {
+        var match = BackgroundColor.Match( flair.Style ?? "" );
+        return match.Success ? $"color: {match.Groups[1].Value.Trim()};" : "";
+    }
+
+    protected override int BuildHash() => Flair.Length;
+}

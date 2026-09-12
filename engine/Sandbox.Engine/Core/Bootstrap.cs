@@ -57,7 +57,6 @@ internal static class Bootstrap
 			{
 				using var timerFs = StartupTiming?.ScopeTimer( "FilesystemInit" );
 
-				EngineFileSystem.InitializeAddonsFolder();
 				EngineFileSystem.InitializeDataFolder();
 
 				if ( !Application.IsStandalone )
@@ -173,6 +172,10 @@ internal static class Bootstrap
 
 			InitEngineConVars();
 
+			// After registration, or the managed half of every quality profile is dropped on the
+			// floor and shadows and post-processing sit at their code defaults.
+			Settings.RenderSettings.Instance.ApplyQualityProfiles();
+
 			if ( IToolsDll.Current is not null )
 			{
 				using var x = StartupTiming?.ScopeTimer( $"IToolsDll Bootstrap Init" );
@@ -185,6 +188,12 @@ internal static class Bootstrap
 			VRSystem.Init();
 
 			Screen.UpdateFromEngine();
+
+			// Not in RenderSettings' constructor: SystemInfo is only filled in at the tail of SourceEngineInit.
+			if ( !Application.IsHeadless && !Application.IsEditor )
+			{
+				Settings.RenderSettings.Instance.EnsureFirstRunPreset();
+			}
 
 			if ( !Application.IsHeadless && !Application.IsStandalone )
 			{
