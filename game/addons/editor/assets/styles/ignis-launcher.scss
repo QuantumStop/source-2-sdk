@@ -1,0 +1,310 @@
+@import "_ignis-theme.scss";
+@import "_ignis-window.scss";
+
+.ignis-content
+{
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	right: 0px;
+	bottom: 0px;
+	width: 100%;
+	height: 100%;
+	flex-direction: column;
+	background-color: $ignis-bg;
+	border: 1px solid $ignis-border;
+	overflow: hidden;
+
+	&.dropping { border-color: $ignis-accent; }
+	.ignis-body
+	{
+		flex-grow: 1;
+		flex-shrink: 1;
+		flex-direction: column;
+		padding: 8px 16px 16px 16px;
+		background-color: $ignis-bg;
+		overflow: hidden;
+	}
+
+	.ignis-banner
+	{
+		flex-shrink: 0;
+		position: relative;
+		height: $ignis-banner-height;
+		margin: 2px 0 10px 0;
+		border-radius: 0px;
+		background-color: #22252c;
+		border: 1px solid #333740;
+		overflow: hidden;
+	}
+
+	.ignis-banner-image
+	{
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+		background-size: cover;
+		background-position: center;
+	}
+
+	.ignis-banner-swipe
+	{
+		position: absolute;
+		left: -45%;
+		top: 0px;
+		width: 45%;
+		height: 100%;
+		background-color: rgba( #ffffff, 0.08 );
+		transform: skewX( -18deg );
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.ignis-banner.swiping .ignis-banner-image
+	{
+		animation-name: ignis-banner-change;
+		animation-duration: 0.42s;
+		animation-timing-function: ease-out;
+		animation-iteration-count: 1;
+	}
+
+	.ignis-banner.swiping .ignis-banner-swipe
+	{
+		animation-name: ignis-banner-swipe;
+		animation-duration: 0.42s;
+		animation-timing-function: ease-out;
+		animation-iteration-count: 1;
+	}
+
+	.ignis-toolbar
+	{
+		flex-shrink: 0;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 10px;
+		margin-top: 5px;
+
+		.iconbutton
+		{
+			width: $ignis-control-height;
+			height: $ignis-control-height;
+			flex-shrink: 0;
+			margin-left: 6px;
+			background-color: $ignis-control-bg;
+			border-radius: $ignis-border-radius;
+			border-color: $ignis-control-border;
+			color: $ignis-muted;
+
+			i { font-size: 16px; }
+			&:hover { background-color: $ignis-control-hover; }
+		}
+
+		.flatbutton
+		{
+			height: $ignis-control-height;
+			min-width: 164px;
+			flex-shrink: 0;
+			margin-left: 8px;
+			padding: 0 14px;
+			background-color: $ignis-control-bg;
+			border-radius: $ignis-border-radius;
+			border-color: $ignis-control-border;
+			color: $ignis-text;
+			text-transform: none;
+			letter-spacing: 0;
+
+			i { font-size: 16px; }
+			&:hover { background-color: $ignis-control-hover; }
+		}
+	}
+
+	.ignis-search
+	{
+		flex-grow: 1;
+		flex-shrink: 1;
+		min-width: 0;
+		margin-right: 36px;
+		height: $ignis-control-height;
+		background-color: $ignis-control-bg-alt;
+		border-color: $ignis-control-bg;
+		border-radius: $ignis-border-radius;
+		color: $ignis-text;
+
+		&:focus { border-color: $ignis-control-selected; }
+		iconpanel { color: $ignis-muted; }
+		.content-label { color: $ignis-text; }
+		.content-label.placeholder { color: $ignis-faint; }
+	}
+
+	.ignis-list-wrap
+	{
+		flex-grow: 1;
+		flex-shrink: 1;
+		flex-direction: column;
+		overflow: hidden;
+		background-color: $ignis-panel-bg;
+		border: 1px solid $ignis-panel-bg;
+		border-radius: $ignis-border-radius;
+		border-color: $ignis-control-border;
+	}
+
+	.ignis-projects
+	{
+		flex-grow: 1;
+		flex-shrink: 1;
+		flex-direction: column;
+		overflow: scroll;
+		padding: 0;
+		scrollbar-width: thin;
+		scrollbar-color: #7b7b7b $ignis-panel-bg;
+	}
+
+	.ignis-section
+	{
+		flex-shrink: 0;
+		height: $ignis-section-height;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 14px;
+		border-bottom: #171a20 1px solid;
+		border-top: #171a20 1px solid;
+		background-color: $ignis-panel-bg;
+
+		&:nth-child(1) { border-top: 0; }
+
+		.text
+		{
+			color: $ignis-text;
+			font-size: 15px;
+			font-weight: 700;
+			white-space: nowrap;
+		}
+	}
+
+	.ignis-project-row
+	{
+		flex-shrink: 0;
+		height: $ignis-row-height;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 12px;
+		border-radius: 0;
+		border: 0;
+		cursor: pointer;
+		pointer-events: all;
+		transition: background-color 0.12s ease-out;
+
+		&.stripe-0 { background-color: $ignis-row-a; }
+		&.stripe-1 { background-color: $ignis-row-b; }
+		&.default { background-color: #2b3551; }
+		&:hover { background-color: $ignis-row-hover; }
+		&.selected { background-color: $ignis-selected; }
+		&.launching { animation-name: ignis-launch-pulse; animation-duration: 0.42s; animation-iteration-count: infinite; animation-direction: alternate; }
+
+		.thumb { width: $ignis-thumb-size; height: $ignis-thumb-size; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 4px; overflow: hidden; }
+		.text { flex-grow: 1; flex-shrink: 1; min-width: 0; flex-direction: column; margin-left: 10px; overflow: hidden; }
+		.name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.sub { font-size: 12px; color: #8a8f98; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+		.runningtag
+		{
+			display: none;
+			flex-shrink: 0;
+			flex-direction: row;
+			align-items: center;
+			margin-right: 8px;
+			color: #3dbe64;
+			font-size: 11px;
+			font-weight: 600;
+			white-space: nowrap;
+
+			.icon { font-size: 9px; margin-right: 5px; }
+		}
+
+		&.running .runningtag { display: flex; }
+
+		.badge
+		{
+			flex-shrink: 0;
+			margin-right: 10px;
+			color: $ignis-accent;
+			cursor: pointer;
+			pointer-events: all;
+
+			&.default { color: $ignis-text; opacity: 0; }
+			&.default.active { opacity: 1; }
+			&.pin { opacity: 0; }
+			&.pin.active { opacity: 1; }
+			.icon { font-size: 14px; }
+		}
+
+		&:hover .badge.default,
+		&:hover .badge.pin { opacity: 1; }
+	}
+
+	.project-thumb-image { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; pointer-events: none; }
+
+	.ignis-empty
+	{
+		flex-grow: 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		color: #8a8f98;
+
+		.icon { font-size: 38px; color: #6e737c; margin-bottom: 8px; }
+		.title { font-size: 15px; font-weight: 700; color: $ignis-text; white-space: nowrap; }
+		.hint { font-size: 12px; margin-top: 4px; white-space: nowrap; }
+	}
+
+	.ignis-footer
+	{
+		flex-shrink: 0;
+		flex-direction: row;
+		align-items: center;
+		padding: 10px 8px 0 8px;
+		background-color: $ignis-bg;
+	}
+
+	.ignis-launch-button
+	{
+		width: 200px;
+		justify-content: center;
+
+		i { font-size: 15px; margin-right: 6px; }
+	}
+
+	.close-on-launch
+	{
+		color: $ignis-muted;
+		pointer-events: all;
+
+		&:hover { color: #cfd3db; }
+		&:focus { border-color: $ignis-control-selected; }
+		&:focus .checkmark { border-color: $ignis-faint; }
+
+		.checkmark { width: 18px; height: 18px; background-color: $ignis-control-bg; border-color: $ignis-control-bg; color: $ignis-control-bg; margin-right: 8px; }
+		&.checked .checkmark { background-color: $ignis-faint; border-color: $ignis-faint; color: $ignis-text; }
+	}
+}
+
+@keyframes ignis-launch-pulse
+{
+	from { background-color: $ignis-selected; }
+	to { background-color: $ignis-selected-pulse; }
+}
+
+@keyframes ignis-banner-change
+{
+	from { transform: scale( 1.018 ); }
+	to { transform: scale( 1 ); }
+}
+
+@keyframes ignis-banner-swipe
+{
+	0% { transform: translateX( 0% ) skewX( -18deg ); opacity: 0; }
+	25% { opacity: 0.55; }
+	100% { transform: translateX( 330% ) skewX( -18deg ); opacity: 0; }
+}

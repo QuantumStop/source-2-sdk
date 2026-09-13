@@ -13,7 +13,7 @@ namespace Sandbox.LauncherUI;
 /// New project screen - pick a template, name it, create it. The creation itself is the same as
 /// the Qt creator's: copy the template with $ident/$title substitution, write the .sbproj.
 /// </summary>
-class ProjectCreatorPanel : Panel
+public class ProjectCreatorPanel : Panel
 {
 	/// <summary>
 	/// Done - with the new .sbproj path, or null if cancelled.
@@ -26,11 +26,21 @@ class ProjectCreatorPanel : Panel
 	Template _selected;
 
 	TextEntry _nameBox;
+	TextEntry _identBox;
 	Editor.FolderSelector _folderBox;
 	Checkbox _createGitIgnore;
 	Checkbox _setDefaultLocation;
+	Checkbox _enableBranding;
 	Label _description;
 	Label _pathPreview;
+	Panel _iconPreview;
+	Panel _bannerPreview;
+	Panel _splashPreview;
+
+	string _selectedIconPath;
+	string _selectedBannerPath;
+	string _selectedSplashPath;
+	bool _identEdited;
 
 	Button _createButton;
 
@@ -39,9 +49,8 @@ class ProjectCreatorPanel : Panel
 		AddClass( "creator" );
 
 		var container = this.Add.Panel( "creator-container" );
-		container.Add.Label( "New Project", "heading" );
-
-		var body = container.Add.Panel( "creator-body" );
+		var content = container.Add.Panel( "creator-content" );
+		var body = content.Add.Panel( "creator-body" );
 
 		var templates = body.Add.Panel( "template-pane" );
 		templates.Add.Label( "Choose a starting point", "section-heading" );
@@ -51,18 +60,59 @@ class ProjectCreatorPanel : Panel
 
 		var settings = body.Add.Panel( "settings" );
 		settings.Add.Label( "Project details", "section-heading" );
+		var settingsFields = settings.Add.Panel( "settings-fields" );
 
-		var nameField = Field( settings, "Title" );
+		var nameField = Field( settingsFields, "Title" );
 		_nameBox = nameField.AddChild<TextEntry>();
-		_nameBox.Placeholder = "My Project";
-		_nameBox.OnTextEdited = _ => UpdatePathPreview();
+		_nameBox.Placeholder = "Source 2 Project";
+		_nameBox.Text = DefaultProjectName();
+		_nameBox.OnTextEdited = _ =>
+		{
+			if ( !_identEdited )
+				_identBox.Text = MakeIdent( ProjectTitle );
 
-		var folderField = Field( settings, "Location" );
+			UpdatePathPreview();
+		};
+
+		var identField = Field( settingsFields, "Ident" );
+		_identBox = identField.AddChild<TextEntry>();
+		_identBox.Placeholder = "source2project";
+		_identBox.Text = MakeIdent( ProjectTitle );
+		_identBox.OnTextEdited = _ =>
+		{
+			_identEdited = true;
+			UpdatePathPreview();
+		};
+
+		var brandingField = Field( settingsFields, "Project Branding" );
+		var branding = brandingField.Add.Panel( "branding" );
+
+		_iconPreview = BrandingPicker( branding, "Icon", "256x256", () => PickBrandingImage( "Icon", path => _selectedIconPath = path, _iconPreview ) );
+
+		_enableBranding = brandingField.AddChild<Checkbox>();
+		_enableBranding.LabelText = "Enable optional branding";
+		_enableBranding.ValueChanged = enabled =>
+		{
+			_bannerPreview.SetClass( "hidden", !enabled );
+			_splashPreview.SetClass( "hidden", !enabled );
+		};
+
+		_bannerPreview = BrandingPicker( branding, "Banner", "555x115", () => PickBrandingImage( "Banner", path => _selectedBannerPath = path, _bannerPreview ) );
+		_bannerPreview.AddClass( "banner" );
+		_bannerPreview.AddClass( "hidden" );
+
+		_splashPreview = BrandingPicker( branding, "Splash", "580x370", () => PickBrandingImage( "Splashscreen", path => _selectedSplashPath = path, _splashPreview ) );
+		_splashPreview.AddClass( "splash" );
+		_splashPreview.AddClass( "hidden" );
+
+		var folderField = Field( settingsFields, "Location" );
 		_folderBox = folderField.AddChild<Editor.FolderSelector>();
 		_folderBox.Text = LauncherPreferences.DefaultProjectLocation;
 		_folderBox.ValueChanged = _ => UpdatePathPreview();
 
-		var otherField = Field( settings, "Other" );
+		var otherField = Field( settingsFields, "Other" );
+		otherField.AddClass( "inline" );
+		otherField.SetClass( "otherfields", true );
 
 		_createGitIgnore = otherField.AddChild<Checkbox>();
 		_createGitIgnore.LabelText = "Create .gitignore";
@@ -73,11 +123,9 @@ class ProjectCreatorPanel : Panel
 
 		var buttons = container.Add.Panel( "buttons" );
 
-		buttons.AddChild( new Button( "Back", null, "flatbutton", () => OnDone?.Invoke( null ) ) );
-
-		buttons.Add.Panel( "grow" );
-
 		_pathPreview = buttons.Add.Label( "", "path-preview" );
+		
+		buttons.Add.Panel( "grow" );
 
 		_createButton = buttons.AddChild( new Button( "Create", "add_box", "primarybutton", Create ) );
 
@@ -90,6 +138,29 @@ class ProjectCreatorPanel : Panel
 		field.AddClass( "field" );
 		field.Add.Label( title, "label" );
 		return field;
+	}
+
+	Panel BrandingPicker( Panel parent, string title, string size, Action onClick )
+	{
+		var picker = parent.Add.Panel( "branding-picker" );
+		picker.AddEventListener( "onclick", onClick );
+		picker.Add.Icon( "add_photo_alternate", "icon" );
+		picker.Add.Label( title, "title" );
+		picker.Add.Label( size, "size" );
+		return picker;
+	}
+
+	async void PickBrandingImage( string title, Action<string> setter, Panel preview )
+	{
+		var window = Editor.PanelWindow.FromPanel( this );
+		if ( window is null ) return;
+
+		var path = await window.PickOpenFile( LauncherPreferences.DefaultProjectLocation, "Images|png" );
+		if ( string.IsNullOrWhiteSpace( path ) ) return;
+
+		setter( path );
+		preview.Style.Set( "background-image", $"url( \"{ProjectMediaImage.CreateDataUri( path )}\" )" );
+		preview.SetClass( "has-image", true );
 	}
 
 	/// <summary>
@@ -144,11 +215,12 @@ class ProjectCreatorPanel : Panel
 
 		var cells = new Dictionary<Template, Panel>();
 
-		foreach ( var template in _templates )
+		for ( int i = 0; i < _templates.Count; i++ )
 		{
-			var current = template;
+			var current = _templates[i];
 
 			var cell = grid.Add.Panel( "template" );
+			cell.AddClass( $"stripe-{i % 2}" );
 			cell.AddEventListener( "onclick", () =>
 			{
 				_selected = current;
@@ -158,8 +230,12 @@ class ProjectCreatorPanel : Panel
 					p.SetClass( "selected", t == current );
 			} );
 
-			cell.Add.Icon( current.Icon, "icon" );
-			cell.Add.Label( current.Config.Title );
+			var thumb = cell.Add.Panel( "thumb" );
+			thumb.Add.Icon( current.Icon, "icon" );
+
+			var text = cell.Add.Panel( "text" );
+			text.Add.Label( current.Config.Title, "name" );
+			text.Add.Label( current.Description, "sub" );
 
 			cells[current] = cell;
 		}
@@ -177,7 +253,19 @@ class ProjectCreatorPanel : Panel
 
 	static string MakeIdent( string title )
 	{
-		return System.Text.RegularExpressions.Regex.Replace( title.ToLower(), "[^A-Za-z0-9_]", "_" ).Trim( '_' );
+		var ident = System.Text.RegularExpressions.Regex.Replace( title.ToLower(), "[^a-z0-9_]", "_" ).Trim( '_' );
+		return ident.Length > 32 ? ident[..32] : ident;
+	}
+
+	static string DefaultProjectName()
+	{
+		string name = "My Project";
+		int i = 1;
+
+		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, MakeIdent( name ) ) ) )
+			name = $"My Project {i++}";
+
+		return name;
 	}
 
 	string ProjectTitle => string.IsNullOrWhiteSpace( _nameBox.Text ) ? "My Project" : _nameBox.Text.Trim();
@@ -188,7 +276,7 @@ class ProjectCreatorPanel : Panel
 	{
 		get
 		{
-			var ident = MakeIdent( ProjectTitle );
+			var ident = MakeIdent( string.IsNullOrWhiteSpace( _identBox.Text ) ? ProjectTitle : _identBox.Text );
 			return ident.Length == 0 ? "my_project" : ident;
 		}
 	}
@@ -223,12 +311,26 @@ class ProjectCreatorPanel : Panel
 		}
 
 		Directory.CreateDirectory( projectPath );
+		var brandingDir = Path.Combine( projectPath, "Editor", "Media" );
 
-		var config = _selected.Config;
+		var config = _selected is not null
+			? JsonSerializer.Deserialize<ProjectConfig>( _selected.Config.ToJson() )
+			: new ProjectConfig();
+
 		config.Ident = ProjectIdent;
 		config.Title = ProjectTitle;
 		config.Org = "local";
 		config.Type ??= "game";
+		config.Directory = new DirectoryInfo( projectPath );
+		config.Schema = 1;
+
+		var iconRelativePath = CopyBrandingImage( _selectedIconPath, brandingDir, "icon.png" );
+		var bannerRelativePath = CopyBrandingImage( _selectedBannerPath, brandingDir, "banner.png" );
+		var splashRelativePath = CopyBrandingImage( _selectedSplashPath, brandingDir, "splash.png" );
+
+		config.ProjectIcon = iconRelativePath;
+		config.ProjectBanner = bannerRelativePath;
+		config.ProjectSplash = splashRelativePath;
 
 		// clear out template info from our new project, it's not needed for end users
 		config.SetMeta( "ProjectTemplate", null );
@@ -237,6 +339,10 @@ class ProjectCreatorPanel : Panel
 		{
 			CopyTemplate( _selected.Path, projectPath, config.Ident, config.Title );
 		}
+
+		config.ProjectIcon ??= iconRelativePath;
+		config.ProjectBanner ??= bannerRelativePath;
+		config.ProjectSplash ??= splashRelativePath;
 
 		var configPath = Path.Combine( projectPath, $"{config.Ident}.sbproj" );
 		File.WriteAllText( configPath, config.ToJson() );
@@ -252,6 +358,16 @@ class ProjectCreatorPanel : Panel
 		}
 
 		OnDone?.Invoke( configPath );
+	}
+
+	static string CopyBrandingImage( string source, string directory, string filename )
+	{
+		if ( string.IsNullOrWhiteSpace( source ) || !File.Exists( source ) )
+			return null;
+
+		Directory.CreateDirectory( directory );
+		File.Copy( source, Path.Combine( directory, filename ), true );
+		return $"Editor/Media/{filename}";
 	}
 
 	/// <summary>

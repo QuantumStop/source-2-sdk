@@ -114,6 +114,7 @@ game/sbox-standalone.runtimeconfig.json
 !game/core/**/*.razor.scss
 !game/core/styles/**/*.scss
 !game/core/Styles/**/*.scss
+!game/addons/editor/assets/styles/**/*.scss
 
 !game/bin/thirdparty/*
 !game/core/materials/default/default_mask.tga

@@ -1,4 +1,4 @@
-﻿global using Sandbox;
+global using Sandbox;
 global using Sandbox.Utility;
 global using System;
 global using System.Collections.Generic;
@@ -84,10 +84,17 @@ public class PanelLauncherAppSystem : PanelAppSystem
 	{
 		LauncherPreferences.Load();
 
-		window = new Editor.PanelWindow( "Welcome to the s&box editor", new Vector2( 1100, 660 ), new Vector2( -1, -1 ), borderless: true, vsync: true );
-		window.MinSize = new Vector2( 880, 540 );
+		window = new Editor.PanelWindow( "Project Selection", new Vector2( 560, 750 ), new Vector2( -1, -1 ), borderless: true, vsync: true );
+		window.MinSize = new Vector2( 560, 650 );
+		window.MaxSize = new Vector2( 560, 0 );
+		window.Resizable = true;
+		window.CanResizeHorizontally = false;
 		window.CanMaximize = false;
-		window.Root.AddChild( new Sandbox.LauncherUI.LauncherWindow( window ) );
+
+		var launcher = new LauncherUI.IgnisLauncherWindowRazor { Window = window };
+		window.Root.AddChild( launcher );
+		window.Root.MarkRenderDirty();
+		window.Root.LayoutTree.MarkDirty();
 	}
 
 	public override void Shutdown()

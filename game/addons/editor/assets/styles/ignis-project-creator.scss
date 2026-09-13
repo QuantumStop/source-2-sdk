@@ -1,0 +1,244 @@
+@import "ignis-launcher.scss";
+
+.creator-window-host
+{
+	width: 100%;
+	height: 100%;
+	flex-direction: column;
+	background-color: $ignis-bg;
+	color: $ignis-text;
+	overflow: hidden;
+
+	.creator
+	{
+		width: 100%;
+		height: auto;
+		flex-grow: 1;
+		flex-direction: column;
+		overflow: scroll;
+		padding: 14px 16px 22px;
+		background-color: $ignis-bg;
+		color: $ignis-text;
+		scrollbar-width: thin;
+		scrollbar-color: #7b7b7b $ignis-panel-bg;
+
+		.creator-container,
+		.creator-content,
+		.creator-body,
+		.template-pane,
+		.settings,
+		.settings-fields { width: 100%; }
+
+		.creator-container { flex-direction: column; }
+
+		.creator-content
+		{
+			flex-direction: column;
+			background-color: $ignis-panel-bg;
+			border: 1px solid $ignis-control-border;
+			border-radius: $ignis-border-radius;
+			overflow: hidden;
+		}
+
+		.creator-body,
+		.template-pane,
+		.settings,
+		.settings-fields { flex-direction: column; }
+
+		.settings { margin-top: 0; }
+		.settings-fields { padding: 10px 12px 4px; }
+
+		.section-heading
+		{
+			height: $ignis-section-height;
+			flex-shrink: 0;
+			align-items: center;
+			padding: 0 14px;
+			margin: 0;
+			background-color: $ignis-panel-bg;
+			border-top: 1px solid #171a20;
+			border-bottom: 1px solid #171a20;
+			color: $ignis-text;
+			font-size: 15px;
+			font-weight: 700;
+			letter-spacing: 0;
+			text-transform: none;
+		}
+
+		.template-pane > .section-heading { border-top: 0; }
+
+		.field
+		{
+			width: 100%;
+			flex-shrink: 0;
+			flex-direction: column;
+			margin-bottom: 10px;
+
+			> .label { align-self: flex-start; color: $ignis-muted; margin-bottom: 4px; font-weight: 600; }
+			.textentry, .folderselector { width: 100%; }
+
+			.textentry,
+			.folderselector .textentry
+			{
+				height: $ignis-control-height;
+				background-color: $ignis-control-bg-alt;
+				border-color: $ignis-control-bg;
+				border-radius: $ignis-border-radius;
+				color: $ignis-text;
+
+				&:focus { border-color: $ignis-control-selected; }
+				.content-label { color: $ignis-text; }
+				.content-label.placeholder { color: $ignis-faint; }
+			}
+
+			.folderselector .iconbutton
+			{
+				width: $ignis-control-height;
+				height: $ignis-control-height;
+				background-color: $ignis-control-bg;
+				border-color: $ignis-control-border;
+				border-radius: $ignis-border-radius;
+				color: $ignis-muted;
+
+				&:hover { background-color: $ignis-control-hover; }
+			}
+
+			&.inline
+			{
+				flex-direction: row;
+				align-items: center;
+				margin-bottom: 6px;
+
+				> .label { width: auto; flex-shrink: 0; padding-right: 0; margin: 0 50px 0 0; }
+				.checkbox { flex-shrink: 0; margin-right: 10px; font-size: 11px; white-space: nowrap; }
+			}
+		}
+
+		.templates
+		{
+			width: 100%;
+			flex-shrink: 0;
+			flex-direction: column;
+			flex-wrap: nowrap;
+			gap: 0;
+			margin: 0;
+			overflow: hidden;
+		}
+
+		.template
+		{
+			width: 100%;
+			height: $ignis-row-height;
+			flex-shrink: 0;
+			flex-direction: row;
+			align-items: center;
+			margin: 0;
+			padding: 0 10px;
+			border: 0;
+			border-radius: 0;
+			color: $ignis-text;
+			pointer-events: all;
+			cursor: pointer;
+
+			&.stripe-0 { background-color: $ignis-row-a; }
+			&.stripe-1 { background-color: $ignis-row-b; }
+			&:hover { background-color: $ignis-control-hover; }
+			&.selected { background-color: $ignis-selected; }
+
+			.thumb
+			{
+				width: $ignis-thumb-size;
+				height: $ignis-thumb-size;
+				flex-shrink: 0;
+				align-items: center;
+				justify-content: center;
+				text-align: center;
+				background-color: $ignis-control-bg;
+				border-radius: $ignis-border-radius;
+			}
+
+			.icon { width: 100%; height: 100%; align-items: center; justify-content: center; margin: 0; font-size: 20px; color: $ignis-muted; }
+			&.selected .icon { color: $ignis-text; }
+			.text { flex-grow: 1; min-width: 0; flex-direction: column; margin-left: 10px; }
+			.name { color: $ignis-text; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			.sub { margin-top: 1px; color: $ignis-muted; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		}
+
+		.template-description { display: none; }
+
+		.branding
+		{
+			flex-direction: row;
+			flex-wrap: wrap;
+			gap: 10px;
+			margin-bottom: 8px;
+		}
+
+		.branding-picker
+		{
+			width: 104px;
+			height: 74px;
+			flex-shrink: 0;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			background-color: $ignis-control-bg;
+			background-size: cover;
+			background-position: center;
+			border: 1px solid $ignis-control-border;
+			border-radius: $ignis-border-radius;
+			color: $ignis-muted;
+			cursor: pointer;
+			pointer-events: all;
+			overflow: hidden;
+
+			&.banner { width: 148px; }
+			&.splash { width: 116px; height: 74px; }
+			&.hidden { display: none; }
+			&:hover { background-color: $ignis-control-hover; border-color: $ignis-control-selected; }
+			&.has-image { justify-content: flex-end; }
+			.icon { font-size: 20px; margin-bottom: 4px; }
+			&.has-image .icon { display: none; }
+			.title { font-size: 11px; font-weight: 700; color: $ignis-text; text-shadow: 0 1px 3px rgba( #000000, 0.8 ); }
+			.size { font-size: 9px; color: #d5d8df; text-shadow: 0 1px 3px rgba( #000000, 0.8 ); }
+		}
+
+		.checkbox
+		{
+			align-self: flex-start;
+			color: $ignis-muted;
+			pointer-events: all;
+
+			&:hover { color: #cfd3db; }
+			&:focus { border-color: $ignis-control-selected; }
+			&:focus .checkmark { border-color: $ignis-faint; }
+
+			.checkmark
+			{
+				width: 18px;
+				height: 18px;
+				margin-right: 8px;
+				background-color: $ignis-control-bg;
+				border-color: $ignis-control-bg;
+				color: $ignis-control-bg;
+			}
+
+			&.checked .checkmark { background-color: $ignis-faint; border-color: $ignis-faint; color: $ignis-text; }
+		}
+
+		.otherfields { border-top: 1px solid $ignis-control-border; margin-top: 10px; padding-top: 10px; flex-direction: row; gap: 10px; }
+
+		.buttons
+		{
+			flex-shrink: 0;
+			flex-direction: row;
+			align-items: center;
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 1px solid $ignis-control-border;
+
+			.path-preview { color: $ignis-muted; margin-right: 12px; }
+			.path-preview.error { color: $ignis-danger; }
+		}
+	}
+}

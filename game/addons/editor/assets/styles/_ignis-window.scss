@@ -1,0 +1,52 @@
+.ignis-window
+{
+	.grow { flex-grow: 1; }
+
+	.ignis-titlebar
+	{
+		flex-shrink: 0;
+		height: $ignis-titlebar-height;
+		flex-direction: row;
+		align-items: center;
+		padding: 0 8px 0 14px;
+		background-color: $ignis-titlebar-bg;
+		border-bottom: 1px solid $ignis-border;
+	}
+
+	.ignis-title-icon
+	{
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
+		margin-right: 8px;
+		background-image: url( tools/images/common/logo.png );
+		background-size: cover;
+		background-position: center;
+	}
+
+	.ignis-window-title
+	{
+		font-size: 12px;
+		font-weight: 600;
+		color: #8a8f98;
+		white-space: nowrap;
+	}
+
+	.ignis-windowbutton
+	{
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		color: #cfd3db;
+		cursor: pointer;
+		pointer-events: all;
+
+		&:hover { background-color: #272a30; color: $ignis-text; }
+		&.close:hover { background-color: $ignis-danger; }
+		i { font-size: 16px; }
+	}
+
+	.primarybutton { border-radius: 4px; }
+}

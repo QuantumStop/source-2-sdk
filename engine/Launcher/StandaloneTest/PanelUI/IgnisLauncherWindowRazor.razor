@@ -1,0 +1,610 @@
+@namespace Sandbox.LauncherUI
+@inherits Panel
+
+@using Sandbox
+@using Sandbox.UI
+@using System
+@using System.Collections.Generic
+@using System.Diagnostics
+@using System.IO
+@using System.Linq
+
+<root class="ignis-window ignis-launcher ignis-content @(Dropping ? "dropping" : "")"
+	  style="width: 100%; height: 100%; flex-direction: column;"
+	  ondrop=@((DropEvent e) => OnDrop( e ))
+	  ondragleave=@(() => OnDragLeave())>
+
+	<div class="ignis-titlebar window-drag">
+		<div class="ignis-title-icon"></div>
+		<label class="ignis-window-title">Project Selection</label>
+		<div class="grow"></div>
+		<div class="ignis-windowbutton window-nodrag" onclick=@MinimizeWindow><i>remove</i></div>
+		<div class="ignis-windowbutton window-nodrag close" onclick=@CloseWindow><i>close</i></div>
+	</div>
+
+	<div class="ignis-body">
+		<div class="ignis-banner @(IsBannerSwiping ? "swiping" : "")">
+			<ProjectMediaImage class="ignis-banner-image" ProjectRoot=@SelectedProjectRoot Source=@SelectedProjectBanner Fallback=@BannerFallbackPath />
+			<div class="ignis-banner-swipe"></div>
+		</div>
+
+		<div class="ignis-toolbar">
+			<TextEntry @ref=SearchBox class="ignis-search" Icon="search" Placeholder="Search" OnTextEdited=@OnSearchEdited />
+			<div class="iconbutton" onclick=@AddExistingProjectAsync><i>create_new_folder</i></div>
+			<div class="flatbutton" onclick=@ShowCreator><i>add</i><label>Create New Project...</label></div>
+		</div>
+
+		<div class="ignis-list-wrap">
+			<div class="ignis-projects">
+				@if ( PinnedProjects.Any() )
+				{
+					<div class="ignis-section">
+						<label class="text">Pinned Projects</label>
+					</div>
+
+					@for ( int i = 0; i < PinnedProjects.Count; i++ )
+					{
+						@ProjectRow( PinnedProjects[i], i )
+					}
+				}
+
+				@if ( UnpinnedProjects.Any() )
+				{
+					<div class="ignis-section">
+						<label class="text">Projects</label>
+					</div>
+
+					@for ( int i = 0; i < UnpinnedProjects.Count; i++ )
+					{
+						@ProjectRow( UnpinnedProjects[i], i )
+					}
+				}
+
+				@if ( !VisibleProjects.Any() )
+				{
+					<div class="ignis-empty">
+						<i class="icon">rocket_launch</i>
+						<label class="title">@(Filter.Length > 0 ? $"Nothing matches \"{Filter}\"" : "No projects yet")</label>
+						<label class="hint">@(Filter.Length > 0 ? "Try a different search." : "Create or add a project to get started.")</label>
+					</div>
+				}
+			</div>
+		</div>
+
+		<div class="ignis-footer">
+			<Checkbox class="window-nodrag close-on-launch" LabelText="Close On Launch" Checked=@LauncherPreferences.CloseOnLaunch ValueChanged=@((bool value) => SetCloseOnLaunch( value )) />
+			<div class="grow"></div>
+			<div class="primarybutton ignis-launch-button @(SelectedProject is null || IsLaunchInProgress ? "disabled" : "")" onclick=@LaunchSelectedProject>
+				<i>play_arrow</i>
+				<label>@LaunchButtonText</label>
+			</div>
+		</div>
+	</div>
+
+</root>
+
+@code
+{
+	[Parameter] public Editor.PanelWindow Window { get; set; } = null!;
+
+	readonly Editor.ProjectList ProjectList = new Editor.ProjectList();
+
+	TextEntry SearchBox = null!;
+
+	List<Project> VisibleProjects = new List<Project>();
+	List<Project> PinnedProjects = new List<Project>();
+	List<Project> UnpinnedProjects = new List<Project>();
+	HashSet<string> RunningProjects = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
+
+	Project SelectedProject = null!;
+	Project LaunchingProject = null!;
+
+	string Filter = "";
+	bool Dropping;
+	bool SearchFocused;
+	bool IsLaunchInProgress;
+	bool IsBannerSwiping;
+	float LaunchAnimationPhase;
+	int InitialRenderFrames = 8;
+	string CurrentBannerKey;
+	Editor.PanelWindow CreatorWindow;
+	const string DefaultLaunchButtonText = "Launch Project";
+	const string BannerFallbackPath = "tools/images/common/launcher_banner.png";
+	const string ProjectIconFallbackPath = "tools/images/common/logo.png";
+
+	public IgnisLauncherWindowRazor()
+	{
+		AddClass( classname: "editor-window" );
+		AddClass( classname: "ignis-launcher" );
+		StyleSheet.Load( filename: "/styles/editor.scss" );
+		StyleSheet.Load( filename: "/styles/launcher.scss" );
+		StyleSheet.Load( filename: "/styles/ignis-launcher.scss" );
+	}
+
+	string LaunchButtonText => IsLaunchInProgress && LaunchingProject is not null
+		? $"Launching {LaunchingProject.Config.Title}..."
+		: DefaultLaunchButtonText;
+
+	string SelectedProjectRoot => ProjectRoot( SelectedProject );
+	string SelectedProjectBanner => SelectedProject?.Config.ProjectBanner;
+
+	void MinimizeWindow()
+	{
+		Window?.Minimize();
+	}
+
+	void CloseWindow()
+	{
+		Window?.RequestClose();
+	}
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+
+		if ( VisibleProjects.Count == 0 )
+			RefreshProjects();
+	}
+
+	protected override void OnAfterTreeRender( bool firstTime )
+	{
+		base.OnAfterTreeRender( firstTime );
+
+		if ( !SearchFocused && SearchBox.IsValid() )
+		{
+			SearchFocused = true;
+			SearchBox.Focus();
+		}
+
+		if ( firstTime )
+		{
+			InitialRenderFrames = 8;
+			ForceInitialRender();
+			_ = WatchRunningEditorsAsync();
+		}
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		if ( InitialRenderFrames <= 0 )
+			return;
+
+		InitialRenderFrames--;
+		ForceInitialRender();
+	}
+
+	void ForceInitialRender()
+	{
+		MarkRenderDirty();
+		LayoutTree.MarkDirty();
+		StateHasChanged();
+	}
+
+	RenderFragment ProjectRow( Project project, int row ) => @<div class="ignis-project-row stripe-@(row % 2) @(project == SelectedProject ? "selected" : "") @(project.IsDefault ? "default" : "") @(RunningProjects.Contains( ProjectPath( project ) ) ? "running" : "") @(project == LaunchingProject && IsLaunchInProgress ? "launching" : "")"
+		style="animation-delay: @(MathF.Sin( LaunchAnimationPhase ) * 0.03f)s"
+		onclick=@((PanelEvent e) => SelectProject( project, e ))
+		onrightclick=@((PanelEvent e) => OpenRowMenu( project, e ))>
+		<div class="thumb image">
+			<ProjectMediaImage class="project-thumb-image" ProjectRoot=@ProjectRoot( project ) Source=@ProjectIconSource( project ) Fallback=@ProjectIconFallbackPath />
+		</div>
+		<div class="text">
+			<label class="name">@project.Config.Title</label>
+			<div class="subtitle-text" style="display: flex; flex-direction: row; gap: 4px; align-items: center;">
+				<i style="color: #a0a0a0;">access_time</i> <label class="sub">@ProjectSubtitle( project )</label>
+			</div>
+		</div>
+		<div class="runningtag">
+			<i class="icon">circle</i>
+			<label class="running-label">Running</label>
+		</div>
+		<div class="badge default @(project.IsDefault ? "active" : "")" onclick=@((PanelEvent e) => SetDefaultProject( project, e ))><i class="icon">star</i></div>
+		<div class="badge pin @(project.Pinned ? "active" : "")" onclick=@((PanelEvent e) => TogglePinned( project, e ))><i class="icon">push_pin</i></div>
+	</div>;
+
+	void OnSearchEdited( string value )
+	{
+		Filter = value ?? "";
+		RefreshProjects();
+	}
+
+	void RefreshProjects()
+	{
+		ProjectList.Refresh();
+
+		List<Project> projects = ProjectList.GetAll().Where( x => !x.IsBuiltIn ).ToList();
+		List<Project> samples = FindSamples();
+		List<Project> local = projects.Where( x => !samples.Any( y => x.ConfigFilePath == y.ConfigFilePath ) ).ToList();
+
+		local = local.OrderByDescending( x => x.LastOpened ).ToList();
+
+		if ( Filter.Length > 0 )
+		{
+			bool Matches( Project x ) =>
+				(x.Config.Title?.Contains( Filter, StringComparison.OrdinalIgnoreCase ) ?? false) ||
+				(x.Package?.Title?.Contains( Filter, StringComparison.OrdinalIgnoreCase ) ?? false) ||
+				(x.Package?.Org.Title?.Contains( Filter, StringComparison.OrdinalIgnoreCase ) ?? false);
+
+			local = local.Where( Matches ).ToList();
+		}
+
+		VisibleProjects = local;
+		PinnedProjects = local.Where( x => x.Pinned ).ToList();
+		UnpinnedProjects = local.Where( x => !x.Pinned ).ToList();
+
+		RestoreDefaultProject( local );
+		UpdateBanner();
+
+		StateHasChanged();
+	}
+
+	void RestoreDefaultProject( List<Project> projects )
+	{
+		string defaultIdent = LauncherPreferences.DefaultProjectIdent;
+		Project defaultProject = projects.FirstOrDefault( p => p.Config.FullIdent == defaultIdent )
+			?? projects.FirstOrDefault();
+
+		SelectedProject = SelectedProject is not null && projects.Contains( SelectedProject )
+			? SelectedProject
+			: defaultProject;
+
+		foreach ( Project project in ProjectList.GetAll() )
+			project.IsDefault = project == defaultProject;
+	}
+
+	List<Project> FindSamples()
+	{
+		List<Project> samples = new List<Project>();
+
+		try
+		{
+			foreach ( string dir in System.IO.Directory.EnumerateDirectories( "samples/" ) )
+			{
+				string file = System.IO.Directory.EnumerateFiles( dir, searchPattern: "*.sbproj" ).FirstOrDefault();
+				if ( file is null ) continue;
+
+				Project sample = ProjectList.TryAddFromFile( file );
+				if ( sample is not null ) samples.Add( sample );
+			}
+		}
+		catch ( Exception e )
+		{
+			Log.Info( message: $"Couldn't read the samples folder: {e.Message}" );
+		}
+
+		return samples;
+	}
+
+	void SelectProject( Project project )
+	{
+		SelectedProject = project;
+		UpdateBanner( animateChange: true );
+		StateHasChanged();
+	}
+
+	void SelectProject( Project project, PanelEvent e )
+	{
+		e.StopPropagation();
+		SelectProject( project );
+	}
+
+	void SetDefaultProject( Project project )
+	{
+		foreach ( Project p in ProjectList.GetAll() )
+			p.IsDefault = false;
+
+		project.IsDefault = true;
+		LauncherPreferences.DefaultProjectIdent = project.Config.FullIdent;
+		LauncherPreferences.Save();
+
+		SelectProject( project );
+	}
+
+	void SetDefaultProject( Project project, PanelEvent e )
+	{
+		e.StopPropagation();
+		SetDefaultProject( project );
+	}
+
+	void TogglePinned( Project project )
+	{
+		project.Pinned = !project.Pinned;
+		ProjectList.SaveList();
+		RefreshProjects();
+	}
+
+	void TogglePinned( Project project, PanelEvent e )
+	{
+		e.StopPropagation();
+		TogglePinned( project );
+	}
+
+	void UpdateBanner( bool animateChange = false )
+	{
+		string bannerKey = $"{SelectedProjectRoot}|{SelectedProjectBanner ?? BannerFallbackPath}";
+
+		if ( animateChange && CurrentBannerKey is not null && bannerKey != CurrentBannerKey )
+			_ = PlayBannerSwipeAsync();
+
+		CurrentBannerKey = bannerKey;
+		StateHasChanged();
+	}
+
+	async Task PlayBannerSwipeAsync()
+	{
+		IsBannerSwiping = false;
+		StateHasChanged();
+
+		await Task.Delay( 16 );
+		if ( !this.IsValid() ) return;
+
+		IsBannerSwiping = true;
+		StateHasChanged();
+
+		await Task.Delay( 460 );
+		if ( !this.IsValid() ) return;
+
+		IsBannerSwiping = false;
+		StateHasChanged();
+	}
+
+	void SetCloseOnLaunch( bool value )
+	{
+		LauncherPreferences.CloseOnLaunch = value;
+		LauncherPreferences.Save();
+	}
+
+	void OpenRowMenu( Project project )
+	{
+		List<PopupMenu.Item> items = new List<PopupMenu.Item>();
+
+		if ( RunningProjects.Contains( ProjectPath( project ) ) )
+			items.Add( item: new PopupMenu.Item( Title: "Launch Another Instance", () => _ = LaunchProjectWithAnimation( project, force: true ), "rocket_launch" ) );
+
+		items.Add( item: new PopupMenu.Item( project.Pinned ? "Unpin" : "Pin", () =>
+		{
+			TogglePinned( project );
+		}, Icon: "push_pin" ) );
+
+		items.Add( new( "Make Default", () =>
+		{
+			SetDefaultProject( project );
+		}, Icon: "star" ) );
+
+		if ( project.Config.Directory is not null )
+			items.Add( item: new PopupMenu.Item( $"Open {project.Config.Directory.FullName}", () => Editor.EditorUtility.OpenFolder( project.Config.Directory.FullName ), "folder" ) );
+
+		if ( project.Package?.IsRemote ?? false )
+		{
+			items.Add( item: null );
+			items.Add( item: new PopupMenu.Item( Title: $"View on {Global.BackendTitle}", () => Editor.EditorUtility.OpenFolder( project.ViewUrl ), "language" ) );
+			items.Add( item: new PopupMenu.Item( Title: "Copy Package Url", () => Editor.EditorUtility.Clipboard.Copy( project.ViewUrl ), "content_paste" ) );
+		}
+
+		items.Add( item: null );
+		items.Add( item: new PopupMenu.Item( Title: "Remove From List", () =>
+		{
+			ProjectList.Remove( project );
+			ProjectList.SaveList();
+			RefreshProjects();
+		}, Icon: "delete" ) );
+
+		PopupMenu.Open( Window, items );
+	}
+
+	void OpenRowMenu( Project project, PanelEvent e )
+	{
+		e.StopPropagation();
+		OpenRowMenu( project );
+	}
+
+	async Task AddExistingProjectAsync()
+	{
+		string path = await Window.PickFolder( LauncherPreferences.DefaultProjectLocation );
+		if ( string.IsNullOrEmpty( path ) ) return;
+
+		AddProjectFromPath( path );
+	}
+
+	static bool CouldBeProject( string path )
+		=> path.EndsWith( value: ".sbproj", StringComparison.OrdinalIgnoreCase ) || System.IO.Directory.Exists( path );
+
+	void AddProjectFromPath( string path )
+	{
+		if ( System.IO.Directory.Exists( path ) )
+			path = System.IO.Directory.EnumerateFiles( path, searchPattern: "*.sbproj" ).FirstOrDefault();
+
+		if ( path is null || !path.EndsWith( value: ".sbproj", StringComparison.OrdinalIgnoreCase ) ) return;
+
+		Project project = ProjectList.TryAddFromFile( path );
+		if ( project is null ) return;
+
+		ProjectList.SaveList();
+		SelectedProject = project;
+		RefreshProjects();
+	}
+
+	void ShowCreator()
+	{
+		if ( CreatorWindow is { IsOpen: true } )
+		{
+			CreatorWindow.BringToFront();
+			return;
+		}
+
+		CreatorWindow = new Editor.PanelWindow( title: "New Project", size: new Vector2( x: 460, y: 740 ), Window.Position + new Vector2( x: 24, y: 24 ), borderless: true, vsync: true );
+		CreatorWindow.MinSize = new Vector2( x: 460, y: 740 );
+		CreatorWindow.MaxSize = new Vector2( x: 460, y: 740 );
+		CreatorWindow.CanMaximize = false;
+		CreatorWindow.Owner = Window;
+		CreatorWindow.Root.AddChild( p: new ProjectCreatorWindowPanel { Window = CreatorWindow, OnDone = OnCreatorDone } );
+	}
+
+	void OnCreatorDone( string configPath )
+	{
+		CreatorWindow = null;
+
+		if ( configPath is not null )
+		{
+			Project project = ProjectList.TryAddFromFile( configPath );
+			ProjectList.SaveList();
+
+			if ( project is not null )
+			{
+				SelectedProject = project;
+				RefreshProjects();
+				_ = LaunchProjectWithAnimation( project );
+				return;
+			}
+		}
+
+		RefreshProjects();
+	}
+
+	void LaunchSelectedProject()
+	{
+		if ( SelectedProject is null || IsLaunchInProgress )
+			return;
+
+		_ = LaunchProjectWithAnimation( SelectedProject );
+	}
+
+	async Task LaunchProjectWithAnimation( Project project, bool force = false )
+	{
+		if ( project is null || IsLaunchInProgress ) return;
+		if ( !force && RunningProjects.Contains( ProjectPath( project ) ) ) return;
+
+		IsLaunchInProgress = true;
+		LaunchingProject = project;
+		SelectedProject = project;
+		StateHasChanged();
+
+		Stopwatch timer = Stopwatch.StartNew();
+
+		try
+		{
+			LaunchProject( project );
+
+			while ( timer.ElapsedMilliseconds < 2500 )
+			{
+				LaunchAnimationPhase = (float)(timer.Elapsed.TotalSeconds * 7.5f);
+				StateHasChanged();
+				await Task.Delay( ms: 16 );
+
+				if ( !this.IsValid() )
+					return;
+			}
+		}
+		finally
+		{
+			if ( this.IsValid() )
+			{
+				IsLaunchInProgress = false;
+				LaunchingProject = null;
+				LaunchAnimationPhase = 0;
+				StateHasChanged();
+			}
+		}
+	}
+
+	void LaunchProject( Project project )
+	{
+		project.LastOpened = DateTimeOffset.Now;
+		ProjectList.SaveList();
+
+		ProcessStartInfo info = new ProcessStartInfo( NetCore.GetExecutablePath( baseName: "sbox-dev" ), $"{Environment.CommandLine} -project \"{project.ConfigFilePath}\"" )
+		{
+			UseShellExecute = OperatingSystem.IsWindows(),
+			CreateNoWindow = true,
+			WorkingDirectory = Environment.CurrentDirectory
+		};
+
+		Process.Start( info );
+		RunningProjects.Add( ProjectPath( project ) );
+
+		if ( LauncherPreferences.CloseOnLaunch )
+			Window.Dispose();
+	}
+
+	async Task WatchRunningEditorsAsync()
+	{
+		while ( this.IsValid() )
+		{
+			HashSet<string> running = await Task.RunInThreadAsync( RunningEditors.Scan );
+
+			if ( !running.SetEquals( RunningProjects ) )
+			{
+				RunningProjects = running;
+				StateHasChanged();
+			}
+
+			await Task.Delay( 2000 );
+		}
+	}
+
+	void OnDrop( DropEvent drop )
+	{
+		bool accept = drop.Files.Any( CouldBeProject );
+		Dropping = accept && !drop.IsDrop;
+
+		if ( !accept ) return;
+
+		drop.Action = DropAction.Copy;
+		if ( !drop.IsDrop ) return;
+
+		foreach ( string file in drop.Files )
+			AddProjectFromPath( file );
+
+		Dropping = false;
+	}
+
+	void OnDragLeave()
+	{
+		Dropping = false;
+		StateHasChanged();
+	}
+
+	static string ProjectPath( Project project ) => System.IO.Path.GetFullPath( project.ConfigFilePath );
+
+	static string ProjectSubtitle( Project project )
+	{
+		// string org = project.Config.Org == "local" ? "Local" : project.Package?.Org.Title ?? project.Config.Org;
+		return $"{ProjectTime( project.LastOpened.LocalDateTime )}";
+	}
+
+	static string ProjectIconSource( Project project )
+	{
+		string iconPath = project?.Config?.ProjectIcon;
+		if ( string.IsNullOrWhiteSpace( iconPath ) )
+			iconPath = project?.Config?.GetMetaOrDefault<string>( keyname: "ProjectIcon", defaultValue: null );
+
+		if ( string.IsNullOrWhiteSpace( iconPath ) )
+			return null;
+
+		string projectDir = project?.Config?.Directory?.FullName ?? Path.GetDirectoryName( project?.ConfigFilePath ?? "" );
+		string fullIconPath = Path.Combine( projectDir ?? "", iconPath.Replace( oldChar: '/', Path.DirectorySeparatorChar ) );
+
+		return File.Exists( fullIconPath )
+			? iconPath
+			: null;
+	}
+
+	static string ProjectIconPath( Project project )
+	{
+		string iconPath = ProjectIconSource( project );
+		if ( string.IsNullOrWhiteSpace( iconPath ) )
+			return null;
+
+		return Path.Combine( ProjectRoot( project ) ?? "", iconPath.Replace( oldChar: '/', Path.DirectorySeparatorChar ) );
+	}
+
+	static string ProjectRoot( Project project )
+		=> project?.RootDirectory?.FullName ?? project?.Config?.Directory?.FullName ?? Path.GetDirectoryName( project?.ConfigFilePath ?? "" );
+
+	static string ProjectTime( DateTime time )
+	{
+		if ( time.Year <= 2000 ) return "never opened";
+		return time.ToString( format: "M/d/yyyy h:mm tt" );
+	}
+}
