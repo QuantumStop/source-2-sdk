@@ -18,9 +18,15 @@ public sealed class DevCustomTabHost : Panel
 
 		Scroll = AddChild<DevScrollPanel>();
 		Scroll.AddClass( "customtab-scroll" );
+		Scroll.EnableHorizontal = false;
+		Scroll.Style.Width = Length.Percent( 100 );
+		Scroll.Style.Height = Length.Percent( 100 );
+		Scroll.Style.Dirty();
 
 		Canvas = Scroll.Canvas;
 		Canvas.AddClass( "customtab-canvas" );
+		Canvas.Style.Width = Length.Percent( 100 );
+		Canvas.Style.Dirty();
 	}
 
 	public void SetContent( Panel content )

@@ -1,0 +1,25 @@
+@namespace Sandbox.UI.Dev
+@inherits Panel
+@using System.Collections.Generic
+
+<root class="@RootClass">
+	@if ( Buttons is not null )
+	{
+		@for ( int i = 0; i < Buttons.Count; i++ )
+		{
+			DevCommandButtonSpec button = Buttons[i];
+			<DevCommandButtonRow Button="@button" Index="@i" Columns="@Columns" />
+		}
+	}
+</root>
+
+@code
+{
+	[Parameter] public IReadOnlyList<DevCommandButtonSpec> Buttons { get; set; }
+	[Parameter] public int Columns { get; set; } = 2;
+	[Parameter] public string VariantClass { get; set; }
+
+	private string RootClass => string.IsNullOrWhiteSpace( VariantClass )
+		? "devcommand-grid"
+		: $"devcommand-grid {VariantClass}";
+}

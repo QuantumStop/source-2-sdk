@@ -1,0 +1,42 @@
+@namespace Sandbox.UI.Dev
+@inherits Panel
+
+<root class="devcolumns">
+	@if ( Header is not null )
+	{
+		<div class="devcolumns-header">
+			@Header
+		</div>
+	}
+
+	<div class="devcolumns-grid">
+		@if ( Left is not null )
+		{
+			<div class="devcolumns-col left">
+				@Left
+			</div>
+		}
+
+		@if ( Right is not null )
+		{
+			<div class="devcolumns-col right">
+				@Right
+			</div>
+		}
+	</div>
+
+	@if ( Footer is not null )
+	{
+		<div class="devcolumns-footer">
+			@Footer
+		</div>
+	}
+</root>
+
+@code
+{
+	[Parameter] public RenderFragment Header { get; set; }
+	[Parameter] public RenderFragment Left { get; set; }
+	[Parameter] public RenderFragment Right { get; set; }
+	[Parameter] public RenderFragment Footer { get; set; }
+}

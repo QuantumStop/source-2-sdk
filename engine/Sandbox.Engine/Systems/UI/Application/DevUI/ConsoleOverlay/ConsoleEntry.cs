@@ -2,8 +2,44 @@
 
 namespace Sandbox.UI.Dev;
 
+[StyleSheet.Inline( "console-entry-engine-fallback", Styles )]
 public class ConsoleEntry : Panel
 {
+	const string Styles = """
+		consoleentry
+		{
+			flex-shrink: 0;
+			color: #fff;
+			cursor: pointer;
+		}
+
+		consoleentry label
+		{
+			text-shadow: 2px 2px 0px #000;
+			padding: 2px 10px;
+			font-size: 12px;
+			font-weight: 600;
+			background-color: #000d;
+			white-space: nowrap;
+		}
+
+		consoleentry.trace
+		{
+			color: #b6ff00;
+		}
+
+		consoleentry.warning,
+		consoleentry.warn
+		{
+			color: #ffd800;
+		}
+
+		consoleentry.error
+		{
+			color: #ff0000;
+		}
+		""";
+
 	public Label Time;
 	public Label Message;
 	public LogEvent Event;

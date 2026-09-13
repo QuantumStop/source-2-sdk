@@ -174,8 +174,34 @@ public sealed class DevLayerComponent : PanelComponent
 	}
 }
 
+[StyleSheet.Inline( "devlayer-engine-fallback", DevLayerStyles )]
 public sealed class DevLayer : Panel
 {
+	const string DevLayerStyles = """
+		devlayer
+		{
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 10000;
+			pointer-events: none;
+			font-family: Roboto;
+		}
+
+		devlayer .popup-panel
+		{
+			pointer-events: all;
+			font-family: Roboto Mono;
+		}
+
+		devlayer .popup-panel .button
+		{
+			font-size: 11px;
+		}
+		""";
+
 	ExceptionNotification ExceptionNotification;
 	DeveloperMode DeveloperModePanel;
 
@@ -219,35 +245,38 @@ public sealed class DevLayer : Panel
 	void LoadDevUiStyles()
 	{
 		const bool failSilently = true;
-
-		// Use non-rooted paths here so we don't end up loading the same sheet twice
-		// (auto-loaded sheets are typically non-rooted via ClassFileLocationAttribute).
-		StyleSheet.Load( "UISystem/DevUI/DevUI.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Window/DevWindow.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Tabs/DevTabs.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/DevMode/DeveloperMode.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/DevMode/ConvarToggle.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/DevMode/RenderModeSelect.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Stats/StatsContainer.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Stats/StatValue.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/ConsoleOverlay/ConsoleOverlay.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Console/Console.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Console/ConsoleRow.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Console/LogEventPanel.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Layouts/DevGroup.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Layouts/DevColumns.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Layouts/DevRow.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevScrollPanel.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevScrollBar.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevScrollView.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevVirtualList.cs.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevPercentSlider.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/Controls/DevCommandGrid.razor.scss", true, failSilently );
-		StyleSheet.Load( "UISystem/DevUI/ExceptionNotification.cs.scss", true, failSilently );
+		LoadDevUiStyle( "DevUI.cs.scss", failSilently );
+		LoadDevUiStyle( "Window/DevWindow.cs.scss", failSilently );
+		LoadDevUiStyle( "Tabs/DevTabs.cs.scss", failSilently );
+		LoadDevUiStyle( "DevMode/DeveloperMode.razor.scss", failSilently );
+		LoadDevUiStyle( "DevMode/ConvarToggle.razor.scss", failSilently );
+		LoadDevUiStyle( "DevMode/ConvarCycle.razor.scss", failSilently );
+		LoadDevUiStyle( "DevMode/RenderModeSelect.razor.scss", failSilently );
+		LoadDevUiStyle( "Stats/StatsContainer.razor.scss", failSilently );
+		LoadDevUiStyle( "Stats/StatValue.razor.scss", failSilently );
+		LoadDevUiStyle( "ConsoleOverlay/ConsoleOverlay.cs.scss", failSilently );
+		LoadDevUiStyle( "Console/Console.cs.scss", failSilently );
+		LoadDevUiStyle( "Console/ConsoleRow.razor.scss", failSilently );
+		LoadDevUiStyle( "Console/LogEventPanel.razor.scss", failSilently );
+		LoadDevUiStyle( "Layouts/DevGroup.cs.scss", failSilently );
+		LoadDevUiStyle( "Layouts/DevColumns.razor.scss", failSilently );
+		LoadDevUiStyle( "Layouts/DevRow.razor.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevScrollPanel.cs.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevScrollBar.cs.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevScrollView.cs.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevVirtualList.cs.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevPercentSlider.razor.scss", failSilently );
+		LoadDevUiStyle( "Controls/DevCommandGrid.razor.scss", failSilently );
+		LoadDevUiStyle( "ExceptionNotification.cs.scss", failSilently );
 
 		// Generic UI controls used by DevUI extension tabs.
 		StyleSheet.Load( "UI/Controls/VideoPanel.razor.scss", true, failSilently );
 		StyleSheet.Load( "UI/Controls/VideoControls.razor.scss", true, failSilently );
+	}
+
+	void LoadDevUiStyle( string relativePath, bool failSilently )
+	{
+		StyleSheet.Load( $"UISystem/DevUI/{relativePath}", true, failSilently );
 	}
 
 	public override void OnDeleted()
