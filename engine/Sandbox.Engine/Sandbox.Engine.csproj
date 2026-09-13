@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<Import Project="../CodeGen.Targets" />
+
+	<ItemGroup>
+		<AdditionalFiles Include="**\*.razor" />
+	</ItemGroup>
 	
 	<PropertyGroup>
 		<VersionPrefix>1.0.1</VersionPrefix>
@@ -57,7 +61,7 @@
 		<ProjectReference Include="../Sandbox.Services/Sandbox.Services.csproj" />
 		<ProjectReference Include="../Sandbox.SolutionGenerator/Sandbox.SolutionGenerator.csproj" />
 		<ProjectReference Include="../Sandbox.System/Sandbox.System.csproj" />
-		<ProjectReference Include="../Sandbox.Generator/Sandbox.Generator.csproj" />
+		<ProjectReference Include="../Sandbox.Generator/Sandbox.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="../ThirdParty/Topten.RichTextKit/Topten.RichTextKit.csproj" />
 		<ProjectReference Include="..\Microsoft.AspNetCore.Components\Microsoft.AspNetCore.Components.csproj" />
 	</ItemGroup>

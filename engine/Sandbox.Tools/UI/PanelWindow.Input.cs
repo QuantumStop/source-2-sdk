@@ -18,6 +18,16 @@ public partial class PanelWindow
 	/// </summary>
 	public float ResizeBorder { get; set; } = 6.0f;
 
+	/// <summary>
+	/// Whether the left and right edges can start a resize on borderless windows.
+	/// </summary>
+	public bool CanResizeHorizontally { get; set; } = true;
+
+	/// <summary>
+	/// Whether the top and bottom edges can start a resize on borderless windows.
+	/// </summary>
+	public bool CanResizeVertically { get; set; } = true;
+
 	bool IPanelWindow.MouseInside
 	{
 		get => _mouseInside;
@@ -76,10 +86,10 @@ public partial class PanelWindow
 		{
 			var border = ResizeBorder * Surface.DpiScale;
 
-			var left = position.x <= border;
-			var right = position.x >= size.x - border;
-			var top = position.y <= border;
-			var bottom = position.y >= size.y - border;
+			var left = CanResizeHorizontally && position.x <= border;
+			var right = CanResizeHorizontally && position.x >= size.x - border;
+			var top = CanResizeVertically && position.y <= border;
+			var bottom = CanResizeVertically && position.y >= size.y - border;
 
 			if ( top && left ) return IPanelWindow.WindowHitTest.ResizeTopLeft;
 			if ( top && right ) return IPanelWindow.WindowHitTest.ResizeTopRight;

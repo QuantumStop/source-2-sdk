@@ -415,9 +415,12 @@ internal static class EngineLoop
 		VideoTextureLoader.TickVideoPlayers();
 		PanelRealTime.Update();
 
-		// Tick the project-provided UI system (base installs one that manages DevUI, overlays, etc).
-		// This is separate from the panel UISystem simulation and needs to run even when not "playing"
-		// so editor sessions can lazily create debug roots when toggled.
+		if ( Sandbox.Internal.IUISystem.Current is null )
+		{
+			Sandbox.Internal.IUISystem.Current = new EngineUISystem();
+			Sandbox.Internal.IUISystem.Current.Init();
+		}
+
 		Sandbox.Internal.IUISystem.Current?.Tick();
 
 		using ( _simulateUiGame.Start() )
