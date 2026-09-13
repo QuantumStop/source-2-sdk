@@ -1,0 +1,24 @@
+@import "/Styles/base.scss";
+@import "/Styles/form.scss";
+
+DevLayer
+{
+	width: 100%;
+	z-index: 10000;
+	height: 100%;
+	pointer-events: none;
+	font-family: Roboto;
+
+	#DeveloperMode { padding: 0.25em; }
+
+	.popup-panel
+	{
+		pointer-events: all;
+		font-family: Roboto Mono;
+
+		.button
+		{
+			font-size: 11px;
+		}
+	}
+}

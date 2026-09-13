@@ -1,0 +1,102 @@
+.devgroup
+{
+	flex-direction: column;
+	background-color: #292929;
+	border-radius: 0px;
+
+	.button {
+		border-left: #262525 2px;
+		border-right: #262525 2px;
+		border-bottom: 2px solid rgba( 0, 0, 0, 0.30 );
+		border-right: 2px solid rgba( 0, 0, 0, 0.30 );
+		
+		min-height: 20px;
+		max-height: 100px;
+		min-width: 50px;
+		max-width: 180px;		
+		
+		font-family: Roboto Mono;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 2px;
+		text-transform: uppercase;
+
+		flex-grow: 1;
+		flex-shrink: 1;
+		align-items: center;
+		justify-content: center;
+
+		padding: 5px 8px;
+		color: rgba(255, 255, 255, 0.7);
+ 		background-color: #323030b9;
+
+		&:hover {  background-color: #3c3b3b; color: #fff; }
+		&.active, &:active { background-color: #302f2f; color: #fff; }
+	}
+}
+
+.devgroup > .devgroup-header
+{
+	flex-direction: row;
+	align-items: center;
+	border-bottom:#262525 2px;
+}
+
+.devgroup > .devgroup-header > .devgroup-icon
+{
+	width: 32px;
+	height: 25px;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+
+	font-size: 18px;
+	font-family: Material Icons;
+	color: rgba( 255, 255, 255, 0.75 );
+	flex-shrink: 0;
+}
+
+.devgroup > .devgroup-header > .devgroup-titlebar
+{
+	flex-grow: 1;
+	height: 25px;
+	align-items: center;
+	padding: 0 10px;
+	background-color: #363535;
+	border-left: #262525 2px;
+}
+
+.devgroup > .devgroup-header > .devgroup-header-right
+{
+	align-items: center;
+	justify-content: flex-end;
+	flex-shrink: 0;
+	gap: 5px;
+	height: 100%;
+}
+
+.devgroup > .devgroup-header > .devgroup-titlebar > .devgroup-title
+{
+	font-family: Roboto Mono;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+}
+
+.devgroup > .devgroup-body
+{
+	padding: 10px 12px;
+	flex-direction: column;
+
+	overflow: hidden;
+}
+
+.devgroup > .devgroup-footer
+{
+	padding: 10px 12px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
+	border-top: #262525 2px;
+}

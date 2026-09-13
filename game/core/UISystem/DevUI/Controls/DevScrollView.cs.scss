@@ -1,0 +1,21 @@
+DevScrollView
+{
+	flex-grow: 1;
+	position: relative;
+	overflow: hidden;
+}
+
+DevScrollView > .corner
+{
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	width: 0px;
+	height: 0px;
+	z-index: 1000;
+
+	&.hidden
+	{
+		display: none;
+	}
+}

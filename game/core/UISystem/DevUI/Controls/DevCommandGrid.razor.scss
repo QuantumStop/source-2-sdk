@@ -1,0 +1,137 @@
+.devcommand-grid
+{
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 0px;
+	margin-top: 4px;
+	width: 100%;
+}
+
+.devcommand-button
+{
+	position: relative;
+	width: 50%;
+	padding: 5px 8px;
+	background-color: #323030;
+	border-radius: 0px;
+	color: rgba( 255, 255, 255, 0.75 );
+	font-family: Roboto Mono;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	cursor: pointer;
+	border-bottom: 2px solid rgba( 0, 0, 0, 0.30 );
+	border-right: 2px solid rgba( 0, 0, 0, 0.30 );
+	min-height: 20px;
+	align-items: center;
+	
+	&.active { background-color: #3c3b3b; color: #fff; }
+	&:hover { background-color: #3c3b3b; color: #fff; }
+
+	i
+	{
+		font-family: Material Icons;
+		font-size: 15px;
+		letter-spacing: 0px;
+		text-transform: none;
+		flex-shrink: 0;
+		display: none;
+	}
+
+	span
+	{
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+.devcommand-button.right
+{
+	border-right: 0px;
+}
+
+.devcommand-button.third
+{
+	width: 33.333%;
+}
+
+.devcommand-button.quarter
+{
+	width: 25%;
+}
+
+.devcommand-button.filler
+{
+	cursor: default;
+	pointer-events: none;
+	opacity: 0;
+	border-bottom: 0px;
+	background-color: transparent;
+}
+
+.devcommand-button.dropdown
+{
+	align-items: stretch;
+	flex-direction: row;
+	padding: 0px;
+
+	.titlebar
+	{
+		flex-direction: row;
+		flex-grow: 1;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 24px 5px 8px;
+		min-height: 20px;
+
+		span
+		{
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.dropdown-handle
+	{
+		position: absolute;
+		right: 0px;
+		top: 0px;
+		bottom: 0px;
+		width: 18px;
+		align-items: center;
+		justify-content: center;
+		background-color: rgba( 0, 0, 0, 0.14 );
+		border-left: 2px solid rgba( 0, 0, 0, 0.30 );
+		opacity: 0.8;
+
+		i
+		{
+			display: flex;
+			font-family: Material Icons;
+			font-size: 15px;
+			white-space: nowrap;
+			letter-spacing: 0px;
+			text-transform: none;
+		}
+	}
+}
+
+.devcommand-button.dropdown.default-handle
+{
+	.titlebar
+	{
+		padding-right: 8px;
+	}
+
+	.dropdown-handle
+	{
+		position: relative;
+		right: auto;
+		top: auto;
+		bottom: auto;
+		flex-shrink: 0;
+		align-self: stretch;
+		width: 30px;
+	}
+}

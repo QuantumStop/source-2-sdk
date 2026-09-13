@@ -1,0 +1,40 @@
+DeveloperMode
+{
+	position: absolute;
+	top: 0px;
+	bottom: 0px;
+	right: 0px;
+	left: 0px;
+	pointer-events: none;
+}
+
+DeveloperMode:not(.open) DevWindow
+{
+	display: none;
+}
+
+.popup-panel
+{
+	border-top: 1px #171819;
+	border-left: 1px #171819;
+	border-right: 1px #171819;
+
+	.button
+	{
+		border-top: 1px #171819;
+		background-color: #3e4549;
+
+		&:hover,
+		&.active
+		{
+			background-color: #576167;
+		}
+
+		.iconpanel
+		{
+			color: white;
+			opacity: 0.2;
+			margin-right: 10px;
+		}
+	}
+}

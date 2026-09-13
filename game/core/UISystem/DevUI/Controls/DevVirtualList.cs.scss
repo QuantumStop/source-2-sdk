@@ -1,0 +1,14 @@
+DevVirtualList
+{
+	flex-grow: 1;
+	position: relative;
+	overflow: hidden;
+}
+
+DevVirtualList > .content
+{
+	position: absolute;
+	left: 0;
+	top: 0;
+}
+

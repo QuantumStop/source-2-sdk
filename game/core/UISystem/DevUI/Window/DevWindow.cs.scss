@@ -1,0 +1,153 @@
+DevWindow
+{
+	position: absolute;
+	pointer-events: all;
+	background-color: #232323;
+	border-radius: 0px;
+	box-shadow: 2px 5px 12px rgba(0, 0, 0, 0.85);
+	color: #fff;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px #343434;
+
+	&.interacting > .content
+	{
+		pointer-events: none;
+	}
+
+	&.unfocused
+	{
+		pointer-events: none;
+		opacity: 0.82;
+	}
+}
+
+DevWindow > .header
+{
+	height: 22px;
+	flex-shrink: 0;
+	padding-left: 10px;
+	padding-right: 5px;
+	background-color: #363636;
+
+	.drag
+	{
+		flex-grow: 1;
+		height: 100%;
+		align-items: center;
+		cursor: move;
+	}
+
+	.title
+	{
+		font-family: Roboto Mono;
+		color: #eeeeee;
+		font-weight: 1000;
+		letter-spacing: 1px;
+		font-size: 15px;
+		flex-grow: 1;
+	}
+
+	.close
+	{
+		min-width: 20px;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: #eeeeee;
+	}
+}
+
+DevWindow > .tabs
+{
+	height: auto;
+	flex-shrink: 0;
+	align-items: center;
+	padding-left: 10px;
+	background-color: #292929;
+	border-top: #262525 2px;
+	border-bottom: #262525 2px;
+
+	> .spacer
+	{
+		flex-grow: 1;
+	}
+
+	> .log-toggles
+	{
+		flex-direction: row;
+
+		.button
+		{
+			width: 40px;
+			overflow: hidden;
+		}
+
+		&.hidden
+		{
+			display: none;
+		}
+	}
+
+	Button
+	{
+		font-family: Roboto Mono;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 1px;
+		padding: 0px 5px;
+		min-width: 45px;
+		text-align: left;
+		background-color: #302e2e;
+		color: rgba(255, 255, 255, 0.6);
+		cursor: pointer;
+		border-left: #262525 2px;
+		border-right: #262525 2px;
+
+		&.active,
+		&:active
+		{
+			background-color: #363535;
+			color: rgba(255, 255, 255, 0.95);
+		}
+
+		&:hover
+		{
+			color: rgba(255, 255, 255, 0.9);
+		}
+	}
+
+	Button.type
+	{
+		height: 15px;
+		justify-content: center;
+		align-items: center;
+		font-weight: 550;
+		font-size: 13px;
+		text-align: center;
+		background-color: rgba(255, 255, 255, 0.06);
+		color: rgba(255, 255, 255, 0.6);
+		cursor: pointer;
+
+		&.err { background-color: #513535; color: #a35858; }
+		&.wrn { background-color: #574134; color: #9e8555; }
+		&.msg { background-color: #383d38; color: #508464; }
+	}
+}
+
+DevWindow > .content
+{
+	flex-grow: 1;
+}
+
+DevWindow > .resize-handle
+{
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	width: 24px;
+	height: 24px;
+	opacity: 0.6;
+	background-color: transparent;
+	border: 0px transparent;
+}
