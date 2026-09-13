@@ -66,6 +66,8 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 		{
 			entry.Key.WorldPosition = entry.Value.Position + delta;
 		}
+
+		Pivot.Drag( delta );
 	}
 
 	public override void Rotate( Vector3 origin, Rotation basis, Rotation delta )
@@ -149,20 +151,27 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 		using var gizmoScope = gizmo.Push();
 		if ( Gizmo.Pressed.Any ) return;
 
-		using var scope = SceneEditorSession.Scope();
-		using var undoScope = SceneEditorSession.Active.UndoScope( "Nudge Mesh(s)" )
-			.WithGameObjectChanges( _meshes.Select( x => x.GameObject ), GameObjectUndoFlags.Properties )
-			.Push();
-
 		var rotation = CalculateSelectionBasis();
 		var delta = Gizmo.Nudge( rotation, direction );
 
-		Pivot -= delta;
+		Pivot.BeginDrag();
 
-		foreach ( var mesh in _meshes )
+		using var scope = SceneEditorSession.Scope();
+		using ( SceneEditorSession.Active.UndoScope( "Nudge Mesh(s)" )
+			.WithGameObjectChanges( _meshes.Select( x => x.GameObject ), GameObjectUndoFlags.Properties )
+			.Push() )
 		{
-			mesh.WorldPosition -= delta;
+			foreach ( var mesh in _meshes )
+			{
+				mesh.WorldPosition -= delta;
+			}
+
+			Pivot.Translate( -delta );
 		}
+
+		Pivot.EndDrag();
+
+		Tool?.MoveMode?.OnBegin( this );
 	}
 
 	public override BBox CalculateLocalBounds()
@@ -201,29 +210,23 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 
 		OnSelectionChanged();
 
-		var undo = SceneEditorSession.Active.UndoSystem;
-		undo.OnUndo += OnUndoRedo;
-		undo.OnRedo += OnUndoRedo;
+		SubscribeUndo();
 	}
 
 	public override void OnDisabled()
 	{
-		var undo = SceneEditorSession.Active.UndoSystem;
-		undo.OnUndo -= OnUndoRedo;
-		undo.OnRedo -= OnUndoRedo;
+		UnsubscribeUndo();
 
 		SaveCurrentSelection<GameObject>();
 	}
 
-	void OnUndoRedo( object _ )
-	{
-		OnSelectionChanged();
-	}
+	protected override void OnAfterUndoRedo() => RebuildSelectionCache();
 
 	public override void OnUpdate()
 	{
 		GlobalSpace = Gizmo.Settings.GlobalSpace;
 
+		Pivot.Update();
 		UpdateMoveMode();
 		UpdateHovered();
 		UpdateSelectionMode();
@@ -255,6 +258,12 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 
 	public override void OnSelectionChanged()
 	{
+		RebuildSelectionCache();
+		Pivot.Reset();
+	}
+
+	void RebuildSelectionCache()
+	{
 		_meshes = Selection.OfType<GameObject>()
 			.Select( x => x.GetComponent<MeshComponent>() )
 			.Where( x => x.IsValid() )
@@ -270,10 +279,6 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 				_transformVertices[v] = mesh.WorldTransform.PointToWorld( mesh.Mesh.GetVertexPosition( vertex ) );
 			}
 		}
-
-		ClearPivot();
-
-		Tool?.MoveMode?.OnBegin( this );
 	}
 
 	void UpdateSelectionMode()
@@ -404,54 +409,8 @@ public sealed partial class MeshSelection( MeshTool tool ) : SelectionTool( tool
 
 	public override bool HasBoxSelectionMode() => true;
 
-	static IReadOnlyList<Vector3> GetPivots( BBox box )
-	{
-		var mins = box.Mins;
-		var maxs = box.Maxs;
-		var center = box.Center;
-
-		return
-		[
-			new Vector3( mins.x, mins.y, mins.z ),
-			new Vector3( maxs.x, mins.y, mins.z ),
-			new Vector3( mins.x, maxs.y, mins.z ),
-			new Vector3( maxs.x, maxs.y, mins.z ),
-
-			new Vector3( mins.x, mins.y, maxs.z ),
-			new Vector3( maxs.x, mins.y, maxs.z ),
-			new Vector3( mins.x, maxs.y, maxs.z ),
-			new Vector3( maxs.x, maxs.y, maxs.z ),
-
-			new Vector3( center.x, center.y, mins.z ),
-			new Vector3( center.x, center.y, maxs.z ),
-		];
-	}
-
-	int _pivotIndex = 0;
-
-	void StepPivot( int direction )
-	{
-		var box = CalculateSelectionBounds();
-		if ( box.Size.Length <= 0 ) return;
-
-		var pivots = GetPivots( box );
-
-		_pivotIndex = (_pivotIndex + direction + pivots.Count) % pivots.Count;
-		Pivot = pivots[_pivotIndex];
-	}
-
-	public void PreviousPivot() => StepPivot( -1 );
-	public void NextPivot() => StepPivot( 1 );
-
-	public void ClearPivot()
-	{
-		Pivot = CalculateSelectionOrigin();
-		_pivotIndex = 0;
-	}
-
-	public void ZeroPivot()
-	{
-		Pivot = default;
-		_pivotIndex = 0;
-	}
+	public void PreviousPivot() => Pivot.Previous();
+	public void NextPivot() => Pivot.Next();
+	public void ClearPivot() => Pivot.Clear();
+	public void ZeroPivot() => Pivot.Zero();
 }

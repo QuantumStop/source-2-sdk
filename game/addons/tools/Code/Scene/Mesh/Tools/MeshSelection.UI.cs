@@ -55,21 +55,7 @@ partial class MeshSelection
 				}
 			}
 
-			{
-				var group = AddGroup( "Pivot" );
-
-				var grid = Layout.Row();
-				grid.Spacing = 4;
-
-				CreateButton( "Previous", "chevron_left", "mesh.previous-pivot", PreviousPivot, _meshes.Length > 0, grid );
-				CreateButton( "Next", "chevron_right", "mesh.next-pivot", NextPivot, _meshes.Length > 0, grid );
-				CreateButton( "Clear", "restart_alt", "mesh.clear-pivot", ClearPivot, _meshes.Length > 0, grid );
-				CreateButton( "World Origin", "language", "mesh.zero-pivot", ZeroPivot, _meshes.Length > 0, grid );
-
-				grid.AddStretchCell();
-
-				group.Add( grid );
-			}
+			this.AddPivotButtons( _tool, _meshes.Length > 0 );
 
 			{
 				var group = AddGroup( "Tools" );
@@ -104,18 +90,6 @@ partial class MeshSelection
 			_tool.Tool.CurrentTool = tool;
 		}
 
-		[Shortcut( "mesh.previous-pivot", "N+MWheelDn", typeof( SceneViewWidget ) )]
-		public void PreviousPivot() => _tool.PreviousPivot();
-
-		[Shortcut( "mesh.next-pivot", "N+MWheelUp", typeof( SceneViewWidget ) )]
-		public void NextPivot() => _tool.NextPivot();
-
-		[Shortcut( "mesh.clear-pivot", "Home", typeof( SceneViewWidget ) )]
-		public void ClearPivot() => _tool.ClearPivot();
-
-		[Shortcut( "mesh.zero-pivot", "Ctrl+End", typeof( SceneViewWidget ) )]
-		public void ZeroPivot() => _tool.ZeroPivot();
-
 		[Shortcut( "mesh.set-origin-to-pivot", "Ctrl+D", typeof( SceneViewWidget ) )]
 		public void SetOriginToPivot()
 		{
@@ -128,7 +102,7 @@ partial class MeshSelection
 			{
 				foreach ( var mesh in _meshes )
 				{
-					SetMeshOrigin( mesh, _tool.Pivot );
+					SetMeshOrigin( mesh, _tool.Pivot.Position );
 				}
 			}
 		}
@@ -149,7 +123,7 @@ partial class MeshSelection
 				}
 			}
 
-			_tool.ClearPivot();
+			_tool.Pivot.Reset();
 		}
 
 		public void BakeScale()
