@@ -42,11 +42,11 @@ file class ProjectTitleButton : Widget
 		var logoRect = contentRect;
 		logoRect.Width = contentRect.Height;
 		logoRect = logoRect.Shrink( LogoShrink );
-		var icon = Path.Combine( Project.GetRootPath(), Project.Config?.ProjectIcon );
-
 		// Draw project logo
 		if ( !string.IsNullOrWhiteSpace( Project.Config?.ProjectIcon ) )
 		{
+			var icon = Path.Combine( Project.GetRootPath(), Project.Config.ProjectIcon );
+
 			Paint.SetPen( Color.White );
 			Paint.Draw( logoRect, icon, 1, 4 );
 		}
