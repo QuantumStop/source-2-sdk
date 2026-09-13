@@ -78,101 +78,10 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		ResetEnvironment();
 		Networking.StartThread();
 
-		InitializeUISystem( failHard: false );
-
 		if ( !Application.IsStandalone )
 		{
 			await Mounting.MountConfig.Mount();
 		}
-	}
-
-	private static void InitializeUISystem( bool failHard )
-	{
-		const string UiSystemLibraryName = "UISystem";
-
-		var iuiType = typeof( Sandbox.Internal.IUISystem );
-		var currentProp = iuiType.GetProperty( "Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static );
-		if ( currentProp?.GetValue( null ) is not null )
-			return;
-
-		//
-		// Our Game TypeLibrary gets rebuilt during ResetEnvironment.
-		// Ensure the UI system assembly is enrolled before we try to create it.
-		//
-		try
-		{
-			var asm = FindAssemblyContainingType( UiSystemLibraryName, iuiType );
-			if ( asm is not null )
-			{
-				Game.TypeLibrary?.AddAssembly( asm, isDynamic: false );
-			}
-		}
-		catch ( Exception e )
-		{
-			Log.Warning( e, "InitializeUISystem: failed to enroll UISystem assembly" );
-		}
-
-		FontManager.Instance.LoadAll( FileSystem.Mounted );
-
-		var tl = Sandbox.Internal.GlobalGameNamespace.TypeLibrary;
-		var created = tl?.Create( UiSystemLibraryName, iuiType, Array.Empty<object>() );
-
-		// Retry once after enrollment attempt (in case TypeLibrary instance differs).
-		if ( created is null )
-		{
-			try
-			{
-				var asm = FindAssemblyContainingType( UiSystemLibraryName, iuiType );
-				if ( asm is not null )
-				{
-					tl?.AddAssembly( asm, isDynamic: false );
-				}
-			}
-			catch ( Exception e )
-			{
-				Log.Warning( e, "InitializeUISystem: retry enrollment failed" );
-			}
-
-			created = tl?.Create( UiSystemLibraryName, iuiType, Array.Empty<object>() );
-		}
-
-		if ( created is null )
-		{
-			if ( failHard )
-			{
-				NativeEngine.EngineGlobal.Plat_MessageBox( "UI Load Error", $"Couldn't create {UiSystemLibraryName}!" );
-				throw new System.Exception( $"UI system '{UiSystemLibraryName}' couldn't load. Can't continue." );
-			}
-
-			Log.Warning( $"InitializeUISystem: couldn't create {UiSystemLibraryName} yet (will retry)." );
-			return;
-		}
-
-		currentProp?.SetValue( null, created );
-
-		// Allow tasks in menu assembly to persist when game sessions end
-		Tasks.ExpirableSynchronizationContext.AllowPersistentTaskMethods( created.GetType().Assembly );
-
-		((IUISystem)created).Init();
-	}
-
-	private static System.Reflection.Assembly FindAssemblyContainingType( string typeName, Type assignableTo )
-	{
-		var candidateNames = new[] { typeName, $"Sandbox.{typeName}" };
-
-		foreach ( var asm in AppDomain.CurrentDomain.GetAssemblies() )
-		{
-			foreach ( var fullName in candidateNames )
-			{
-				var t = asm.GetType( fullName, throwOnError: false, ignoreCase: false );
-				if ( t is null ) continue;
-				if ( t.IsAbstract ) continue;
-				if ( assignableTo.IsAssignableFrom( t ) )
-					return asm;
-			}
-		}
-
-		return null;
 	}
 
 	public void Exiting()
@@ -506,8 +415,6 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		var scene = Game.ActiveScene;
 
 		using var sceneScope = scene?.Push();
-
-		InitializeUISystem( failHard: false );
 
 		if ( scene is not null )
 		{

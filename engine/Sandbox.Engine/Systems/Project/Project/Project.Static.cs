@@ -109,8 +109,6 @@ public partial class Project
 	/// </summary>
 	internal static async Task InitializeBuiltIn( bool syncPackageManager = true )
 	{
-		AddFromFileBuiltIn( "addons/devui/.sbproj" );
-
 		if ( Application.IsEditor || Application.IsUnitTest )
 		{
 			AddFromFileBuiltIn( "addons/tools/.sbproj" );

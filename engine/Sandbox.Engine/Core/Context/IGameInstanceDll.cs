@@ -13,71 +13,7 @@ internal unsafe interface IGameInstanceDll
 	public static IGameInstanceDll Current { get; set; }
 
 	public void Bootstrap();
-	public async Task Initialize()
-	{
-		const string UiSystemLibraryName = "UISystem";
-
-		if ( IUISystem.Current != null )
-		{
-			Log.Info( "Aready inited?" );
-			return;
-		}
-
-		{
-			using var tx = Sandbox.Engine.Bootstrap.StartupTiming?.ScopeTimer( "UI - Fonts" );
-			FontManager.Instance.LoadAll( FileSystem.Mounted );
-		}
-
-		IUISystem.Current = TypeLibrary.Create<IUISystem>( UiSystemLibraryName, complainOnMissing: false );
-
-		//
-		// If the UI system lives in an addon assembly (e.g. base), it might not have been
-		// enrolled into the current TypeLibrary yet. Try to enroll the assembly containing
-		// the expected type name and retry.
-		//
-		if ( IUISystem.Current is null )
-		{
-			var asm = FindAssemblyContainingType( UiSystemLibraryName );
-			if ( asm is not null )
-			{
-				TypeLibrary.AddAssembly( asm, isDynamic: false );
-			}
-
-			IUISystem.Current = TypeLibrary.Create<IUISystem>( UiSystemLibraryName, complainOnMissing: false );
-		}
-
-		if ( IUISystem.Current == null )
-		{
-			NativeEngine.EngineGlobal.Plat_MessageBox( "UI Load Error", $"Couldn't create {UiSystemLibraryName}!" );
-			throw new System.Exception( $"UI system '{UiSystemLibraryName}' couldn't load. Can't continue." );
-		}
-
-		// Allow tasks in menu assembly to persist when game sessions end
-		ExpirableSynchronizationContext.AllowPersistentTaskMethods( IUISystem.Current.GetType().Assembly );
-
-		IUISystem.Current.Init();
-	}
-
-	static System.Reflection.Assembly FindAssemblyContainingType( string typeName )
-	{
-		// Prefer exact type name first, then a Sandbox.*-namespaced variant.
-		var candidateNames = new[] { typeName, $"Sandbox.{typeName}" };
-
-		foreach ( var asm in System.AppDomain.CurrentDomain.GetAssemblies() )
-		{
-			foreach ( var fullName in candidateNames )
-			{
-				var t = asm.GetType( fullName, throwOnError: false, ignoreCase: false );
-				if ( t is null ) continue;
-
-				if ( typeof( IUISystem ).IsAssignableFrom( t ) && !t.IsAbstract )
-					return asm;
-			}
-		}
-
-		return null;
-	}
-
+	public Task Initialize();
 	public void Tick();
 	public void Exiting();
 
