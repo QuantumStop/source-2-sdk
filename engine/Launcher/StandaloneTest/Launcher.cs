@@ -93,7 +93,6 @@ public class PanelLauncherAppSystem : PanelAppSystem
 
 		var launcher = new LauncherUI.IgnisLauncherWindowRazor { Window = window };
 		window.Root.AddChild( launcher );
-		window.Root.MarkRenderDirty();
 		window.Root.LayoutTree.MarkDirty();
 	}
 

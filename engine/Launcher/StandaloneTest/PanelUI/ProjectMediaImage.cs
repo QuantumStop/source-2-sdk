@@ -53,7 +53,6 @@ public sealed class ProjectMediaImage : Image
 	void ReloadTexture()
 	{
 		Texture = LoadProjectTexture() ?? LoadFallbackTexture();
-		IsRenderDirty = true;
 		LayoutTree.MarkDirty();
 	}
 
