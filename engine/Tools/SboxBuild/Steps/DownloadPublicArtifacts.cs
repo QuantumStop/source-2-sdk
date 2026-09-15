@@ -177,30 +177,30 @@ internal class DownloadPublicArtifacts( bool nativeBinariesOnly = false )
 					return;
 				}
 
-			var destination = Path.Combine( repoRoot, entry.Path.Replace( '/', Path.DirectorySeparatorChar ) );
-
-			if ( !string.IsNullOrEmpty( BlacklistPath ) )
-			{
-				var path = Path.Combine( Directory.GetCurrentDirectory(), BlacklistPath + ".txt" );
-
-				foreach ( var line in File.ReadLines( path ) )
+				if ( !string.IsNullOrEmpty( BlacklistPath ) )
 				{
-					if ( string.IsNullOrWhiteSpace( line ) ) continue;
+					var path = Path.Combine( Directory.GetCurrentDirectory(), BlacklistPath + ".txt" );
 
-					if ( Regex.IsMatch( entry.Path.Replace( '/', Path.DirectorySeparatorChar ), "^" + Regex.Escape( line.Trim().Replace( '/', Path.DirectorySeparatorChar ) ).Replace( "\\*", ".*" ).Replace( "\\?", "." ) + "$", RegexOptions.IgnoreCase ) )
+					foreach ( var line in File.ReadLines( path ) )
 					{
-						Log.Info( $"{entry.Path} was blacklisted!" );
-						Interlocked.Increment( ref skippedCount );
-						return;
+						if ( string.IsNullOrWhiteSpace( line ) ) continue;
+
+						if ( Regex.IsMatch( relative, "^" + Regex.Escape( line.Trim().Replace( '/', Path.DirectorySeparatorChar ) ).Replace( "\\*", ".*" ).Replace( "\\?", "." ) + "$", RegexOptions.IgnoreCase ) )
+						{
+							Log.Info( $"{entry.Path} was blacklisted!" );
+							Interlocked.Increment( ref skippedCount );
+							return;
+						}
 					}
 				}
-			}
 
-			if ( FileMatchesHash( destination, entry.Sha256 ) )
-			{
-				Interlocked.Increment( ref skippedCount );
-				return;
-			}
+				if ( FileMatchesHash( destination, entry.Sha256, message => progress.Messages.Enqueue( (true, message) ) )
+					&& (entry.Size <= 0 || new FileInfo( destination ).Length == entry.Size) )
+				{
+					newState[entry.Path] = Snapshot( entry, destination );
+					Interlocked.Increment( ref skippedCount );
+					return;
+				}
 
 				pending.Add( (entry, destination) );
 			}
