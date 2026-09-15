@@ -3,7 +3,7 @@ using Sandbox.Engine.Settings;
 
 namespace Sandbox;
 
-static partial class DebugOverlay
+public static partial class DebugOverlay
 {
 	/// <summary>
 	/// On-screen frametime overlay (overlay_fps 1): a live frametime strip (most recent frames, newest

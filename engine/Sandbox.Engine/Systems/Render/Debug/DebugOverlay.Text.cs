@@ -1,6 +1,6 @@
 namespace Sandbox;
 
-internal static partial class DebugOverlay
+public static partial class DebugOverlay
 {
 	internal static Rect DrawText( Painter painter, in TextRendering.Scope scope, Vector2 point, TextFlag flags = TextFlag.LeftTop )
 		=> DrawText( painter, scope, new Rect( point, 1 ), flags );
