@@ -73,7 +73,7 @@ public abstract partial class BaseStyles
 		["border-radius"] = new[] { "border-top-left-radius", "border-top-right-radius", "border-bottom-right-radius", "border-bottom-left-radius", "border-top-left-radius-v", "border-top-right-radius-v", "border-bottom-right-radius-v", "border-bottom-left-radius-v" },
 		["border-width"] = new[] { "border-top-width", "border-right-width", "border-bottom-width", "border-left-width" },
 		["border-color"] = new[] { "border-left-color", "border-top-color", "border-right-color", "border-bottom-color" },
-		["border"] = new[] { "border-left-width", "border-top-width", "border-right-width", "border-bottom-width", "border-left-color", "border-top-color", "border-right-color", "border-bottom-color" },
+		["border"] = new[] { "border-left-width", "border-top-width", "border-right-width", "border-bottom-width", "border-left-color", "border-top-color", "border-right-color", "border-bottom-color", "border-style" },
 		["border-left"] = new[] { "border-left-width", "border-left-color" },
 		["border-right"] = new[] { "border-right-width", "border-right-color" },
 		["border-top"] = new[] { "border-top-width", "border-top-color" },

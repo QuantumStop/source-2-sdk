@@ -536,6 +536,22 @@ public abstract partial class BaseStyles
 		}
 	}
 
+	internal BorderStyle? _borderstyle;
+	
+	/// <summary>
+	/// Represents the <c>border-style</c> CSS property.
+	/// </summary>
+	public BorderStyle? BorderStyle
+	{
+		get => _borderstyle;
+		set
+		{
+			if ( _borderstyle == value ) return;
+			_borderstyle = value;
+			Dirty();
+		}
+	}
+
 	internal Color? _borderleftcolor;
 	
 	/// <summary>
@@ -2654,6 +2670,7 @@ public abstract partial class BaseStyles
 		if ( a._bordertopwidth != null ) _bordertopwidth = a._bordertopwidth;
 		if ( a._borderrightwidth != null ) _borderrightwidth = a._borderrightwidth;
 		if ( a._borderbottomwidth != null ) _borderbottomwidth = a._borderbottomwidth;
+		if ( a._borderstyle != null ) _borderstyle = a._borderstyle;
 		if ( a._borderleftcolor != null ) _borderleftcolor = a._borderleftcolor;
 		if ( a._bordertopcolor != null ) _bordertopcolor = a._bordertopcolor;
 		if ( a._borderrightcolor != null ) _borderrightcolor = a._borderrightcolor;
@@ -2824,6 +2841,7 @@ public abstract partial class BaseStyles
 		_bordertopwidth = a._bordertopwidth;
 		_borderrightwidth = a._borderrightwidth;
 		_borderbottomwidth = a._borderbottomwidth;
+		_borderstyle = a._borderstyle;
 		_borderleftcolor = a._borderleftcolor;
 		_bordertopcolor = a._bordertopcolor;
 		_borderrightcolor = a._borderrightcolor;
@@ -3380,6 +3398,7 @@ public abstract partial class BaseStyles
 		hash.Add( _bordertopwidth );
 		hash.Add( _borderrightwidth );
 		hash.Add( _borderbottomwidth );
+		hash.Add( _borderstyle );
 		hash.Add( _borderleftcolor );
 		hash.Add( _bordertopcolor );
 		hash.Add( _borderrightcolor );
@@ -3981,6 +4000,7 @@ public abstract partial class BaseStyles
 		copy._bordertopwidth = _bordertopwidth;
 		copy._borderrightwidth = _borderrightwidth;
 		copy._borderbottomwidth = _borderbottomwidth;
+		copy._borderstyle = _borderstyle;
 		copy._borderleftcolor = _borderleftcolor;
 		copy._bordertopcolor = _bordertopcolor;
 		copy._borderrightcolor = _borderrightcolor;
@@ -4186,6 +4206,7 @@ public abstract partial class BaseStyles
 		if ( !_bordertopwidth.HasValue ) _bordertopwidth = 0;
 		if ( !_borderrightwidth.HasValue ) _borderrightwidth = 0;
 		if ( !_borderbottomwidth.HasValue ) _borderbottomwidth = 0;
+		if ( !_borderstyle.HasValue ) _borderstyle = Sandbox.BorderStyle.Solid;
 		if ( !_borderleftcolor.HasValue ) _borderleftcolor = Color.White;
 		if ( !_bordertopcolor.HasValue ) _bordertopcolor = Color.White;
 		if ( !_borderrightcolor.HasValue ) _borderrightcolor = Color.White;
@@ -4349,6 +4370,7 @@ public abstract partial class BaseStyles
 			case "border-top-width": return (_bordertopwidth == 0);
 			case "border-right-width": return (_borderrightwidth == 0);
 			case "border-bottom-width": return (_borderbottomwidth == 0);
+			case "border-style": return (_borderstyle == Sandbox.BorderStyle.Solid);
 			case "border-left-color": return (_borderleftcolor == Color.White);
 			case "border-top-color": return (_bordertopcolor == Color.White);
 			case "border-right-color": return (_borderrightcolor == Color.White);

@@ -1,4 +1,4 @@
-﻿namespace Sandbox.UI;
+namespace Sandbox.UI;
 
 
 public partial class Panel
@@ -63,7 +63,7 @@ public partial class Panel
 	/// <param name="pos">The position to test, in screen coordinates.</param>
 	public bool IsInside( Vector2 pos )
 	{
-		if ( InlineOwner is not null ) return InlineOwner.Contains( this, pos );
+		if ( LayoutTree?.IsInlineParticipant == true ) return LayoutTree.ContainsInlineContent( pos );
 
 		var rect = Box.Rect;
 
@@ -86,7 +86,7 @@ public partial class Panel
 
 		if ( !s.HasBorderRadius ) return true;
 
-		var radii = BorderRadii.FromStyle( s, rect );
+		var radii = _paintCache.OuterRadii;
 
 		pos.x -= rect.Left;
 		pos.y -= rect.Top;
@@ -102,7 +102,7 @@ public partial class Panel
 		return true;
 	}
 
-	static bool IsInsideShapePolygon( Vector2 pos, Vector2 size, IReadOnlyList<BorderShapePoint> points )
+	static bool IsInsideShapePolygon( Vector2 pos, Vector2 size, BorderShape.PointCollection points )
 	{
 		bool inside = false;
 		for ( int i = 0, j = points.Count - 1; i < points.Count; j = i++ )
@@ -262,7 +262,7 @@ public partial class Panel
 	/// </summary>
 	public virtual string GetClipboardValue( bool cut )
 	{
-		if ( InlineOwner is not null ) return InlineOwner.SelectedText;
+		if ( LayoutTree?.IsInlineParticipant == true ) return LayoutTree.SelectedInlineText;
 		if ( AllowChildSelection )
 			return CollectSelectedChildrenText( this );
 

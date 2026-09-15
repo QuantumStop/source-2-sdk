@@ -1,31 +1,56 @@
-# Source 2 SDK
+<div align="center">
 
-![New Editor](https://media.discordapp.net/attachments/1450076545153765512/1473649233323102354/sbox-dev_AzDk0jdc8f.png?ex=6996fa4c&is=6995a8cc&hm=7884a1742e83e337361cf01a1504b49ca8dbaeebad168202efe3c23ec771beaa&=&format=webp&quality=lossless&width=1645&height=864)
+![New Editor](https://cdn.discordapp.com/attachments/572290095873261595/1549234993048453130/ignis_sdk.png)
 
-## What.
+</div>
 
-Source 2 SDK is a fork of Facepunch's Source 2 engine, available [here](https://github.com/Facepunch/sbox-public). This is not affiliated with Valve in anyway (besides being a fork of a fork of a Half-Life: Alyx engine), and is simply a joke name. 
+
+## What is Ignis?
+
+Ignis is a fork of Facepunch's Source 2 engine, available [here](https://github.com/Facepunch/sbox-public). Designed to be similar to legacy Source 2 in workflows and UX, as time goes this will have less and less overlap with ongoing Facepunch version of that engine.
 
 This fork is used by QuantumStop (title pending), giving it modifications we require while developing our games.
 
 ## Getting the Engine
+
+### Steam
+
+You can download and install the s&box editor directly from [Steam](https://store.steampowered.com/app/590830/sbox/).
+
 ### Compiling from Source
 
 If you want to build from source, this repository includes all the necessary files to compile the engine yourself.
 
+| Platform | Setup | Notes |
+|----------|-------|-------|
+| Windows 10 / 11 (x64) | `Setup.bat` | |
+| Linux (x64) | `./Setup.sh` | Binaries target the Steam Linux Runtime, most distros should work. |
+| macOS (Apple Silicon) | `./Setup.sh` | Intel Macs are not supported. |
+
 #### Prerequisites
 
-* [Git](https://git-scm.com/install/windows)
-* [Visual Studio 2026](https://visualstudio.microsoft.com/)
+* [Git](https://git-scm.com/downloads)
 * [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download)
+* An IDE for the C# code is recommended: [Visual Studio 2026](https://visualstudio.microsoft.com/) or
+  [Rider](https://www.jetbrains.com/rider/) on Windows, Rider or [VS Code](https://code.visualstudio.com/) on Linux and macOS.
 
-#### Building
+#### Setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/QuantumStop/source-2-sdk.git
+git clone https://github.com/Facepunch/sbox-public.git
+
+cd sbox-public
+
+# Windows
+Setup.bat
+
+# Linux / macOS
+./Setup.sh
 ```
+
 Once you've cloned the repo simply run `Bootstrap.bat` which will download dependencies and build the engine.
+
 The game and editor can be run from the binaries in the game folder.
 
 

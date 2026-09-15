@@ -34,6 +34,7 @@ internal static class Bootstrap
 		try
 		{
 			InitMinimal( EngineGlobal.GetGameRootFolder() );
+			Graphics.Initialize();
 
 			DLLImportResolver.SetupResolvers();
 
@@ -137,6 +138,8 @@ internal static class Bootstrap
 	{
 		try
 		{
+			Material.Preload();
+
 			IToolsDll.Current?.Spin();
 
 #pragma warning disable CS0612 // Type or member is obsolete
@@ -190,7 +193,7 @@ internal static class Bootstrap
 			Screen.UpdateFromEngine();
 
 			// Not in RenderSettings' constructor: SystemInfo is only filled in at the tail of SourceEngineInit.
-			if ( !Application.IsHeadless && !Application.IsEditor )
+			if ( Graphics.IsAvailable && !Application.IsEditor )
 			{
 				Settings.RenderSettings.Instance.EnsureFirstRunPreset();
 			}

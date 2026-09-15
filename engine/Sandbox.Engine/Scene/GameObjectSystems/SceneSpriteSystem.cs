@@ -201,7 +201,7 @@ public sealed class SceneSpriteSystem : GameObjectSystem<SceneSpriteSystem>
 
 	internal void UpdateSpriteRenderers()
 	{
-		if ( Application.IsHeadless )
+		if ( !Graphics.IsAvailable )
 			return;
 
 		_allSprites.Clear();
@@ -250,7 +250,7 @@ public sealed class SceneSpriteSystem : GameObjectSystem<SceneSpriteSystem>
 	{
 		using var _ = PerformanceStats.Timings.Render.Scope();
 
-		if ( Application.IsHeadless )
+		if ( !Graphics.IsAvailable )
 			return;
 
 		UpdateSpriteRenderers();

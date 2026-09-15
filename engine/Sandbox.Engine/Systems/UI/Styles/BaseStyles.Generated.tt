@@ -38,6 +38,7 @@ var Members = new Dictionary<string, (string TypeName, string DefaultValue, bool
 	{ "BorderTopWidth",				("Length?",				"0",							false)},
 	{ "BorderRightWidth",			("Length?",				"0",							false)},
 	{ "BorderBottomWidth",			("Length?",				"0",							false)},
+	{ "BorderStyle",				("BorderStyle?",		"Sandbox.BorderStyle.Solid",		false)},
 	{ "BorderLeftColor",			("Color?",				"Color.White",					false)},
 	{ "BorderTopColor",				("Color?",				"Color.White",					false)},
 	{ "BorderRightColor",			("Color?",				"Color.White",					false)},
@@ -421,6 +422,7 @@ foreach ( var member in Members )
 	else if ( member.Value.TypeName == "string" && member.Key.StartsWith( "Grid" ) )
 	{
 #>
+
 		_<#=member.Key.ToLowerInvariant()#> ??= <#=member.Value.DefaultValue#>;
 <#
 	}

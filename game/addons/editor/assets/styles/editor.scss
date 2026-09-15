@@ -533,12 +533,15 @@
 
 .style-light .flatbutton { border-color: $l-line; color: $l-text; }
 .style-light .flatbutton:hover { background-color: $l-raised; }
+.style-light .primarybutton.disabled,
+.style-light .flatbutton.disabled { background-color: $l-raised; color: $l-text-muted; }
+.style-light .primarybutton:focus { outline-color: $accent; }
 
 .style-light .textentry { background-color: $l-raised; border-color: $l-raised; }
 .style-light .textentry:focus { border-color: $accent; }
 .style-light .textentry iconpanel { color: $l-text-faint; }
 .style-light .textentry .content-label { color: $l-text; }
-.style-light .textentry .content-label.placeholder { color: $l-text-muted; }
+.style-light .textentry .content-label.placeholder { color: $l-text-muted; opacity: 1; }
 
 .style-light .buttongroup { background-color: $l-raised; border-color: $l-line; }
 .style-light .buttongroup .button { color: $l-text-muted; }
