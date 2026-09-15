@@ -79,10 +79,6 @@
 	{
 		base.Tick();
 
-		// Rebuild the command list so the texture updates.
-		if ( _videoPlayer is not null )
-			MarkRenderDirty();
-
 		// Keep player settings in sync with parameters (hotload/rebuilds).
 		if ( _videoPlayer is not null && _videoPlayer.Repeat != _repeat )
 		{
@@ -102,7 +98,7 @@
 		}
 	}
 
-	public override void OnDraw()
+	public override void OnDraw( Painter painter )
 	{
 		if ( _videoPlayer is null )
 			return;
@@ -121,7 +117,7 @@
 			_ => Length.Contain,
 		};
 
-		DrawBackgroundTexture( tex, fit );
+		DrawTexture( painter, tex, fit );
 	}
 
 	void AttachShared( string source )

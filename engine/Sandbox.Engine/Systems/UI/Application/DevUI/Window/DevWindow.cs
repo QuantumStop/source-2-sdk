@@ -285,14 +285,6 @@ public sealed class DevWindow : Panel
 			SetSize( ResizeStartPos, ResizeStartSize + delta );
 		}
 
-		// If the window contents are static, the UI renderer can effectively "cache" and only redraw when something
-		// marks itself dirty. During drag/resize we want consistent redraw to avoid an extra frame of perceived lag
-		// compared to the hardware cursor.
-		if ( ForceRenderWhileInteracting && IsInteracting )
-		{
-			MarkRenderDirty();
-		}
-
 	}
 
 	internal void TickDragEarly()
@@ -309,10 +301,6 @@ public sealed class DevWindow : Panel
 		if ( IsDragging && DragSmoothTime <= 0.0f )
 		{
 			UpdateDragVisual( advanceSmoothing: false );
-			if ( ForceRenderWhileInteracting )
-			{
-				MarkRenderDirty();
-			}
 		}
 
 		base.OnMouseMove( e );

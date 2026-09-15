@@ -6,7 +6,7 @@ public sealed class SceneStats : Panel
 	readonly StatValue Audio;
 	readonly StatValue Physics;
 	readonly StatValue Particles;
-	readonly StatValue Render;
+	readonly StatValue RenderTime;
 	readonly StatValue Update;
 	readonly StatValue GcPause;
 
@@ -19,7 +19,7 @@ public sealed class SceneStats : Panel
 		Audio = AddStat( "Audio" );
 		Physics = AddStat( "Physics" );
 		Particles = AddStat( "Particles" );
-		Render = AddStat( "Render" );
+		RenderTime = AddStat( "Render" );
 		Update = AddStat( "Update" );
 		GcPause = AddStat( "GcPause" );
 	}
@@ -32,7 +32,7 @@ public sealed class SceneStats : Panel
 		Audio.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Audio.AverageMs( 200 ).ToString( "0.00 ms" );
 		Physics.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Physics.AverageMs( 200 ).ToString( "0.00 ms" );
 		Particles.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Particles.AverageMs( 200 ).ToString( "0.00 ms" );
-		Render.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Render.AverageMs( 200 ).ToString( "0.00 ms" );
+		RenderTime.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Render.AverageMs( 200 ).ToString( "0.00 ms" );
 		Update.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Update.AverageMs( 200 ).ToString( "0.00 ms" );
 		GcPause.Value = Sandbox.Diagnostics.PerformanceStats.Timings.GcPause.AverageMs( 200 ).ToString( "0.00 ms" );
 	}
