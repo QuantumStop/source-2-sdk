@@ -47,8 +47,10 @@ public sealed class SceneViewDemoPage : GalleryPage
 		bloom.Threshold = 0.85f;
 		var tonemapping = camera.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
+#pragma warning disable CS0618 // Demo keeps fixed exposure until it is migrated to the Auto Exposure component.
 		tonemapping.AutoExposureEnabled = false;
 		tonemapping.ExposureCompensation = 0.75f;
+#pragma warning restore CS0618
 		var vignette = camera.Components.Create<Vignette>();
 		vignette.Intensity = 0.25f;
 		vignette.Smoothness = 0.8f;
