@@ -1,6 +1,6 @@
 <div align="center">
 
-![New Editor](https://cdn.discordapp.com/attachments/572290095873261595/1549234993048453130/ignis_sdk.png)
+<img width="560" height="249" alt="ignis_sdk" src="https://github.com/user-attachments/assets/7b12805f-ec65-4671-877a-88e1d66cea3e" />
 
 </div>
 
@@ -11,15 +11,9 @@ Ignis is a fork of Facepunch's Source 2 engine, available [here](https://github.
 
 This fork is used by QuantumStop (title pending), giving it modifications we require while developing our games.
 
-## Getting the Engine
+## Compiling
 
-### Steam
-
-You can download and install the s&box editor directly from [Steam](https://store.steampowered.com/app/590830/sbox/).
-
-### Compiling from Source
-
-If you want to build from source, this repository includes all the necessary files to compile the engine yourself.
+If you want to build, this repository includes all the necessary files to compile the engine yourself.
 
 | Platform | Setup | Notes |
 |----------|-------|-------|
@@ -49,7 +43,7 @@ Setup.bat
 ./Setup.sh
 ```
 
-Once you've cloned the repo simply run `Bootstrap.bat` which will download dependencies and build the engine.
+Once you've cloned the repo simply run `Setup.bat` which will download dependencies and build the engine.
 
 The game and editor can be run from the binaries in the game folder.
 
