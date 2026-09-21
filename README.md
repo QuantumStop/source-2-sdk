@@ -7,7 +7,7 @@
 
 ## What is Ignis?
 
-Ignis is a fork of Facepunch's Source 2 engine, available [here](https://github.com/Facepunch/sbox-public). Designed to be similar to legacy Source 2 in workflows and UX, as time goes this will have less and less overlap with ongoing Facepunch version of that engine.
+Ignis is a fork of Facepunch's Source 2 based engine, available [here](https://github.com/Facepunch/sbox-public). Designed to be similar to legacy Source 2 in workflows and UX, as time goes this will have less and less overlap with ongoing Facepunch version of that engine.
 
 This fork is used by QuantumStop (title pending), giving it modifications we require while developing our games.
 
