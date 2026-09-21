@@ -10,6 +10,7 @@ public abstract class BaseVirtualPanel : Panel
 {
 	protected readonly Dictionary<int, object> _cellData = new();   // index -> last data used to build the cell
 	protected readonly Dictionary<int, Panel> _created = new();    // index -> created panel
+	protected readonly List<Panel> _pool = new();    // reusable panels for callers that support rebinding
 	protected readonly List<int> _removals = new();    // temp list for removal without mutating during iteration
 	protected readonly List<object> _items = new();    // backing store for Items
 
@@ -26,6 +27,13 @@ public abstract class BaseVirtualPanel : Panel
 	public bool NeedsRebuild { get; set; }
 
 	/// <summary>
+	/// Number of items to keep alive before and after the visible range.
+	/// This trades a few extra panels for less churn while scrolling.
+	/// </summary>
+	[Parameter]
+	public int OverscanItems { get; set; } = 2;
+
+	/// <summary>
 	/// Template used to render an item into a cell panel.
 	/// </summary>
 	[Parameter]
@@ -36,6 +44,12 @@ public abstract class BaseVirtualPanel : Panel
 	/// </summary>
 	[Parameter]
 	public Action<Panel, object> OnCreateCell { get; set; }
+
+	/// <summary>
+	/// Called when an existing cell is reused for new data. When unset, cells are recreated for compatibility.
+	/// </summary>
+	[Parameter]
+	public Action<Panel, object> OnBindCell { get; set; }
 
 	/// <summary>
 	/// Called when the last cell has been viewed. This allows you to view more.
@@ -171,8 +185,12 @@ public abstract class BaseVirtualPanel : Panel
 		foreach ( var p in _created.Values )
 			p.Delete( true );
 
+		foreach ( var p in _pool )
+			p.Delete( true );
+
 		_created.Clear();
 		_cellData.Clear();
+		_pool.Clear();
 	}
 
 	/// <summary>
@@ -222,6 +240,10 @@ public abstract class BaseVirtualPanel : Panel
 			// Get visible index range [first, pastEnd)
 			GetVisibleRange( out var first, out var pastEnd );
 
+			var overscan = Math.Max( 0, OverscanItems );
+			first = Math.Max( 0, first - overscan );
+			pastEnd = Math.Min( _items.Count, pastEnd + overscan );
+
 			// Remove anything outside the visible window or without data.
 			DeleteNotVisible( first, pastEnd - 1 );
 
@@ -240,12 +262,16 @@ public abstract class BaseVirtualPanel : Panel
 		foreach ( var kv in _created )
 			kv.Value.FinalLayout( offset );
 
-		// Extend scrollable height to fit all rows.
+		// Extend scrollable bounds to fit all virtualized content.
 		var rect = Box.Rect;
 		rect.Position -= ScrollOffset;
+		rect.Width = MathF.Max( GetTotalWidth( _items.Count ) * ScaleToScreen, rect.Width );
 		rect.Height = MathF.Max( GetTotalHeight( _items.Count ) * ScaleToScreen, rect.Height );
 
 		ConstrainScrolling( rect.Size );
+
+		// Scrollbars are not part of the virtual list content and need to be laid out manually.
+		FinalLayoutScrollbars( offset );
 	}
 
 	/// <summary>
@@ -281,7 +307,19 @@ public abstract class BaseVirtualPanel : Panel
 		{
 			var idx = _removals[i];
 			if ( _created.Remove( idx, out var panel ) )
-				panel.Delete( true );
+			{
+				if ( OnBindCell is null )
+				{
+					panel.Delete( true );
+				}
+				else
+				{
+					panel.Style.Display = DisplayMode.None;
+					panel.Style.Dirty();
+					_pool.Add( panel );
+				}
+			}
+
 			_cellData.Remove( idx );
 		}
 
@@ -296,25 +334,50 @@ public abstract class BaseVirtualPanel : Panel
 		var data = _items[i];
 		var needsRebuild = !_cellData.TryGetValue( i, out var last ) || !EqualityComparer<object>.Default.Equals( last, data );
 
-		if ( !_created.TryGetValue( i, out var panel ) || needsRebuild )
+		if ( !_created.TryGetValue( i, out var panel ) )
 		{
-			panel?.Delete( true );
-
-			panel = Add.Panel( "cell" );
-			panel.Style.Position = PositionMode.Absolute;
-			panel.ChildContent = Item?.Invoke( data );
+			if ( OnBindCell is not null && _pool.Count > 0 )
+			{
+				var lastPoolIndex = _pool.Count - 1;
+				panel = _pool[lastPoolIndex];
+				_pool.RemoveAt( lastPoolIndex );
+			}
+			else
+			{
+				panel = Add.Panel( "cell" );
+				panel.Style.Position = PositionMode.Absolute;
+				panel.ChildContent = Item?.Invoke( data );
+				OnCreateCell?.Invoke( panel, data );
+			}
 
 			_created[i] = panel;
-			_cellData[i] = data;
-
-			OnCreateCell?.Invoke( panel, data );
+			needsRebuild = true;
 
 			if ( _items.Count - 1 == i )
 			{
 				OnCreatedLastCell();
 			}
 		}
+		else if ( needsRebuild && OnBindCell is null )
+		{
+			panel.Delete( true );
 
+			panel = Add.Panel( "cell" );
+			panel.Style.Position = PositionMode.Absolute;
+			panel.ChildContent = Item?.Invoke( data );
+
+			_created[i] = panel;
+
+			OnCreateCell?.Invoke( panel, data );
+		}
+
+		if ( needsRebuild )
+		{
+			_cellData[i] = data;
+			OnBindCell?.Invoke( panel, data );
+		}
+
+		panel.Style.Display = DisplayMode.Flex;
 		PositionPanel( i, panel );
 	}
 
@@ -358,4 +421,14 @@ public abstract class BaseVirtualPanel : Panel
 	/// <param name="itemCount">Number of items.</param>
 	/// <returns>Total height in layout units.</returns>
 	protected abstract float GetTotalHeight( int itemCount );
+
+	/// <summary>
+	/// Gets the total width needed to display the specified number of items.
+	/// </summary>
+	/// <param name="itemCount">Number of items.</param>
+	/// <returns>Total width in layout units.</returns>
+	protected virtual float GetTotalWidth( int itemCount )
+	{
+		return Box.Rect.Width * ScaleFromScreen;
+	}
 }

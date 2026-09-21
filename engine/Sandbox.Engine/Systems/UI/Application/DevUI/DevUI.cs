@@ -7,176 +7,15 @@ public sealed class DevLayerSceneEvents( Scene scene ) : GameObjectSystem<DevLay
 {
 	void ISceneLoadingEvents.BeforeLoad( Scene scene, SceneLoadOptions options )
 	{
-		DeveloperMode.CloseForSceneChange();
-	}
-}
-
-public sealed class DevLayerHost
-{
-	static DevLayerHost Current;
-	static DevLayerComponent CurrentComponent;
-
-	GameObject GameObject;
-	DevLayerComponent Component;
-
-	public bool IsValid => GameObject.IsValid() && Component.IsValid();
-
-	DevLayerHost( GameObject gameObject, DevLayerComponent component )
-	{
-		GameObject = gameObject;
-		Component = component;
-	}
-
-	public static DevLayerHost Create()
-	{
-		var scene = Game.ActiveScene;
-		if ( !scene.IsValid() )
-			return null;
-
-		if ( Current?.IsValid == true )
-		{
-			DestroyDuplicateHosts( Current.GameObject.Scene, Current.Component );
-			DestroyDuplicateHosts( scene, Current.Component );
-			return Current;
-		}
-
-		var existing = scene.GetAllComponents<DevLayerComponent>()
-			.FirstOrDefault( component => component.IsValid() && component.GameObject.IsValid() );
-
-		if ( existing.IsValid() )
-		{
-			Current = new DevLayerHost( existing.GameObject, existing );
-			CurrentComponent = existing;
-			DestroyDuplicateHosts( scene, existing );
-			return Current;
-		}
-
-		var gameObject = scene.CreateObject();
-		gameObject.Name = "DevLayer Host";
-
-		var screen = gameObject.Components.Create<ScreenPanel>();
-		screen.AutoScreenScale = false;
-		screen.Scale = Screen.DesktopScale * DevLayer.DevUI_Scale;
-		screen.ZIndex = 1000;
-
-		var component = gameObject.Components.Create<DevLayerComponent>();
-		Current = new DevLayerHost( gameObject, component );
-		CurrentComponent = component;
-		return Current;
-	}
-
-	public void Delete()
-	{
-		if ( GameObject.IsValid() )
-			GameObject.Destroy();
-
-		if ( Current == this )
-			Current = null;
-
-		if ( CurrentComponent == Component )
-			CurrentComponent = null;
-
-		GameObject = null;
-		Component = null;
-	}
-
-	public void OnHotloaded()
-	{
-		Component?.OnHotloaded();
-	}
-
-	internal static bool Register( DevLayerComponent component )
-	{
-		if ( !component.IsValid() || !component.GameObject.IsValid() )
-			return false;
-
-		if ( CurrentComponent.IsValid() && CurrentComponent != component )
-			return false;
-
-		CurrentComponent = component;
-		Current = new DevLayerHost( component.GameObject, component );
-		DestroyDuplicateHosts( component.Scene, component );
-		return true;
-	}
-
-	internal static bool IsPrimary( DevLayerComponent component )
-	{
-		if ( !CurrentComponent.IsValid() )
-			return Register( component );
-
-		return CurrentComponent == component;
-	}
-
-	static void DestroyDuplicateHosts( Scene scene, DevLayerComponent keep )
-	{
-		if ( !scene.IsValid() || !keep.IsValid() )
-			return;
-
-		foreach ( var component in scene.GetAllComponents<DevLayerComponent>() )
-		{
-			if ( !component.IsValid() || component == keep )
-				continue;
-
-			component.GameObject?.Destroy();
-		}
-	}
-}
-
-public sealed class DevLayerComponent : PanelComponent
-{
-	DevLayer DevLayer;
-	ScreenPanel ScreenPanel;
-
-	protected override void OnStart()
-	{
-		base.OnStart();
-
-		if ( !DevLayerHost.Register( this ) )
-		{
-			GameObject.Destroy();
-			return;
-		}
-
-		GameObject.Components.TryGet( out ScreenPanel );
-
-		if ( !Tags.Has( "devui" ) )
-			Tags.Add( "devui" );
-
-		Panel.Style.Position = PositionMode.Absolute;
-		Panel.Style.Left = 0;
-		Panel.Style.Top = 0;
-		Panel.Style.Width = Length.Percent( 100 );
-		Panel.Style.Height = Length.Percent( 100 );
-		Panel.Style.PointerEvents = PointerEvents.None;
-
-		DevLayer = Panel.AddChild<DevLayer>();
-	}
-
-	protected override void OnUpdate()
-	{
-		base.OnUpdate();
-
-		if ( !DevLayerHost.IsPrimary( this ) )
-		{
-			GameObject.Destroy();
-			return;
-		}
-
-		if ( ScreenPanel.IsValid() )
-			ScreenPanel.Scale = Screen.DesktopScale * DevLayer.DevUI_Scale;
-
-		DevLayer?.TickDragEarly();
-	}
-
-	public void OnHotloaded()
-	{
-		DevLayer?.OnHotloaded();
+		ConsoleOverlay.CloseForSceneChange();
 	}
 }
 
 [StyleSheet.Inline( "devlayer-engine-fallback", DevLayerStyles )]
-public sealed class DevLayer : Panel
+public sealed class DevLayer : RootPanel
 {
+	public static DevLayer Instance { get; private set; }
+
 	const string DevLayerStyles = """
 		devlayer
 		{
@@ -203,12 +42,16 @@ public sealed class DevLayer : Panel
 		""";
 
 	ExceptionNotification ExceptionNotification;
-	DeveloperMode DeveloperModePanel;
+	ConsoleOverlay ConsoleOverlayPanel;
 
 	public DevLayer()
 	{
-		DeveloperMode.ResetStartupState();
+		RenderedManually = true;
+		Instance = this;
 
+		ConsoleOverlay.ResetStartupState();
+
+		AddClass( "devui" );
 		Style.Position = PositionMode.Absolute;
 		Style.Left = 0;
 		Style.Top = 0;
@@ -220,12 +63,20 @@ public sealed class DevLayer : Panel
 		// explicitly so the UI is visible even without TypeLibrary enrollment.
 		LoadDevUiStyles();
 
-		DeveloperModePanel = AddChild<DeveloperMode>();
-		AddChild<ConsoleOverlay>();
+		AddChild<DeveloperMode>();
+		ConsoleOverlayPanel = AddChild<ConsoleOverlay>();
 
 		ExceptionNotification = AddChild<ExceptionNotification>();
 
 		MenuUtility.AddLogger( OnConsoleMessage );
+	}
+
+	internal static void RenderFinalOverlay()
+	{
+		if ( !Instance.IsValid() )
+			return;
+
+		Instance.RenderManual();
 	}
 
 	public override void Tick()
@@ -234,12 +85,13 @@ public sealed class DevLayer : Panel
 
 		// DevUI.cs.scss disables pointer events for the whole DevLayer unless this class is present.
 		// Keep it in sync with the devui focused state so unfocused windows can stay visible without eating input.
-		SetClass( "developermode", DeveloperMode.WantsInput );
+		SetClass( "developermode", ConsoleOverlay.WantsInput );
+		TickDragEarly();
 	}
 
 	internal void TickDragEarly()
 	{
-		DeveloperModePanel?.TickDragEarly();
+		ConsoleOverlayPanel?.TickDragEarly();
 	}
 
 	void LoadDevUiStyles()
@@ -283,7 +135,15 @@ public sealed class DevLayer : Panel
 	{
 		base.OnDeleted();
 
+		if ( Instance == this )
+			Instance = null;
+
 		MenuUtility.RemoveLogger( OnConsoleMessage );
+	}
+
+	protected override void UpdateScale( Rect screenSize )
+	{
+		Scale = Screen.DesktopScale * DevUI_Scale;
 	}
 
 	[ConVar( "devui_scale" )]

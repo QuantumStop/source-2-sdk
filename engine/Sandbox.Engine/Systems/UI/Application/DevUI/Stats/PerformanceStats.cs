@@ -26,6 +26,9 @@ public sealed class PerformanceStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		var stats = Sandbox.Diagnostics.PerformanceStats.LastSecond;
 		FrameMin.Value = stats.FrameMin.ToString( "0 ms" );
 		FrameAvg.Value = stats.FrameAvg.ToString( "0 ms" );

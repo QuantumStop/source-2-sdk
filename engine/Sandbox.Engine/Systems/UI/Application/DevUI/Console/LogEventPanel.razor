@@ -12,11 +12,19 @@
 					<div class="stacktoggle" onclick="@ToggleStackTrace" title="Toggle stack trace">
 						<i>@(StackTracesVisible ? "unfold_less" : "unfold_more")</i>
 					</div>
+					@if ( StackTracesVisible )
+					{
+						<div class="stackcopy" onclick="@CopyStackTrace" title="Copy stack trace">
+							<i>content_copy</i>
+						</div>
+					}
 				}
 				<div class="close" onclick="@Hide" title="Close"><i>close</i></div>
 			</div>
 		</div>
-        <div @ref="StackHost" class="stack"></div>
+        <div @ref="StackHost" class="stack">
+			<StackTraceVirtualList @ref="StackScroll" Items="@stackItems" ContentWidthHint="@stackContentWidth" />
+		</div>
     </div>
 </root>
 
@@ -30,7 +38,7 @@
 
 	static bool StackTracesVisible { get; set; } = true;
 
-    string classes => $"logeventpanel {(visible?"visible":"hidden")} {levelClass} {(hasStack ? "hasstack" : string.Empty)} {(StackTracesVisible ? "stackenabled" : string.Empty)}".Trim();
+    string classes => $"logeventpanel {(visible?"visible":"hidden")} {levelClass} {(visible && hasStack ? "hasstack" : string.Empty)} {(visible && hasStack && StackTracesVisible ? "stackenabled" : string.Empty)}".Trim();
 
 	string DisplayLogger
 	{
@@ -66,72 +74,82 @@
 	}
     Panel Output = default;
     Panel StackHost = default;
-    DevScrollPanel StackScroll = default;
-    Label StackText = default;
+    StackTraceVirtualList StackScroll = default;
+	string stackText = string.Empty;
+	string[] stackLines = [];
+	object[] stackItems = [];
+	float stackContentWidth;
+	bool resetStackScroll;
 
     public void Switch( LogEvent e )
     {
         entry = e;
 		levelClass = ClassForLevel( e.Level );
-		hasStack = !string.IsNullOrWhiteSpace( entry.Stack );
+		stackText = entry.Stack ?? string.Empty;
+		stackLines = SplitStackLines( stackText );
+		stackItems = CreateStackItems( stackLines );
+		stackContentWidth = EstimateStackWidth( stackLines );
+		hasStack = !string.IsNullOrWhiteSpace( stackText );
         visible = true;
         StateHasChanged();
         UnselectAllInChildren();
+		resetStackScroll = true;
 
-        UpdateStackText();
+        UpdateStackHeight( stackText );
     }
 
     void Hide()
     {
         visible = false;
+		UpdateStackHeight( string.Empty );
         StateHasChanged();
     }
 
 	void ToggleStackTrace()
 	{
 		StackTracesVisible = !StackTracesVisible;
-		UpdateStackHeight( entry.Stack ?? string.Empty );
+		UpdateStackHeight( stackText );
 		StateHasChanged();
+	}
+
+	void CopyStackTrace()
+	{
+		Clipboard.SetText( stackText );
+		UnselectStackTrace();
 	}
 
     protected override void OnAfterTreeRender( bool firstTime )
     {
         base.OnAfterTreeRender( firstTime );
 
-        if ( !firstTime )
-            return;
-
-        if ( !StackHost.IsValid() )
-            return;
-
-        // Use DevScrollPanel so stack traces can scroll both ways.
-        StackScroll = StackHost.AddChild<DevScrollPanel>();
-        StackScroll.AddClass( "compact" );
-
-        StackText = StackScroll.Canvas.Add.Label( string.Empty, "stacktext" );
-
-        UpdateStackText();
-    }
-
-    void UpdateStackText()
-    {
-        if ( !StackText.IsValid() )
-            return;
-
-		var stack = entry.Stack ?? string.Empty;
-        StackText.Text = stack;
-		hasStack = !string.IsNullOrWhiteSpace( stack );
-		UpdateStackHeight( stack );
+		UpdateStackHeight( stackText );
+		UnselectStackTrace();
 
         // Reset scroll position when switching entries.
-        if ( StackScroll.IsValid() )
+        if ( resetStackScroll && StackScroll.IsValid() )
+		{
             StackScroll.ScrollOffset = Vector2.Zero;
+			resetStackScroll = false;
+		}
     }
+
+	void UnselectStackTrace()
+	{
+		if ( StackHost.IsValid() )
+			StackHost.UnselectAllInChildren();
+	}
 
     void UpdateStackHeight( string stack )
     {
         if ( !StackHost.IsValid() )
             return;
+
+		if ( !visible )
+		{
+			StackHost.Style.Height = 0;
+			StackHost.Style.Dirty();
+			return;
+		}
 
 		if ( !StackTracesVisible )
 		{
@@ -147,7 +165,6 @@
 			return;
 		}
 
-		// DevScrollPanel uses an absolutely positioned canvas, so it won't naturally size-to-content.
 		// Approximate a sensible height based on line count (clamped).
 		var lineCount = 1;
 		for ( var i = 0; i < stack.Length; i++ )
@@ -181,6 +198,45 @@
         if ( e.HasCtrl && e.Button == "a" && e.Pressed )
         {
             Output.SelectAllInChildren();
+			UnselectStackTrace();
         }
     }
+
+	protected override void OnDragSelect( SelectionEvent e )
+	{
+		base.OnDragSelect( e );
+		UnselectStackTrace();
+	}
+
+	static string[] SplitStackLines( string stack )
+	{
+		if ( string.IsNullOrEmpty( stack ) )
+			return [];
+
+		return stack.Replace( "\r\n", "\n" ).Replace( '\r', '\n' ).Split( '\n' );
+	}
+
+	static object[] CreateStackItems( string[] lines )
+	{
+		if ( lines is null || lines.Length == 0 )
+			return [];
+
+		var items = new object[lines.Length];
+		for ( var i = 0; i < lines.Length; i++ )
+			items[i] = lines[i];
+
+		return items;
+	}
+
+	static float EstimateStackWidth( string[] lines )
+	{
+		if ( lines is null || lines.Length == 0 )
+			return 0;
+
+		var maxChars = 0;
+		foreach ( var line in lines )
+			maxChars = Math.Max( maxChars, line?.Length ?? 0 );
+
+		return (maxChars * 6f) + 24f;
+	}
 }

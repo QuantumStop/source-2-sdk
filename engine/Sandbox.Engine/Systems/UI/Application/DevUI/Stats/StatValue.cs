@@ -16,7 +16,11 @@ public sealed class StatValue : Panel
 		get => _value;
 		set
 		{
-			_value = value ?? "";
+			value ??= "";
+			if ( _value == value )
+				return;
+
+			_value = value;
 			if ( ValueLabel.IsValid() )
 				ValueLabel.Text = _value;
 		}
@@ -28,7 +32,11 @@ public sealed class StatValue : Panel
 		get => _title;
 		set
 		{
-			_title = value ?? "";
+			value ??= "";
+			if ( _title == value )
+				return;
+
+			_title = value;
 			if ( TitleLabel.IsValid() )
 				TitleLabel.Text = _title;
 		}

@@ -127,6 +127,33 @@ public abstract partial class BaseStyles : ICloneable
 				return SetOverflow( value, x => OverflowX = x );
 			case "overflow-y":
 				return SetOverflow( value, x => OverflowY = x );
+			case "overscroll-behavior":
+				{
+					var words = value.Split( ' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries );
+					if ( words.Length is < 1 or > 2 ) return false;
+
+					var x = ParseOverscrollBehavior( words[0] );
+					var y = ParseOverscrollBehavior( words[^1] );
+					if ( !x.HasValue || !y.HasValue ) return false;
+
+					OverscrollBehaviorX = x;
+					OverscrollBehaviorY = y;
+					return true;
+				}
+			case "overscroll-behavior-x":
+				{
+					var behaviorX = ParseOverscrollBehavior( value );
+					if ( !behaviorX.HasValue ) return false;
+					OverscrollBehaviorX = behaviorX;
+					return true;
+				}
+			case "overscroll-behavior-y":
+				{
+					var behaviorY = ParseOverscrollBehavior( value );
+					if ( !behaviorY.HasValue ) return false;
+					OverscrollBehaviorY = behaviorY;
+					return true;
+				}
 			case "scrollbar-width":
 				return SetScrollbarWidth( value );
 			case "scrollbar-gutter":
@@ -138,11 +165,21 @@ public abstract partial class BaseStyles : ICloneable
 		return false;
 	}
 
+	static OverscrollBehavior? ParseOverscrollBehavior( string value ) => value.Trim().ToLowerInvariant() switch
+	{
+		"auto" => UI.OverscrollBehavior.Auto,
+		"contain" => UI.OverscrollBehavior.Contain,
+		"none" => UI.OverscrollBehavior.None,
+		_ => null
+	};
+
 	public void FillDefaults()
 	{
 		_bordershape ??= UI.BorderShape.None;
 		_overflowx ??= Overflow ?? OverflowMode.Visible;
 		_overflowy ??= Overflow ?? OverflowMode.Visible;
+		_overscrollbehaviorx ??= UI.OverscrollBehavior.Auto;
+		_overscrollbehaviory ??= UI.OverscrollBehavior.Auto;
 
 		_caretwidth ??= 1;
 		_caretblink ??= true;

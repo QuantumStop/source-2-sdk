@@ -57,11 +57,13 @@
 	{
 		base.OnMouseDown( e );
 
-		if ( e.Target != SliderThumb )
+		if ( e.Target != SliderThumb && e.Target != SliderTrack && e.Target != SliderFill )
 			return;
 
 		IsDragging = true;
-		GrabOffset = e.LocalPosition.x;
+		GrabOffset = e.Target == SliderThumb ? e.LocalPosition.x : SliderThumb.Box.Rect.Width * 0.5f;
+		SetMouseCapture( true );
+		UpdateSlider();
 		e.StopPropagation();
 	}
 
@@ -84,7 +86,9 @@
 			return;
 
 		IsDragging = false;
+		SetMouseCapture( false );
 		Committed?.Invoke( DisplayValue );
+		e.StopPropagation();
 	}
 
 	private void UpdateSlider()

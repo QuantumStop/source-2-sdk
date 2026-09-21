@@ -1,15 +1,17 @@
 namespace Sandbox.UI.Dev;
 
-using Sandbox.UI.Construct;
+using System;
+using System.Linq;
 
-public sealed class RenderModeSelect : Panel
+public sealed class RenderModeSelect : DevCommandButtonRow
 {
 	static readonly (SceneCameraDebugMode value, DisplayInfo info)[] DebugModes
 		= DisplayInfo.ForEnumValues<SceneCameraDebugMode>();
 
-	readonly Label TitleLabel;
-	readonly IconPanel DropIcon;
+	readonly DevCommandButtonOption[] Options;
 	SceneCameraDebugMode _selectedMode;
+	SceneCameraDebugMode _displayedMode;
+	bool _displayInitialized;
 
 	string CurrentTitle => _selectedMode == SceneCameraDebugMode.Normal
 		? "Image Lit"
@@ -26,11 +28,13 @@ public sealed class RenderModeSelect : Panel
 
 	public RenderModeSelect()
 	{
-		var titleBar = Add.Panel( "titlebar" );
-		TitleLabel = titleBar.Add.Label( "", "title" );
+		Options = DebugModes
+			.Select( x => new DevCommandButtonOption( x.info.Name, ((int)x.value).ToString(), x.info.Icon ) )
+			.ToArray();
 
-		var drop = Add.Panel( "drop" );
-		DropIcon = drop.Add.Icon( "arrow_drop_down" );
+		Index = 1;
+		Columns = 2;
+		UpdateDisplay();
 	}
 
 	void SetMode( SceneCameraDebugMode mode )
@@ -46,9 +50,23 @@ public sealed class RenderModeSelect : Panel
 
 	void UpdateDisplay()
 	{
-		TitleLabel.Text = CurrentTitle;
-		DropIcon.Text = "arrow_drop_down";
+		if ( _displayInitialized && _displayedMode == _selectedMode )
+			return;
+
+		SelectedOptionIndex = Math.Max( 0, Array.FindIndex( DebugModes, x => x.value == _selectedMode ) );
+
+		Button = new DevCommandButtonSpec(
+			CurrentTitle,
+			DevCommandButtonKind.Dropdown,
+			Options: Options,
+			OnSelected: ( _, index ) => SetMode( DebugModes[index].value ) );
+
+		OverrideLabel = CurrentTitle;
+		StateHasChanged();
+
 		SetClass( "active", _selectedMode != SceneCameraDebugMode.Normal );
+		_displayedMode = _selectedMode;
+		_displayInitialized = true;
 	}
 
 	public override void Tick()
@@ -62,18 +80,4 @@ public sealed class RenderModeSelect : Panel
 		UpdateDisplay();
 	}
 
-	protected override void OnClick( MousePanelEvent e )
-	{
-		var popup = new Popup( this, Popup.PositionMode.BelowLeft, 4f );
-		popup.CloseWhenParentIsHidden = true;
-
-		foreach ( var (mode, info) in DebugModes )
-		{
-			var captured = mode;
-			var option = popup.AddOption( info.Name, info.Icon, () => SetMode( captured ) );
-
-			if ( mode == _selectedMode )
-				option.AddClass( "active" );
-		}
-	}
 }

@@ -4,6 +4,7 @@ using Sandbox;
 using System;
 using System.Collections.Generic;
 
+[Obsolete( "Use native panel scrollbars (overflow: scroll; scrollbar-width) instead." )]
 public sealed class DevScrollBar : Panel
 {
 	static Panel HookedRoot;

@@ -2,26 +2,57 @@ ConsoleRow
 {
 	flex-shrink: 0;
 	flex-grow: 0;
-	color: #d6d6d6;
+	color: #f1f1f1;
 	width: 100%;
 	cursor: pointer;
 	align-items: center;
 	white-space: pre;
+	font-size: 11px;
+	font-weight: 600;
 
-	.logger
-	{
-		margin-right: 5px;
-		flex-shrink: 0;
-		flex-grow: 0;
-		white-space: nowrap;
-	}
-
-	.message { white-space: nowrap; }
 	&.trace { opacity: 0.6; }
 	&.warn { color: #ffd800; }
 	&.warning { color: #ffd800; }
 	&.error { color: #c52333; }
 	&:hover { background-color: #333; }
-	&.in { color: #68bf61; }
+	&.in { color: #b2b2b2; }
 	&.highlight { background-color: rgba(#fff, 0.02); }
+}
+
+ConsoleRow .menulist
+{
+	min-width: 155px;
+	padding: 0px;
+	background-color: #3f4849;
+	border: 1px solid #171717;
+	border-radius: 0px;
+	box-shadow: 2px 5px 12px rgba(0, 0, 0, 0.85);
+	color: #f1f1f1;
+	font-family: Roboto Mono;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 1px;
+	overflow: hidden;
+}
+
+ConsoleRow .menulist > .menu
+{
+	height: 20px;
+	padding: 0px 8px 0px 4px;
+	border-radius: 0px;
+	border-bottom: 1px solid #171717;
+	background-color: #3f4849;
+	color: #f1f1f1;
+}
+
+ConsoleRow .menulist > .menu.active,
+ConsoleRow .menulist > .menu.open,
+ConsoleRow .menulist > .menu:active
+{
+	background-color: #586365;
+}
+
+ConsoleRow .menulist > .menu.disabled
+{
+	opacity: 0.35;
 }

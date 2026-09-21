@@ -31,6 +31,9 @@ public sealed class GarbageStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		var stats = Sandbox.Diagnostics.PerformanceStats.LastSecond;
 		Allocations.Value = stats.ByteAlloc.FormatBytes();
 		Gc0.Value = stats.Gc0.ToMetric();

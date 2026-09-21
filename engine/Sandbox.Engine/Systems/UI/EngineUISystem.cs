@@ -7,22 +7,23 @@ namespace Sandbox;
 
 internal sealed class EngineUISystem : IUISystem
 {
-	DevLayerHost _devLayerHost;
+	DevLayer _devLayer;
 
-	public bool ForceCursorVisible => LoadingScreen.IsVisible || DeveloperMode.WantsInput;
+	public bool ForceCursorVisible => LoadingScreen.IsVisible || ConsoleOverlay.WantsInput;
 
 	public void Init()
 	{
 		if ( Application.IsHeadless || GlobalContext.Current?.UISystem is null )
 			return;
 
+		EnsureDevLayer();
 		UISystemOverlay.Init();
 	}
 
 	public void Shutdown()
 	{
-		_devLayerHost?.Delete();
-		_devLayerHost = null;
+		_devLayer?.Delete();
+		_devLayer = null;
 
 		UISystemOverlay.Shutdown();
 	}
@@ -32,9 +33,15 @@ internal sealed class EngineUISystem : IUISystem
 		if ( Application.IsHeadless || GlobalContext.Current?.UISystem is null )
 			return;
 
+		EnsureDevLayer();
 		UISystemOverlay.Init();
+	}
 
-		if ( _devLayerHost?.IsValid != true )
-			_devLayerHost = DevLayerHost.Create();
+	void EnsureDevLayer()
+	{
+		if ( _devLayer?.IsValid == true )
+			return;
+
+		_devLayer = new DevLayer();
 	}
 }

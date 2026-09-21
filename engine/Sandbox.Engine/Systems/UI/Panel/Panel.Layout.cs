@@ -687,11 +687,17 @@ public partial class Panel
 	bool isScrolling;
 	Vector2 scrollVelocityVelocity;
 
+	internal void StopScrollVelocity()
+	{
+		ScrollVelocity = 0;
+		scrollVelocityVelocity = 0;
+	}
+
 	protected virtual void AddScrollVelocity()
 	{
 		if ( ScrollVelocity.IsNearZeroLength )
 		{
-			ScrollVelocity = 0;
+			StopScrollVelocity();
 			return;
 		}
 
@@ -733,6 +739,7 @@ public partial class Panel
 		if ( overflow == OverflowMode.Visible || overflow == OverflowMode.Hidden )
 		{
 			ScrollOffset = 0;
+			StopScrollVelocity();
 			return;
 		}
 
@@ -746,26 +753,28 @@ public partial class Panel
 		IsScrollAtBottom = so.y + ScrollVelocity.y >= size.y;
 		if ( ScrollVelocity.y > 0 && IsScrollAtBottom ) so.y += heightChange;
 
-		//
-		// TODO - a style to let them turn springy mode off ?
-		//
-
+		// Preserve the original spring and inertia; only constrain its outermost extent.
+		var min = axisReversed ? -ScrollSize : Vector2.Zero;
+		var max = axisReversed ? Vector2.Zero : ScrollSize;
 		var constrainSpeed = RealTime.SmoothDelta * 100.0f;
+		so.x = so.x.LerpTo( so.x.Clamp( min.x, max.x ), constrainSpeed );
+		so.y = so.y.LerpTo( so.y.Clamp( min.y, max.y ), constrainSpeed );
 
-		if ( axisReversed )
+		var limit = ScrollBounceLimit;
+		if ( ComputedStyle.OverscrollBehaviorX == OverscrollBehavior.None ) limit.x = 0;
+		if ( ComputedStyle.OverscrollBehaviorY == OverscrollBehavior.None ) limit.y = 0;
+		var constrained = so.Clamp( min - limit, max + limit );
+		if ( (constrained.x <= min.x - limit.x && ScrollVelocity.x < 0) || (constrained.x >= max.x + limit.x && ScrollVelocity.x > 0) )
 		{
-			if ( so.y > 0 ) so.y = so.y.LerpTo( 0, constrainSpeed );
-			if ( so.x > 0 ) so.x = so.x.LerpTo( 0, constrainSpeed );
-			if ( so.y < -ScrollSize.y ) so.y = so.y.LerpTo( -ScrollSize.y, constrainSpeed );
-			if ( so.x < -ScrollSize.x ) so.x = so.x.LerpTo( -ScrollSize.x, constrainSpeed );
+			ScrollVelocity.x = 0;
+			scrollVelocityVelocity.x = 0;
 		}
-		else
+		if ( (constrained.y <= min.y - limit.y && ScrollVelocity.y < 0) || (constrained.y >= max.y + limit.y && ScrollVelocity.y > 0) )
 		{
-			if ( so.y < 0 ) so.y = so.y.LerpTo( 0, constrainSpeed );
-			if ( so.x < 0 ) so.x = so.x.LerpTo( 0, constrainSpeed );
-			if ( so.y > ScrollSize.y ) so.y = so.y.LerpTo( ScrollSize.y, constrainSpeed );
-			if ( so.x > ScrollSize.x ) so.x = so.x.LerpTo( ScrollSize.x, constrainSpeed );
+			ScrollVelocity.y = 0;
+			scrollVelocityVelocity.y = 0;
 		}
+		so = constrained;
 
 		if ( ScrollOffset == so )
 			return;
@@ -773,6 +782,9 @@ public partial class Panel
 		ScrollOffset = so;
 		isScrolling = true;
 	}
+
+	// Screen-space limits: 20% of each viewport axis, capped at 150 UI pixels.
+	Vector2 ScrollBounceLimit => Vector2.Min( Box.Rect.Size * 0.2f, new Vector2( 150, 150 ) * ScaleToScreen );
 
 	/// <summary>
 	/// Play a sound from this panel.

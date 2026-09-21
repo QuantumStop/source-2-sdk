@@ -26,7 +26,7 @@ public class Console : Panel
 	{
 		if ( e.Message.Contains( '\n' ) || e.Message.Contains( '\r' ) )
 		{
-			var parts = e.Message.Split( new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+			var parts = e.Message.Split( ['\n', '\r'], StringSplitOptions.RemoveEmptyEntries );
 			foreach ( var part in parts )
 			{
 				var ee = e;
@@ -55,13 +55,14 @@ public class Console : Panel
 	}
 
 	internal List<LogEvent> Entries = [];
-	internal DevScrollView OutputView;
-	internal DevVirtualList Output;
+	internal ConsoleVirtualList Output;
 	internal TextEntry Input;
 //	internal TextEntry Filter; // kept for later, hidden for now
 
 	LogEventPanel logEventPanel;
 	Panel InputBar;
+	int MaxVisibleChars;
+	float LastContentWidthHint = -1;
 
 	struct MessageCategory
 	{
@@ -105,27 +106,13 @@ public class Console : Panel
 	{
 		CanDragScroll = false;
 
-		OutputView = AddChild<DevScrollView>();
-		OutputView.AddClass( "console_output" );
-
-		Output = OutputView.View.AddChild<DevVirtualList>();
-		Output.Style.Position = PositionMode.Absolute;
-		Output.Style.Left = 5;
-		Output.Style.Top = 0;
-		Output.Style.Right = 5;
-		Output.Style.Bottom = 15;
-		Output.Style.Dirty();
-		Output.CreateCell = CreateOutputCell;
-		Output.BindCell = BindOutputCell;
-
-		Output.ItemHeight = 15;
-
-		Output.PaddingLeft = 0;
-		Output.PaddingRight = 0;
-		Output.PaddingBottom = 0;
-		Output.PaddingTop = 0;
-
-		OutputView.OnScroll = OnOutputScrolled;
+		Output = AddChild<ConsoleVirtualList>();
+		Output.AddClass( "console_output" );
+		Output.CanDragScroll = false;
+		Output.ItemHeight = 19;
+		Output.PreferScrollToBottom = true;
+		Output.OnCreateCell = CreateOutputCell;
+		Output.OnBindCell = BindOutputCell;
 
 		logEventPanel = AddChild<LogEventPanel>();
 
@@ -152,8 +139,9 @@ public class Console : Panel
 			AddEvent( entry );
 		}
 
-		OutputView.AcceptsFocus = true;
-		OutputView.AllowChildSelection = true;
+		Output.AcceptsFocus = true;
+		Output.AllowChildSelection = false;
+		AllowChildSelection = false;
 	}
 
 	void OnInputBarMouseDown( PanelEvent e )
@@ -176,22 +164,22 @@ public class Console : Panel
 		e.StopPropagation();
 	}
 
-	Panel CreateOutputCell() => new Panel();
+	void CreateOutputCell( Panel cell, object data )
+	{
+		var row = cell.AddChild<ConsoleRow>();
+		row.OnEntryClicked = logEventPanel.Switch;
+		row.OnRowMouseDown = ClearOutputSelection;
+		cell.UserData = row;
+	}
 
 	void BindOutputCell( Panel cell, object data )
 	{
-		var row = cell.ChildrenOfType<ConsoleRow>().FirstOrDefault();
+		var row = cell.UserData as ConsoleRow;
 		if ( row is null )
-		{
-			row = new ConsoleRow();
-			row.Parent = cell;
-			row.OnEntryClicked = logEventPanel.Switch;
-		}
+			return;
 
 		row.SetLogEvent( (LogEvent)data );
 	}
-
-	void OnOutputScrolled( Vector2 off ) => Output.VirtualScrollOffset = off;
 
 	public override void OnDeleted()
 	{
@@ -207,6 +195,7 @@ public class Console : Panel
 		if ( ShouldShowEvent( e ) )
 		{
 			Output.AddItem( e );
+			MaxVisibleChars = Math.Max( MaxVisibleChars, EstimateContentChars( e ) );
 		}
 
 		UpdateScrollSizes();
@@ -278,6 +267,7 @@ public class Console : Panel
 	void OnFilter()
 	{
 		Output.SetItems( Entries.Where( x => ShouldShowEvent( x ) ).Select( x => x as object ) );
+		RecalculateVisibleContentWidth();
 		UpdateScrollSizes();
 	}
 
@@ -304,13 +294,14 @@ public class Console : Panel
 	public override void Tick()
 	{
 		base.Tick();
-		UpdateScrollSizes();
 	}
 
 	void OnClear()
 	{
 		Output.Clear();
 		Entries.Clear();
+		MaxVisibleChars = 0;
+		LastContentWidthHint = -1;
 
 		Message.Clear();
 		Warning.Clear();
@@ -329,6 +320,7 @@ public class Console : Panel
 		var e = new LogEvent() { Message = line, Level = LogLevel.Info, Logger = "in", Time = DateTime.Now };
 		Entries.Add( e );
 		Output.AddItem( e );
+		MaxVisibleChars = Math.Max( MaxVisibleChars, EstimateContentChars( e ) );
 		UpdateScrollSizes();
 
 		// Don't throw exceptions through UI event processing for bad/unknown commands.
@@ -352,7 +344,7 @@ public class Console : Panel
 		{
 			if ( t.Contains( '\n' ) || t.Contains( '\r' ) )
 			{
-				var parts = t.Split( new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries );
+				var parts = t.Split( ['\n', '\r'], StringSplitOptions.RemoveEmptyEntries );
 				foreach ( var part in parts )
 				{
 					OutputLine( part );
@@ -365,8 +357,6 @@ public class Console : Panel
 		}
 
 		Output.TryScrollToBottom();
-		// Virtual list updates its own virtual scroll offset, keep the scroll view in sync explicitly.
-		OutputView.SetScrollOffset( Output.VirtualScrollOffset );
 
 		Input.Text = "";
 		Input.AddToHistory( t );
@@ -377,76 +367,171 @@ public class Console : Panel
 	private object[] FillAutoComplete( string arg )
 	{
 		if ( string.IsNullOrWhiteSpace( arg ) )
-			return Array.Empty<string>();
+			return [];
 
 		if ( arg.Trim().Length < 2 )
-			return Array.Empty<string>();
+			return [];
 
-		return ConVarSystem.GetAutoComplete( arg, 20 )
+		return [.. ConVarSystem.GetAutoComplete( arg, 20 )
 			.Select( x => (object)new TextEntry.AutocompleteEntry
 			{
 				Title = $"{x.Command} - {x.Description}".Trim( '-', ' ' ),
 				Value = x.Command
-			} )
-			.ToArray();
+			} )];
 	}
 
 	void UpdateScrollSizes()
 	{
-		if ( OutputView is null || Output is null )
+		if ( Output is null )
 			return;
 
-		// Estimate horizontal content width so long lines can scroll even when virtualized.
-		var maxChars = 0;
+		const float estimatedCharWidth = 6.6f;
+		var estimatedWidth = (MaxVisibleChars * estimatedCharWidth) + 64f;
+		var contentWidthHint = MathF.Max( Output.Box.Rect.Width * Output.ScaleFromScreen, estimatedWidth );
+
+		if ( MathF.Abs( contentWidthHint - LastContentWidthHint ) < 0.5f )
+			return;
+
+		LastContentWidthHint = contentWidthHint;
+		Output.ContentWidthHint = contentWidthHint;
+		Output.NeedsRebuild = true;
+	}
+
+	void RecalculateVisibleContentWidth()
+	{
+		MaxVisibleChars = 0;
+
 		foreach ( var e in Entries )
 		{
 			if ( !ShouldShowEvent( e ) ) continue;
-
-			var logger = e.Logger;
-			if ( !string.IsNullOrWhiteSpace( logger ) && logger != "Generic" && logger != "in" )
-			{
-				maxChars = Math.Max( maxChars, (logger.Length + 3) + (e.Message?.Length ?? 0) ); // [x] + space
-			}
-			else
-			{
-				maxChars = Math.Max( maxChars, e.Message?.Length ?? 0 );
-			}
+			MaxVisibleChars = Math.Max( MaxVisibleChars, EstimateContentChars( e ) );
 		}
+	}
 
-		var fontSize = ConsoleRow.ConsoleMsgFontSize;
-		var estimatedWidth = (maxChars * (fontSize * 0.6f)) + 64f;
-		Output.ContentWidthHint = MathF.Max( Output.Box.Rect.Width, estimatedWidth );
+	static int EstimateContentChars( LogEvent e )
+	{
+		var logger = e.Logger;
+		var messageLength = e.Message?.Length ?? 0;
 
-		var visibleCount = Entries.Count( ShouldShowEvent );
-		var view = Output.Box.Rect.Size;
-		OutputView.ContentSize = new Vector2(
-			MathF.Max( view.x, Output.ContentWidthHint ),
-			MathF.Max( view.y, visibleCount * Output.ItemHeight )
-		);
+		if ( e.Logger == "in" )
+			return messageLength + 2;
+
+		if ( !string.IsNullOrWhiteSpace( logger ) && logger != "Generic" )
+			return (logger.Length + 3) + messageLength; // [x] + space
+
+		return messageLength;
 	}
 
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
 		base.OnMouseDown( e );
 
-		foreach ( var child in Children )
+		ClearOutputSelection();
+	}
+
+	protected override void OnDragSelect( SelectionEvent e )
+	{
+		e.StopPropagation();
+
+		foreach ( var row in Output.VisibleRows )
 		{
-			Unselect( child );
+			row.UpdateTextSelection( e );
 		}
 	}
 
-	private void Unselect( Panel p )
+	public override void OnButtonTyped( ButtonEvent e )
 	{
-		if ( p is Label l )
+		if ( e.Button == "a" && e.HasCtrl )
 		{
-			l.ShouldDrawSelection = false;
+			e.StopPropagation = true;
+
+			foreach ( var row in Output.VisibleRows )
+			{
+				row.SelectAllText();
+			}
+
 			return;
 		}
 
-		foreach ( var child in p.Children )
+		base.OnButtonTyped( e );
+	}
+
+	public override string GetClipboardValue( bool cut )
+	{
+		var text = GetSelectedOutputText();
+		return string.IsNullOrEmpty( text ) ? base.GetClipboardValue( cut ) : text;
+	}
+
+	void ClearOutputSelection()
+	{
+		foreach ( var row in Output.VisibleRows )
 		{
-			Unselect( child );
+			row.ClearTextSelection();
 		}
 	}
 
+	string GetSelectedOutputText()
+	{
+		var lines = Output.VisibleRows
+			.Select( x => x.GetSelectedText() )
+			.Where( x => !string.IsNullOrEmpty( x ) );
+
+		return string.Join( "\n", lines );
+	}
+
+}
+
+public class ConsoleVirtualList : VirtualList
+{
+	public float ContentWidthHint { get; set; }
+	float LastScrollX = float.MinValue;
+
+	internal IEnumerable<ConsoleRow> VisibleRows
+	{
+		get
+		{
+			foreach ( var (_, child) in _created.OrderBy( x => x.Key ) )
+			{
+				if ( child.IsVisible && child.UserData is ConsoleRow row )
+					yield return row;
+			}
+		}
+	}
+
+	protected override bool UpdateLayout()
+	{
+		var changed = base.UpdateLayout();
+		var scrollX = ScrollOffset.x * ScaleFromScreen;
+
+		if ( MathF.Abs( scrollX - LastScrollX ) > 0.1f )
+		{
+			LastScrollX = scrollX;
+			return true;
+		}
+
+		return changed;
+	}
+
+	protected override void PositionPanel( int index, Panel panel )
+	{
+		base.PositionPanel( index, panel );
+
+		if ( ContentWidthHint > 0 )
+		{
+			panel.Style.Width = MathF.Max( Box.Rect.Width * ScaleFromScreen, ContentWidthHint );
+		}
+
+		if ( panel.UserData is ConsoleRow row )
+		{
+			row.UpdateHorizontalWindow(
+				ScrollOffset.x * ScaleFromScreen,
+				Box.Rect.Width * ScaleFromScreen,
+				ConsoleRow.EstimatedCharWidth );
+		}
+	}
+
+	protected override float GetTotalWidth( int itemCount )
+	{
+		return MathF.Max( base.GetTotalWidth( itemCount ), ContentWidthHint );
+	}
 }

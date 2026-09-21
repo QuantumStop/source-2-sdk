@@ -122,7 +122,7 @@
 	}
 
 	string LaunchButtonText => IsLaunchInProgress && LaunchingProject is not null
-		? $"Launching {LaunchingProject.Config.Title}..."
+		? $"Launching Project..."
 		: DefaultLaunchButtonText;
 
 	string SelectedProjectRoot => ProjectRoot( SelectedProject );

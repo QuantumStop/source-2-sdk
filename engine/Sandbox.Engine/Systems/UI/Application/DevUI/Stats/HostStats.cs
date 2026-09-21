@@ -20,6 +20,9 @@ public sealed class HostStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		var stats = Networking.HostStats;
 		Fps.Value = stats.Fps.ToString();
 		KbIn.Value = (stats.InBytesPerSecond / 1024f).ToString( "0.00" );

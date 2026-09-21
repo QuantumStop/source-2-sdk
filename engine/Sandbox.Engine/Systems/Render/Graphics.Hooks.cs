@@ -51,6 +51,7 @@ public static partial class Graphics
 	{
 		using var _ = GlobalContext.GameScope();
 		UI.Overlay.UISystemOverlay.RenderFinalOverlay();
+		UI.Dev.DevLayer.RenderFinalOverlay();
 	}
 
 	/// <summary>

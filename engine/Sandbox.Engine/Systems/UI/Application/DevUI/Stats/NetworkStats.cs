@@ -24,6 +24,9 @@ public sealed class NetworkStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		var hostConnection = Connection.Host;
 		var peerConnections = Connection.All.Where( c => c != Connection.Local && c != hostConnection ).ToArray();
 

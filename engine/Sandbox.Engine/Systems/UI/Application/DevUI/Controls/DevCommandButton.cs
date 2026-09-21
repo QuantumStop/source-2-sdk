@@ -22,6 +22,7 @@ public sealed record DevCommandButtonSpec(
 	string OffValue = "",
 	DevCommandButtonOption[] Options = null,
 	string Icon = "",
-	DevCommandDropdownHandleStyle DropdownHandleStyle = DevCommandDropdownHandleStyle.Default );
+	DevCommandDropdownHandleStyle DropdownHandleStyle = DevCommandDropdownHandleStyle.Default,
+	Action<DevCommandButtonOption, int> OnSelected = null );
 
 public sealed record DevCommandButtonOption( string Title, string Value, string Icon = "" );

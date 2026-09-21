@@ -8,6 +8,7 @@ using System;
 /// Convenience scroll container for DevUI tabs/panels.
 /// Wraps <see cref="DevScrollView"/> with a translated content canvas that auto-measures itself.
 /// </summary>
+#pragma warning disable CS0618
 public sealed class DevScrollPanel : DevScrollView
 {
 	/// <summary>Container for children (add your content here).</summary>
@@ -112,3 +113,4 @@ public sealed class DevScrollPanel : DevScrollView
 		ContentSize = size;
 	}
 }
+#pragma warning restore CS0618

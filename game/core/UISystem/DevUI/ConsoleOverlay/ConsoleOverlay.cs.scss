@@ -1,13 +1,15 @@
 ConsoleOverlay
 {
 	position: absolute;
-	left: 20px;
-	right: 20px;
-	top: 10px;
 	font-family: Roboto Mono;
 	flex-direction: column;
 	pointer-events: none;
 	z-index: 10000;
+
+	.window-bounds
+	{
+		margin: 2px;	
+	}
 
 	&.hidden
 	{

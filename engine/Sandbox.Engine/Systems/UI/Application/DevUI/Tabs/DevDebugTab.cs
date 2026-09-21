@@ -3,21 +3,20 @@ namespace Sandbox.UI.Dev;
 using Sandbox;
 using Sandbox.UI.Construct;
 using Sandbox.UI.Dev.Stats;
+using static Facepunch.ActionGraphs.Node;
 
 public sealed class DevDebugTab : Panel
 {
-	readonly DevScrollPanel _scroll;
+	bool IsNarrow;
 
 	public DevDebugTab()
 	{
+		CanDragScroll = false;	// It's really dumb that this is true by default
+
 		AddClass( "devtab" );
 		AddClass( "debugtab" );
 
-		_scroll = AddChild<DevScrollPanel>();
-		_scroll.AddClass( "debug-scroll" );
-		_scroll.EnableHorizontal = false;
-
-		var grid = _scroll.Canvas.Add.Panel( "debug-grid" );
+		var grid = Add.Panel( "debug-grid" );
 
 		var left = grid.Add.Panel( "col left" );
 		var right = grid.Add.Panel( "col right" );
@@ -81,7 +80,12 @@ public sealed class DevDebugTab : Panel
 
 		// When the window is narrow, stack columns (wrap-to-vertical) instead of forcing a horizontal scroll/clipped layout.
 		// Keep the threshold slightly above the configured min widths so it flips before things get unusable.
-		SetClass( "narrow", Box.Rect.Width < 720f );
+		var narrow = Box.Rect.Width < 720f;
+		if ( narrow == IsNarrow )
+			return;
+
+		IsNarrow = narrow;
+		SetClass( "narrow", narrow );
 	}
 
 	static DevGroup AddGroup( Panel parent, string title, string icon )

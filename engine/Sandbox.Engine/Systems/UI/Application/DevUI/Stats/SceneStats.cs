@@ -28,6 +28,9 @@ public sealed class SceneStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		Animation.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Animation.AverageMs( 200 ).ToString( "0.00 ms" );
 		Audio.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Audio.AverageMs( 200 ).ToString( "0.00 ms" );
 		Physics.Value = Sandbox.Diagnostics.PerformanceStats.Timings.Physics.AverageMs( 200 ).ToString( "0.00 ms" );

@@ -37,6 +37,7 @@
 !*.cfg
 !*.json
 !*.css
+!engine/Launcher/PanelGallery/UiTests/Pages/OverscrollBehaviorTests.scss
 !.editorconfig
 !.yaml
 !.yml

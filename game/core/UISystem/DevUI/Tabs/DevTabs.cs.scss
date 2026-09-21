@@ -11,15 +11,27 @@
 	overflow: hidden;
 }
 
-.devtab.active, .devtab.customtab.active, .devtab.active .customtab-content, .customtab-content.devtab
+.devtab.active,
+.devtab.customtab.active,
+.devtab.active .customtab-content,
+.customtab-content.devtab
 {
 	position: relative;
 	display: flex;
 	transition: opacity 0.2s ease-in;
 	opacity: 1;
-	overflow: hidden;
-
 }
+
+.devtab.active:not(devlogtab),
+.devtab.active .customtab-content.devtab
+{
+	overflow: scroll;
+	scrollbar-gutter: stable;
+	scrollbar-width: 11px;
+	overscroll-behavior: none;
+	scrollbar-color: #576868 #191919;
+}
+
 
 .section-title
 {
@@ -39,10 +51,43 @@
 	opacity: 0.5;
 }
 
+.dev-native-scroll
+{
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 0px;
+	min-height: 0px;
+	overflow: scroll;
+	overscroll-behavior: none;
+	scrollbar-width: 10px;
+	scrollbar-gutter: stable;
+	scrollbar-color: #576868 #191919;
+}
+
+.dev-native-scroll.vertical-only
+{
+	overflow-x: hidden;
+	overflow-y: scroll;
+}
+
+.dev-native-scroll.compact
+{
+	scrollbar-width: 8px;
+}
+
 .debugtab
 {
 	gap: 10px;
 	overflow: hidden;
+
+	.debug-scroll
+	{
+		width: 100%;
+		flex-grow: 1;
+		flex-shrink: 1;
+		min-height: 0px;
+		padding: 5px 15px 5px 5px;
+	}
 
 	.debug-grid
 	{
@@ -58,7 +103,7 @@
 	{
 		flex-direction: column;
 		gap: 5px;
-		flex-shrink: 1;
+		flex-shrink: 0;
 	}
 
 	.overlays-grid
@@ -107,34 +152,11 @@
 
 	RenderModeSelect.overlay-row
 	{		
-		align-items: flex-end;
-		justify-content: flex-end;
-		flex-direction: row;
 		padding: 0px;
-	}
-
-	RenderModeSelect.overlay-row .titlebar
-	{
-		flex-grow: 1;
-		height: 100%;
-		align-items: center;
-		padding: 5px 8px;
-	}
-
-	RenderModeSelect.overlay-row .drop
-	{
-		flex-shrink: 0;
-		width: 30px;
-		height: 100%;
-		align-items: center;
-		justify-content: center;
-		background-color: rgba( 0, 0, 0, 0.1 );
-		border-left: 2px solid rgba( 0, 0, 0, 0.30 );
-		opacity: 0.8;
-		font-size: 18px;
-		white-space: nowrap;
-		letter-spacing: 0px;
-		text-transform: none;			
+		border-radius: 0px;
+		gap: 0px;
+		align-items: stretch;
+		justify-content: stretch;
 	}
 }
 
@@ -247,21 +269,10 @@
 
 .customtab
 {
-	.customtab-scroll
-	{
-		width: 100%;
-		height: 100%;
-		flex-grow: 1;
-		min-height: 0;
-	}
+	gap: 10px;
+	overflow: hidden;
 
-	.customtab-canvas
-	{
-		width: 100%;
-		min-height: 0;
-	}
-
-	.customtab-content
+	> .customtab-content
 	{
 		display: flex;
 		width: 100%;
@@ -269,6 +280,15 @@
 		flex-grow: 0;
 		flex-shrink: 0;
 		gap: 10px;
-		overflow: hidden;
+		overflow: visible;
 	}
+}
+
+.customtab.active
+{
+	overflow: scroll;
+	scrollbar-gutter: stable;
+	scrollbar-width: 11px;
+	overscroll-behavior: none;
+	scrollbar-color: #576868 #191919;
 }

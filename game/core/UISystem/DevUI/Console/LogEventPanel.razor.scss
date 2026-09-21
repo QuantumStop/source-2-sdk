@@ -1,14 +1,13 @@
-
-
 console .logeventpanel
 {
     background-color: #262626;
     color: #fff;
-    padding: 5px;
+    padding: 0 0px;
+    padding-bottom: 0px;
     white-space: nowrap;
     position: relative;
     overflow: hidden;
-    height: auto;
+    height: 0px;
     min-height: 0px;
     max-height: 300px;
     flex-grow: 0;
@@ -17,14 +16,12 @@ console .logeventpanel
     font-size: 11px;
     font-weight: 600;
     border-top: 1px #343434;
-    
 }
 
 console .logeventpanel.visible
 {
-    height: auto;
-    transition: all 0.7s ease-in-out;
-
+    min-height: 50px;
+    transition: min-height 0.4s cubic-bezier(0.381, 0.861, 0.4, 1.254);
 }
 
 console .logeventpanel.visible.err
@@ -42,10 +39,20 @@ console .logeventpanel.visible.msg
     background-color: rgb(35, 35, 35);
 }
 
-
 console .logeventpanel.hidden
 {
     height: 0px;
+    min-height: 0px;
+    transition: min-height 0.4s cubic-bezier(0.381, -0.861, 0.77, 0.254);
+}
+
+console .logeventpanel.hidden .message,
+console .logeventpanel.hidden .message .stack
+{
+    height: 0px;
+    min-height: 0px;
+    max-height: 0px;
+    overflow: hidden;
 }
 
 console .logeventpanel .message
@@ -55,7 +62,7 @@ console .logeventpanel .message
     white-space: pre;
     overflow: hidden;
     flex-shrink: 0;
-    flex-grow: 0;
+    flex-grow: 1;
     width: 100%;
 }
 
@@ -69,51 +76,136 @@ console .logeventpanel .message .header
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+
 	border-bottom: 1px #343434;
 }
 
 console .logeventpanel .message .text
-{
-    padding: 8px;
-	flex-grow: 1;
-	flex-shrink: 1;
+{    
+    margin: 7px;
+    height: 100%;
+    align-items: center;
+    padding-left: 2px;
 	min-width: 0;
+    width: 100%;
+    overflow: hidden;
+}
 
+console .logeventpanel .controls
+{
+    transition: all 0.5s cubic-bezier(1, -0.595, 0.39, 1.574);
+    width: 32px;
+    display: flex;
+    justify-self: flex-end;
+    align-items: flex-end;
+    justify-content: flex-end;  
+	display: flex;
+	align-items: center;
+//	gap: 4px;  
+    border-left: 1px #343434;
+    min-width: 32px;
+    overflow: hidden;
+}
+
+
+console .logeventpanel.visible.hasstack
+{  
+    .controls
+    {
+        min-width: 96px;
+        width: 96px;
+    }
 }
 
 console .logeventpanel .message .stack
 {
 	display: none;
     overflow: hidden;
+    overscroll-behavior: none;
     flex-shrink: 0;
     max-height: 200px;
     flex-direction: column;
+    min-height: 0;
+}
+
+
+console .logeventpanel.hasstack.stackenabled 
+{
+    min-height: 100px;
+    max-height: 200px;
 }
 
 console .logeventpanel.hasstack.stackenabled .message .stack
-{
+{   
+    overflow: hidden;
+    opacity: 0.7;
 	display: flex;
+    height: 70%;
 }
 
-console .logeventpanel .message .stack DevScrollPanel
+console .logeventpanel .message .stack .stack-scroll
 {
-    flex-grow: 1;
+//    width: 100%;
+    // height: 100%;
+    // min-height: 0;
+    // flex-grow: 1;
+    // flex-shrink: 1;
+    overflow: scroll;
+    padding: 5px;
+    overscroll-behavior: none;
+    scrollbar-width: 10px;
+    scrollbar-gutter: stable;
+    scrollbar-color: #576868 #191919;
+    background-color: #191919;
 }
 
-console .logeventpanel .message .stack .stacktext
+console .logeventpanel .message .stack .stackline
 {
-    white-space: pre;
+    font-size: 10px;
+    height: 12px;
+    min-height: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    pointer-events: none;
     opacity: 0.5;
-    width: 100%;
 }
 
-console .logeventpanel .controls
+console .logeventpanel .message .stack .stack-scroll > .cell
 {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: 3px;
-	padding-right: 2px;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+console .logeventpanel .message .stack .stack-scroll > scrollbar
+{
+    opacity: 1;
+    background-color: #191919;
+}
+
+console .logeventpanel .message .stack .stack-scroll > scrollbar > .thumb
+{
+    background-color: #576868;
+    border-radius: 0px;
+    opacity: 1;
+}
+
+console .logeventpanel .message .stack .stack-scroll > scrollbar:hover > .thumb,
+console .logeventpanel .message .stack .stack-scroll > scrollbar.dragging > .thumb
+{
+    background-color: #6c7d7d;
+    opacity: 1;
+}
+
+console .logeventpanel .message .stack .stack-scroll > scrollbar.vertical > .thumb
+{
+    border-left: 1px #636e6e;
+    border-right: 1px #394545;
+}
+
+console .logeventpanel .message .stack .stack-scroll > scrollbar.horizontal > .thumb
+{
+    border-top: 1px #636e6e;
+    border-bottom: 1px #394545;
 }
 
 console .logeventpanel .close
@@ -121,8 +213,11 @@ console .logeventpanel .close
 	font-size: 20px;
 	cursor: pointer;
 	color: #ccc;
-	border-radius: 2px;
+    border-radius: 2px;
 	padding: 4px;
+    width: 32px;
+    min-width: 32px;
+    justify-content: center;
 
 	&:hover
 	{
@@ -137,6 +232,9 @@ console .logeventpanel .stacktoggle
 	color: #ccc;
     border-radius: 2px;
 	padding: 4px;
+    width: 32px;
+    min-width: 32px;
+    justify-content: center;
 
 	&:hover
 	{
@@ -144,3 +242,19 @@ console .logeventpanel .stacktoggle
 	}
 }
 
+console .logeventpanel .stackcopy
+{
+	font-size: 20px;
+	cursor: pointer;
+	color: #ccc;
+    border-radius: 2px;
+	padding: 4px;
+    width: 32px;
+    min-width: 32px;
+    justify-content: center;
+
+	&:hover
+	{
+		color: #f1f1f1;
+	}
+}

@@ -8,6 +8,7 @@ using System.Linq;
 /// <summary>
 /// Simple virtualized list whose scroll position is driven externally (eg by <see cref="DevScrollView"/>).
 /// </summary>
+[Obsolete( "Use VirtualList with native panel scrolling instead." )]
 public sealed class DevVirtualList : Panel
 {
 	public float ItemHeight { get; set; } = 18f;

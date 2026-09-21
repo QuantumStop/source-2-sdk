@@ -15,6 +15,9 @@ internal class Selection
 			if ( hovered == null )
 				return;
 
+			if ( ScrollBar.Owns( hovered ) )
+				return;
+
 			ClearSelection();
 
 			SelectionStart = hovered;

@@ -34,7 +34,7 @@ public partial class Panel
 			?? GetScrollbarOverlay( _scrollbarX )?.FindVisualPanelAt( point, visibleOnly, needPointerEvents, match );
 	}
 
-	void FinalLayoutScrollbars( Vector2 offset )
+	protected void FinalLayoutScrollbars( Vector2 offset )
 	{
 		GetScrollbarOverlay( _scrollbarX )?.FinalLayout( offset );
 		GetScrollbarOverlay( _scrollbarY )?.FinalLayout( offset );

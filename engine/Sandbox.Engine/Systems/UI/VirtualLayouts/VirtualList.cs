@@ -6,7 +6,7 @@ namespace Sandbox.UI;
 /// <summary>
 /// A virtualized, scrollable list panel that only creates item panels when visible.
 /// </summary>
-public sealed class VirtualList : BaseVirtualPanel
+public class VirtualList : BaseVirtualPanel
 {
 	/// <summary>
 	/// Vertical list layout used to position/measure items. (Swappable later if needed.)

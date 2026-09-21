@@ -244,7 +244,7 @@ public sealed class ScrollBar : Panel
 		// A drag only starts if the press keeps propagating (PanelInput.MouseButtonState.Update)
 		_pressedThumb = e.Target == _thumb;
 		if ( _pressedThumb ) return;
-
+		
 		if ( Owner is not { } owner ) return;
 
 		var page = Axis( owner.Box.Rect.Size ) * 0.9f;

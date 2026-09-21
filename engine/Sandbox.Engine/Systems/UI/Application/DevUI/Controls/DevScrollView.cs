@@ -6,6 +6,7 @@ using System;
 /// <summary>
 /// Scroll container with Editor-style scrollbars: scrollbars own the scroll value, content listens.
 /// </summary>
+[Obsolete( "Use native panel scrolling and scrollbars (overflow: scroll; scrollbar-width) instead." )]
 public class DevScrollView : Panel
 {
 	/// <summary>

@@ -1,32 +1,16 @@
 namespace Sandbox.UI.Dev;
 
-using Sandbox.UI.Construct;
-
 /// <summary>
-/// Wraps a custom (project) DevUI tab inside a standard scroll + padded canvas.
-/// This keeps custom tabs consistent with built-in tabs (and avoids everyone re-implementing scroll/padding).
+/// Hosts a custom (project) DevUI tab as a normal tab root.
 /// </summary>
 public sealed class DevCustomTabHost : Panel
 {
-	public DevScrollPanel Scroll { get; }
-	public Panel Canvas { get; }
-
 	public DevCustomTabHost()
 	{
+		CanDragScroll = false;  // It's really dumb that this is true by default
+
 		AddClass( "devtab" );
 		AddClass( "customtab" );
-
-		Scroll = AddChild<DevScrollPanel>();
-		Scroll.AddClass( "customtab-scroll" );
-		Scroll.EnableHorizontal = false;
-		Scroll.Style.Width = Length.Percent( 100 );
-		Scroll.Style.Height = Length.Percent( 100 );
-		Scroll.Style.Dirty();
-
-		Canvas = Scroll.Canvas;
-		Canvas.AddClass( "customtab-canvas" );
-		Canvas.Style.Width = Length.Percent( 100 );
-		Canvas.Style.Dirty();
 	}
 
 	public void SetContent( Panel content )
@@ -34,12 +18,12 @@ public sealed class DevCustomTabHost : Panel
 		if ( content is null )
 			return;
 
-		// Content panels should not be marked as devtab (that class hides them by default).
+		// Content panels flow inside this tab root. They shouldn't be marked as devtab,
+		// because that class gives them tab visibility/positioning rules of their own.
 		content.RemoveClass( "devtab" );
-		content.Parent = Canvas;
+		content.Parent = this;
 		content.AddClass( "customtab-content" );
 
-		// Sensible default: let the content flow and fill width.
 		content.Style.Width = Length.Percent( 100 );
 		content.Style.Dirty();
 	}

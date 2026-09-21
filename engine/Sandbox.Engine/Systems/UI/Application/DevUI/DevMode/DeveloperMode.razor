@@ -1,58 +1,36 @@
 @namespace Sandbox.UI.Dev
 @inherits Panel
 
-<root id="DeveloperMode">
-	<DevWindow @ref="Window"></DevWindow>
-
-</root>
-
+<root id="DeveloperMode"></root>
 
 @code
 {
-	public Console Console { get; set; }
-	public DevWindow Window { get; set; }
-
 	public static DeveloperMode Current { get; private set; }
-	public static DevWindow MainWindow => Current?.Window;
-	public static int ConsoleToggleSerial { get; private set; }
-
-	static bool RequestedOpen;
-	static bool RequestedFocused = true;
-	static bool _keepConsoleOpenOnSceneChange;
+	public static DevWindow MainWindow => ConsoleOverlay.MainWindow;
+	public static int ConsoleToggleSerial => ConsoleOverlay.ConsoleToggleSerial;
+	public static int DevUI
+	{
+		get => ConsoleOverlay.DevUI;
+		set => ConsoleOverlay.DevUI = value;
+	}
 
 	public static bool Open
 	{
-		get => MainWindow?.Open ?? RequestedOpen;
-		protected set
-		{
-			RequestedOpen = value;
-
-			if ( MainWindow.IsValid() )
-				MainWindow.Open = value;
-		}
+		get => ConsoleOverlay.Open;
+		protected set => ConsoleOverlay.Open = value;
 	}
 
 	public static bool Focused
 	{
-		get => MainWindow?.Focused ?? RequestedFocused;
-		protected set
-		{
-			RequestedFocused = value;
-
-			if ( MainWindow.IsValid() )
-				MainWindow.Focused = value;
-		}
+		get => ConsoleOverlay.Focused;
+		protected set => ConsoleOverlay.Focused = value;
 	}
 
-	public static bool WantsInput => MainWindow?.WantsInput ?? (Open && Focused);
+	public static bool WantsInput => ConsoleOverlay.WantsInput;
 
-	internal static void ResetStartupState()
+	public static void CloseIfOwnsInput()
 	{
-		RequestedOpen = false;
-		RequestedFocused = true;
-		Open = false;
-		Focused = false;
-		KeepConsoleOpenOnSceneChange = false;
+		ConsoleOverlay.CloseIfOwnsInput();
 	}
 
 	/// <summary>
@@ -60,49 +38,18 @@
 	/// </summary>
 	public static bool KeepConsoleOpenOnSceneChange
 	{
-		get => _keepConsoleOpenOnSceneChange;
-		set => _keepConsoleOpenOnSceneChange = value;
+		get => ConsoleOverlay.KeepConsoleOpenOnSceneChange;
+		set => ConsoleOverlay.KeepConsoleOpenOnSceneChange = value;
+	}
+
+	internal static void ResetStartupState()
+	{
+		ConsoleOverlay.ResetStartupState();
 	}
 
 	internal static void CloseForSceneChange()
 	{
-		if ( KeepConsoleOpenOnSceneChange )
-			return;
-
-		Open = false;
-		Focused = false;
-	}
-
-	// Keep this as an int so it can be set via `devui 0/1`.
-	[ConVar( "devui", Help = "Toggle the developer UI" )]
-	public static int DevUI
-	{
-		get => Open ? 1 : 0;
-		set
-		{
-			if ( value != 0 )
-			{
-				Open = true;
-				Focused = true;
-			}
-			else
-			{
-				Open = false;
-			}
-		}
-	}
-
-	bool wasOpen;
-	bool wasFocused;
-	bool syncedWindowState;
-
-	void EnsureWindow()
-	{
-		if ( Window.IsValid() )
-			return;
-
-		Window = ChildrenOfType<DevWindow>().FirstOrDefault( x => x.IsValid() ) ?? AddChild<DevWindow>();
-		syncedWindowState = false;
+		ConsoleOverlay.CloseForSceneChange();
 	}
 
 	public override void Tick()
@@ -110,42 +57,8 @@
 		base.Tick();
 
 		Current = this;
-		EnsureWindow();
-
-		if ( Window.IsValid() )
-		{
-			if ( !syncedWindowState )
-			{
-				Window.Open = RequestedOpen;
-				Window.Focused = RequestedFocused;
-				syncedWindowState = true;
-			}
-
-			RequestedOpen = Window.Open;
-			RequestedFocused = Window.Focused;
-		}
-
-		var open = Open;
-		var focused = Focused;
-
-		// Keep DevLayer's input class in sync even if Open is restored from a saved convar
-		// before this panel exists (or if we somehow miss the transition).
-		FindRootPanel()?.SetClass( "developermode", WantsInput );
-
-		if ( open != wasOpen || focused != wasFocused )
-		{
-			wasOpen = open;
-			wasFocused = focused;
-
-			if ( open && focused )
-				Window?.FocusConsole();
-			else
-				Window?.BlurConsole();
-		}
-
-		SetClass("open", open);
-		SetClass("focused", focused);
-		Window?.SetClass( "unfocused", open && !focused );
+		SetClass( "open", Open );
+		SetClass( "focused", Focused );
 	}
 
 	public override void OnDeleted()
@@ -156,55 +69,5 @@
 			Current = null;
 	}
 
-	internal void TickDragEarly()
-	{
-		Window?.TickDragEarly();
-	}
-
-	public override Panel FindPopupPanel() => this;
-
-	[ConCmd("con_toggle")]
-	static void ToggleConsole()
-	{
-		if ( MainWindow.IsValid() )
-		{
-			if ( MainWindow.Open && !MainWindow.Focused )
-				return;
-
-			ConsoleToggleSerial++;
-			MainWindow.ToggleOpen();
-			RequestedOpen = MainWindow.Open;
-			RequestedFocused = MainWindow.Focused;
-			return;
-		}
-
-		if ( Open && !Focused )
-			return;
-
-		ConsoleToggleSerial++;
-		Open = !Open;
-		if ( Open )
-			Focused = true;
-	}
-
-	[ConCmd("con_focus")]
-	static void ToggleFocus()
-	{
-		if ( MainWindow.IsValid() )
-		{
-			MainWindow.ToggleFocus();
-			RequestedOpen = MainWindow.Open;
-			RequestedFocused = MainWindow.Focused;
-			return;
-		}
-
-		if ( !Open )
-		{
-			Open = true;
-			Focused = true;
-			return;
-		}
-		
-		Focused = !Focused;
-	}
+	public override Panel FindPopupPanel() => ConsoleOverlay.Current is Panel popup ? popup : this;
 }

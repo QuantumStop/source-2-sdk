@@ -30,6 +30,8 @@
 	[Parameter] public DevCommandButtonSpec Button { get; set; }
 	[Parameter] public int Index { get; set; }
 	[Parameter] public int Columns { get; set; } = 2;
+	[Parameter] public int SelectedOptionIndex { get; set; } = -1;
+	[Parameter] public string OverrideLabel { get; set; }
 
 	private bool ToggleEnabled { get; set; }
 	private int OptionIndex { get; set; } = -1;
@@ -38,6 +40,9 @@
 	{
 		get
 		{
+			if ( !string.IsNullOrWhiteSpace( OverrideLabel ) )
+				return OverrideLabel;
+
 			if ( Button.Kind != DevCommandButtonKind.Cycle && Button.Kind != DevCommandButtonKind.Dropdown )
 				return Button.Title;
 
@@ -147,13 +152,20 @@
 		OptionIndex = index;
 
 		DevCommandButtonOption option = Button.Options[OptionIndex];
-		ExecuteCommand( Button.Command, option.Value );
+		if ( Button.OnSelected is not null )
+			Button.OnSelected( option, OptionIndex );
+		else
+			ExecuteCommand( Button.Command, option.Value );
+
 		StateHasChanged();
 	}
 
 	private int GetSelectedOptionIndex()
 	{
-		return OptionIndex < 0 ? 0 : OptionIndex;
+		if ( OptionIndex >= 0 )
+			return OptionIndex;
+
+		return SelectedOptionIndex < 0 ? 0 : SelectedOptionIndex;
 	}
 
 	private static void ExecuteCommand( string command, string value )

@@ -26,6 +26,9 @@ public sealed class RenderStats : Panel
 	{
 		base.Tick();
 
+		if ( DevWindow.MainWindowIsInteracting )
+			return;
+
 		var stats = Sandbox.Diagnostics.FrameStats.Current;
 		ShadowMaps.Value = stats.ShadowMaps.ToMetric();
 		UnshadowedLights.Value = stats.UnshadowedLightsInView.ToMetric();

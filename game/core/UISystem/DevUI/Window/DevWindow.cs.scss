@@ -1,4 +1,4 @@
-DevWindow
+.devwindow
 {
 	position: absolute;
 	pointer-events: all;
@@ -22,7 +22,7 @@ DevWindow
 	}
 }
 
-DevWindow > .header
+.devwindow > .header
 {
 	height: 22px;
 	flex-shrink: 0;
@@ -58,7 +58,7 @@ DevWindow > .header
 	}
 }
 
-DevWindow > .tabs
+.devwindow > .tabs
 {
 	height: auto;
 	flex-shrink: 0;
@@ -79,7 +79,7 @@ DevWindow > .tabs
 
 		.button
 		{
-			width: 40px;
+			width: 50px;
 			overflow: hidden;
 		}
 
@@ -92,7 +92,7 @@ DevWindow > .tabs
 	Button
 	{
 		font-family: Roboto Mono;
-		font-size: 11px;
+		font-size: 12px;
 		font-weight: 700;
 		letter-spacing: 1px;
 		padding: 0px 5px;
@@ -103,6 +103,7 @@ DevWindow > .tabs
 		cursor: pointer;
 		border-left: #262525 2px;
 		border-right: #262525 2px;
+		overflow: hidden;
 
 		&.active,
 		&:active
@@ -118,29 +119,85 @@ DevWindow > .tabs
 	}
 
 	Button.type
-	{
+	{		
+		letter-spacing: 0.2px;
+		min-width: 64px;
+		font-family: Roboto Mono;
 		height: 15px;
 		justify-content: center;
 		align-items: center;
-		font-weight: 550;
-		font-size: 13px;
+		font-weight: 600;
+		font-size: 11px;
 		text-align: center;
 		background-color: rgba(255, 255, 255, 0.06);
 		color: rgba(255, 255, 255, 0.6);
 		cursor: pointer;
+		
+	
+		&.err 
+		{ 
+			background-color: #513535; color: #a35858; 
+			&:hover { background-color: #593939; border-top: 1px #a358584d; } 
+			&.disabled 
+			{ 
+				background-color: #312020; color: #a3585879; 
+				&:hover { background-color: #593939; border-top: 0px #a358584d; } 
+			}
+		}
 
-		&.err { background-color: #513535; color: #a35858; }
-		&.wrn { background-color: #574134; color: #9e8555; }
-		&.msg { background-color: #383d38; color: #508464; }
+		&.wrn { 
+			background-color: #574134; color: #9e8555; 
+			&:hover { background-color: #594235; border-top: 1px #9e855549; } 
+			&.disabled 
+			{ 
+				background-color: #392b22; color: #766545; 
+				&:hover { background-color: #594235; border-top: 0px #9e855549; } 
+			}			
+		}
+		&.msg 
+		{ 
+			background-color: #383d38; color: #508464; 
+			&:hover { background-color: #444a44; border-top: 1px #50846449; } 
+			&.disabled 
+			{ 
+				background-color: #2b2f2b; color: #385a45; 
+				&:hover { background-color: #444a44; border-top: 0px #50846449; } 
+			}			
+		}
 	}
 }
 
-DevWindow > .content
+.devwindow > .content
 {
 	flex-grow: 1;
+	min-height: 0px;
 }
 
-DevWindow > .resize-handle
+.devwindow > .resize-footer
+{
+	height: 20px;
+	flex-shrink: 0;
+	background-color: #292929;
+	border-top: #262525 1px;
+	position: relative;
+}
+
+.devwindow.log-active > .resize-footer
+{
+	display: none;
+}
+
+.devwindow.log-active > .log-resize-handle
+{
+	display: flex;
+}
+
+.devwindow:not(.log-active) > .log-resize-handle
+{
+	display: none;
+}
+
+.devwindow .resize-handle
 {
 	position: absolute;
 	right: 0;
@@ -150,4 +207,57 @@ DevWindow > .resize-handle
 	opacity: 0.6;
 	background-color: transparent;
 	border: 0px transparent;
+	&:hover
+	{	
+		opacity: 1;
+	}
+
+	&::after
+	{
+		content: "";
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 10px;
+		height: 10px;
+		border-right: 2px solid #676767;
+		border-bottom: 2px solid #676767;
+		margin: 1px;
+		pointer-events: none;
+	}
+}
+
+.devwindow-resize-preview
+{
+	position: absolute;
+	pointer-events: none;
+	background-color: rgba( 35, 35, 35, 0.38 );
+	border: 1px solid #576868;
+	box-shadow: 2px 5px 12px rgba( 0, 0, 0, 0.55 );
+	z-index: 1000;
+
+	&::before
+	{
+		content: "";
+		position: absolute;
+		left: 0px;
+		right: 0px;
+		top: 0px;
+		height: 22px;
+		background-color: rgba( 54, 54, 54, 0.82 );
+		border-bottom: 2px solid rgba( 38, 37, 37, 0.75 );
+	}
+
+	&::after
+	{
+		content: "";
+		position: absolute;
+		right: 1px;
+		bottom: 1px;
+		width: 10px;
+		height: 10px;
+		border-right: 2px solid #676767;
+		border-bottom: 2px solid #676767;
+		opacity: 0.85;
+	}
 }

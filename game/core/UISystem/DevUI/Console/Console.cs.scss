@@ -4,23 +4,23 @@ Console
 	font-weight: normal;
 	flex-direction: column;
 	flex-grow: 1;
-	font-size: 1rem;
 	background-color: transparent;
 
 	.console_output
 	{
 		width: 100%;
 		height: 100%;
-		font-size: 0.9rem;
 		flex-grow: 1;
 		font-family: Roboto Mono;
 		font-weight: 450;
 		background-color: #232323;
-	}
-
-	.console-scroll
-	{
-		flex-grow: 1;
+		padding: 10px 7px;
+	
+		overflow: scroll;
+		overscroll-behavior: none;
+		scrollbar-gutter: stable;			
+		scrollbar-width: 11px;
+		scrollbar-color: #576868 #191919;
 	}
 
 	.topbar
@@ -49,7 +49,8 @@ Console
 		font-family: Roboto Mono;
 		font-size: 12px;
 		caret-color: #d6d6d6;
-		caret-width: 2px;
-		caret-blink: false;
+		// TODO!
+		// caret-width: 2px;
+		// caret-blink: false;
 	}
 }
