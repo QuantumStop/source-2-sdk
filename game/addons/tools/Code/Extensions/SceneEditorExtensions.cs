@@ -135,6 +135,9 @@ public static class SceneEditorExtensions
 		var rightMouse = isSource2FlyStyle
 			? (rightMouseHeld || zToggleActive)
 			: rightMouseHeld;
+		// only rightmouse if hovering over the canvas, otherwise we can get stuck in fly mode when right clicking outside the viewport
+		rightMouse = rightMouse && self.Input.IsHovered;
+
 		var middleMouse = Application.MouseButtons.HasFlag( MouseButtons.Middle );
 		var forceHiddenCursor = isSource2FlyStyle && rightMouse && !camera.Orthographic;
 		var centeredFlyActive = rightMouse && !camera.Orthographic && isSource2FlyStyle && self.Input.IsHovered;
