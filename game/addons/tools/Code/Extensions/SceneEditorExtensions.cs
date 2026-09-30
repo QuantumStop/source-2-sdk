@@ -7,7 +7,7 @@ public static class SceneEditorExtensions
 	private static readonly Pixmap EyeCursor = Pixmap.FromFile( "toolimages:scene_view/cursor_eye.png" );
 	private const string FlyModeToggleIcon = "toolimages:common/bindable_camera_fly_toggle.png";
 	private static bool s_zWasPressed;
-	private static bool s_zFlyModeEnabled;
+	internal static bool s_zFlyModeEnabled;
 	private static bool s_zFlyHasRestorePosition;
 	private static Vector2 s_zFlyRestorePosition;
 

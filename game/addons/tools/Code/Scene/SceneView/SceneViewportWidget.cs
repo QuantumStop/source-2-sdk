@@ -599,7 +599,7 @@ public partial class SceneViewportWidget : Widget
 			var modifiers = Application.KeyboardModifiers;
 			var modifiersDown = modifiers.Contains( KeyboardModifiers.Shift ) || modifiers.HasFlag( KeyboardModifiers.Ctrl );
 
-			blockCamera = !blockCamera ? modifiersDown && !rightDown : modifiersDown;
+			blockCamera = !blockCamera ? modifiersDown && !(rightDown || SceneEditorExtensions.s_zFlyModeEnabled) : modifiersDown;
 
 			if ( modifiers.HasFlag( KeyboardModifiers.Alt ) && rightDown && GizmoInstance.Input.IsHovered && !blockCameraForToolInput )
 			{
@@ -709,7 +709,7 @@ public partial class SceneViewportWidget : Widget
 		// temporarily change cursor during this frame.
 		if ( SceneEditorExtensions.ShouldDrawCenteredFlyCursor )
 		{
-			Renderer.Cursor = CursorShape.Blank;
+			//Renderer.Cursor = CursorShape.Blank;
 		}
 
 		DrawCameraSpeedOverlay();
