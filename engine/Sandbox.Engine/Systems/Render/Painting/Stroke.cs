@@ -6,6 +6,7 @@ namespace Sandbox;
 /// A stroke on a shape's path. Defaults to centered, with half its width on either side.
 /// Dimensions and dash phase are in drawing pixels. Defaults to no stroke.
 /// </summary>
+[Expose]
 public readonly record struct Stroke
 {
 	/// <summary>
@@ -157,7 +158,18 @@ public readonly record struct Stroke
 	/// <summary>
 	/// Fill mapped across the whole undashed stroke's bounds, shared by all dashes and caps.
 	/// </summary>
-	public Fill Fill { get; init; }
+	public Fill Fill
+	{
+		get => _fill;
+		init => _fill = value;
+	}
+
+	readonly Fill _fill;
+
+	/// <summary>
+	/// Reads the stroke's paint without copying its image and gradient settings.
+	/// </summary>
+	internal static ref readonly Fill GetFill( in Stroke stroke ) => ref stroke._fill;
 
 	/// <summary>
 	/// Width in drawing pixels, placed according to Alignment. Nonpositive or non-finite widths disable the stroke.
@@ -181,7 +193,10 @@ public readonly record struct Stroke
 	public float MiterLimit { get; init; }
 
 	/// <summary>
-	/// Style and spacing along the path. Generic paths support solid, dashed and dotted strokes; decorative styles render on inside rectangles with solid-color paint and fall back to solid elsewhere. Pattern geometry is cached; its memory cost grows with the number of dashes or dots. Patterns that exceed GPU buffer capacity throw ArgumentOutOfRangeException.
+	/// Style and spacing along the path. Paths support solid, dashed and dotted strokes; decorative styles render
+	/// on inside rectangles with solid-color paint and fall back to solid elsewhere. Two-point open lines evaluate
+	/// patterns directly in the shader. Other paths generate geometry proportional to the number of dashes or dots
+	/// and throw ArgumentOutOfRangeException when that geometry exceeds GPU buffer capacity.
 	/// </summary>
 	public BorderStyle Style { get; init; }
 

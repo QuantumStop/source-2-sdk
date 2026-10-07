@@ -33,16 +33,18 @@ public sealed class WorldPanelPage : GalleryPage
 		"Glass UI displays in a 3D test room. The camera loops around the stands while objects move behind the glass. Watch parallax, world captures and depth occlusion; pause or use the front view to compare filters." )
 	{
 		this.mode = mode;
-		var controls = Case( "Scene controls — mouse wheel over the scene to zoom" );
-		ToggleOption( controls, "Animate", animate, value => animate = value );
-		Options( controls, ["Orbit", "Front", "Oblique"], i => cameraMode = i );
-		ToggleOption( controls, "Occluder", occlude, value => occlude = value );
-		ToggleOption( controls, "MSAA (4×)", msaa, value => msaa = value );
+		var cameraControls = Case( "Camera", column: true );
+		Options( cameraControls, ["Orbit", "Front", "Oblique"], i => cameraMode = i );
+		cameraControls.Add.Label( "Scroll over the scene to zoom.", "reference-note" );
+		var controls = Case( "Scene", column: true );
+		ToggleOption( controls, "Animate scene", animate, value => animate = value );
+		ToggleOption( controls, "Show occluder", occlude, value => occlude = value );
+		ToggleOption( controls, "Antialiasing (4× MSAA)", msaa, value => msaa = value );
 
 		var sceneView = AddChild<WorldSceneView>();
 		sceneView.Zoom = delta => SetDistance( distance * MathF.Exp( delta * 0.08f ) );
 		view = sceneView;
-		view.SetProperty( "style", "width: 100%; height: 620px; flex-shrink: 0; pointer-events: all;" );
+		view.SetProperty( "style", "pointer-events: all;" );
 		var scene = view.RenderScene;
 		world = scene.SceneWorld;
 		camera = scene.CreateObject().Components.Create<CameraComponent>();
@@ -94,6 +96,7 @@ public sealed class WorldPanelPage : GalleryPage
 			3 => "Expect: Painter fills, strokes, curves and clips stay on their world planes as the camera orbits. Transparent shapes reveal the room; Painter backdrop filters capture it. Toggle MSAA and the occluder, and zoom to inspect thin edges and depth.",
 			_ => "Text, images, gradients and shadows remain attached to the world plane. The yellow foreground bar occludes UI, including filtered layers. Explore sampling and depth from distant and oblique views.",
 		}, "page-blurb" );
+		UseSceneLayout( view, camera );
 	}
 
 	void CreateLight( Vector3 position, Color color, float radius )
@@ -252,12 +255,11 @@ public sealed class WorldPanelPage : GalleryPage
 
 	static void Options( Panel parent, string[] labels, Action<int> changed )
 	{
-		var group = parent.Add.Panel( "demo-actions" );
-		group.Style.MarginRight = 16;
+		var group = parent.Add.Panel( "scene-camera-modes" );
 		for ( int i = 0; i < labels.Length; i++ )
 		{
 			var index = i;
-			var button = new Sandbox.UI.Button( labels[i].ToUpperInvariant() );
+			var button = new Sandbox.UI.Button( labels[i] );
 			SetSelected( button, i == 0 );
 			button.AddEventListener( "onclick", () =>
 			{
@@ -277,16 +279,7 @@ public sealed class WorldPanelPage : GalleryPage
 
 	static void ToggleOption( Panel parent, string title, bool value, Action<bool> changed )
 	{
-		var button = new Sandbox.UI.Button( title.ToUpperInvariant() );
-		button.Style.MarginRight = 16;
-		SetSelected( button, value );
-		button.AddEventListener( "onclick", () =>
-		{
-			value = !value;
-			SetSelected( button, value );
-			changed( value );
-		} );
-		parent.AddChild( button );
+		parent.AddChild( new Sandbox.UI.Checkbox { LabelText = title, Checked = value, ValueChanged = changed } );
 	}
 
 	void SetDistance( float value )

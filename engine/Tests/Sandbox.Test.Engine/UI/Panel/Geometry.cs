@@ -283,6 +283,34 @@ public class PanelGeometryTest
 		Assert.IsTrue( child.IsVisible );
 	}
 
+	/// <summary>Reparenting into an already hidden panel hides descendants, and moving back restores visibility.</summary>
+	[TestMethod]
+	[DataRow( "display: none;" )]
+	[DataRow( "opacity: 0;" )]
+	public void ReparentingIntoHiddenPanelUpdatesVisibility( string hiddenStyle )
+	{
+		var root = UiTesting.CreateRoot();
+		var hidden = new Panel { Parent = root };
+		hidden.Style.Set( hiddenStyle );
+		var panel = new Panel { Parent = root };
+		var child = new Panel { Parent = panel };
+		root.Layout();
+		root.Layout();
+		Assert.IsFalse( hidden.IsVisible );
+		Assert.IsTrue( panel.IsVisible );
+		Assert.IsTrue( child.IsVisible );
+
+		panel.Parent = hidden;
+		root.Layout();
+		Assert.IsFalse( panel.IsVisible );
+		Assert.IsFalse( child.IsVisible );
+
+		panel.Parent = root;
+		root.Layout();
+		Assert.IsTrue( panel.IsVisible );
+		Assert.IsTrue( child.IsVisible );
+	}
+
 	/// <summary>
 	/// Screen/panel position conversion offsets by the panel's rect, and the
 	/// delta conversion normalises into 0-1 across the panel's size.

@@ -55,20 +55,16 @@ public partial class Label
 		var s = Math.Min( SelectionStart, SelectionEnd );
 		var e = Math.Max( SelectionStart, SelectionEnd );
 
-		InsertText( str, s, e );
-		CaretPosition = s + new StringInfo( str ).LengthInTextElements;
-
-		SelectionStart = 0;
-		SelectionEnd = 0;
+		InsertTextAndMoveCaret( str, s, e );
 	}
 
 	/// <summary>
-	/// Sets the text selection.
+	/// Sets the text selection, preserving its anchor and direction.
 	/// </summary>
 	public void SetSelection( int start, int end )
 	{
-		var s = Math.Min( start, end ).Clamp( 0, TextLength );
-		var e = Math.Max( start, end ).Clamp( 0, TextLength );
+		var s = start.Clamp( 0, TextLength );
+		var e = end.Clamp( 0, TextLength );
 
 		if ( s == e )
 		{
@@ -211,6 +207,21 @@ public partial class Label
 	}
 
 	/// <summary>
+	/// Insert text and put the caret after it. The inserted text can join a neighboring
+	/// grapheme, so find its end in the resulting text rather than adding element counts.
+	/// </summary>
+	internal void InsertTextAndMoveCaret( string text, int pos, int? endpos = null )
+	{
+		pos = Math.Clamp( pos, 0, TextLength );
+		var insertionEnd = (pos > 0 ? StringInfo.SubstringByTextElements( 0, pos ).Length : 0) + (text?.Length ?? 0);
+		InsertText( text, pos, endpos );
+
+		var boundaries = StringInfo.ParseCombiningCharacters( Text );
+		var index = Array.BinarySearch( boundaries, insertionEnd );
+		SetCaretPosition( index >= 0 ? index : ~index );
+	}
+
+	/// <summary>
 	/// Remove given amount of characters from the label at given <paramref name="start"/> position.
 	/// </summary>
 	public virtual void RemoveText( int start, int count )
@@ -234,14 +245,17 @@ public partial class Label
 		}
 
 		int iNewline = 0;
+		int index = 0;
 		var e = StringInfo.GetTextElementEnumerator( Text );
 		while ( e.MoveNext() )
 		{
-			if ( e.ElementIndex >= CaretPosition )
+			if ( index >= CaretPosition )
 				break;
 
 			if ( IsNewline( e.GetTextElement() ) )
-				iNewline = e.ElementIndex + 1;
+				iNewline = index + 1;
+
+			index++;
 		}
 
 		SetCaretPosition( iNewline, select );
@@ -259,15 +273,17 @@ public partial class Label
 			return;
 		}
 
+		int index = 0;
 		var e = StringInfo.GetTextElementEnumerator( Text );
 		while ( e.MoveNext() )
 		{
-			if ( e.ElementIndex < CaretPosition )
+			var position = index++;
+			if ( position < CaretPosition )
 				continue;
 
 			if ( IsNewline( e.GetTextElement() ) )
 			{
-				SetCaretPosition( e.ElementIndex, select );
+				SetCaretPosition( position, select );
 				return;
 			}
 		}
@@ -341,8 +357,9 @@ public partial class Label
 			return;
 
 		var boundaries = GetWordBoundaryIndices();
-		SelectionStart = boundaries.LastOrDefault( x => x < wordPos );
-		SelectionEnd = boundaries.FirstOrDefault( x => x >= wordPos );
+		wordPos = Math.Clamp( wordPos, 0, TextLength - 1 );
+		SelectionStart = boundaries.LastOrDefault( x => x <= wordPos );
+		SelectionEnd = boundaries.FirstOrDefault( x => x > wordPos, TextLength );
 
 		CaretPosition = SelectionEnd;
 	}

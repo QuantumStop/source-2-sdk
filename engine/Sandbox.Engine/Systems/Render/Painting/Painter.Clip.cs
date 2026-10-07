@@ -12,6 +12,26 @@ public readonly ref partial struct Painter
 	/// </summary>
 	public void Clip( Rect rect, CornerRadii corners = default ) => ClipRect( rect, corners.Resolve( rect ) );
 
+	/// <summary>
+	/// Conservatively tests drawing bounds against the inherited and explicit clips before building geometry.
+	/// </summary>
+	internal bool IsRectVisible( Rect rect )
+	{
+		var context = ActiveContext;
+		var output = context.Batcher;
+		var transform = context.State.Transform * context.BaseTransform * output.Destination.Transform;
+		if ( !output.Destination.Scissor.Invert && !PainterBatcher.OverlapsScissor( rect, transform, output.Destination.Scissor ) )
+			return false;
+		for ( int index = context.State.ClipIndex; index >= 0; index = output.DrawClips[index].Parent )
+		{
+			var clip = output.DrawClips[index];
+			var matrix = output.Destination.Transform.Inverted * clip.Matrix;
+			if ( !PainterBatcher.OverlapsScissor( rect, transform, Scissoring.Single( clip.Rect, clip.Radii, matrix ) ) )
+				return false;
+		}
+		return true;
+	}
+
 	void ClipRect( Rect rect, BorderRadii radii )
 	{
 		if ( !rect.Position.IsFinite || !float.IsFinite( rect.Width ) || !float.IsFinite( rect.Height )

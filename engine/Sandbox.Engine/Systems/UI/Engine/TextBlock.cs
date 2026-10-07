@@ -315,6 +315,13 @@ internal sealed partial class TextBlock : IDisposable
 		return Block.LookupCaretIndex( result.ClosestCodePointIndex );
 	}
 
+	public int GetCharacterAt( Vector2 pos )
+	{
+		if ( Block == null ) return -1;
+		var index = Block.HitTest( pos.x, pos.y ).OverCodePointIndex;
+		return index < 0 ? -1 : Block.LookupCaretIndex( index );
+	}
+
 	public HtmlSpan GetSpanAt( Vector2 pos )
 	{
 		if ( Block == null ) return default;
@@ -478,21 +485,7 @@ internal sealed partial class TextBlock : IDisposable
 						var s = LookupStyles( span.node );
 						if ( s is null ) continue;
 
-						var sty = Style.Copy();
-
-						sty.FontSize = (s.FontSize ?? style.FontSize ?? Length.Pixels( 13 ).Value).GetPixels( 100 );
-						sty.FontSize = MathF.Round( sty.FontSize * 32.0f ) / 32.0f;
-						sty.FontFamily = s.FontFamily ?? sty.FontFamily;
-						sty.TextColor = s.FontColor?.ToSkF() ?? sty.TextColor;
-						sty.BackgroundColor = s.BackgroundColor?.ToSkF() ?? sty.BackgroundColor;
-						sty.FontWeight = s.FontWeight ?? sty.FontWeight;
-						sty.FontItalic = s.FontStyle == FontStyle.Italic;
-						sty.FontVariantNumeric = s.FontVariantNumeric ?? sty.FontVariantNumeric;
-						sty.Underline = s.TextDecorationLine == UI.TextDecoration.Underline ? UnderlineStyle.Solid : UnderlineStyle.None;
-						sty.UnderlineColor = sty.TextColor;
-						sty.LetterSpacing = s.LetterSpacing?.GetPixels( 1000.0f ) ?? sty.LetterSpacing;
-						sty.WordSpacing = s.WordSpacing?.GetPixels( 1000.0f ) ?? sty.WordSpacing;
-						sty.StrikeThrough = (s.TextDecorationLine?.Contains( UI.TextDecoration.LineThrough ) ?? false) ? StrikeThroughStyle.Solid : sty.StrikeThrough;
+						var sty = ResolveSpanStyle( s, 1 );
 
 						Block.ApplyStyle( span.from, span.to - span.from, sty );
 					}
@@ -506,7 +499,7 @@ internal sealed partial class TextBlock : IDisposable
 		else if ( !IsInlineParagraph )
 		{
 			var text = FixedText( Text );
-			Block.AddText( text, Style );
+			AddStyledText( text );
 			EndsWithNewline = EndsWithLineBreak( text );
 		}
 
@@ -606,7 +599,7 @@ internal sealed partial class TextBlock : IDisposable
 		}
 		else
 		{
-			Block.MaxWidth = IsInlineParagraph ? _inlineWidth : WhiteSpace == UI.WhiteSpace.NoWrap ? null : (maxwidth.CeilToInt() + 1);
+			Block.MaxWidth = IsInlineParagraph ? _inlineWidth : WhiteSpace is UI.WhiteSpace.NoWrap or UI.WhiteSpace.Pre ? null : (maxwidth.CeilToInt() + 1);
 		}
 
 		int width = Block.MeasuredWidth.CeilToInt().Clamp( 2, 4096 );

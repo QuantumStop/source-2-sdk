@@ -53,6 +53,8 @@ public partial class MeshTool : EditorTool
 		Selection.Clear();
 
 		SetMoveMode<PositionMode>();
+
+		LoadActiveMaterial();
 		LoadToolbarCookies();
 	}
 
@@ -117,4 +119,13 @@ public partial class MeshTool : EditorTool
 		EditorToolManager.SetSubTool( nameof( ObjectSelection ) );
 	}
 
+	[Event( "asset.highlighted" )]
+	private static void OnAssetHighlighted( Asset asset )
+	{
+		if ( asset?.AssetType != AssetType.Material ) return;
+		var material = asset.LoadResource<Material>();
+		if ( material is null || !material.IsValid() ) return;
+
+		MaterialSelection.Current = material;
+	}
 }

@@ -30,6 +30,9 @@ namespace Sandbox;
 /// <seealso cref="Application"/>
 public static partial class Game
 {
+	/// <summary>Creates scripts using the current menu or game's exposed types and cached code.</summary>
+	public static ScriptSystem Scripting => GlobalContext.Current.Scripting;
+
 	/// <summary>
 	/// The input context for this context (menu, gamemenu, client)
 	/// </summary>
@@ -145,6 +148,8 @@ public static partial class Game
 		// Be aware that this could be called from the GameDll or the MenuDll
 		// So anything here needs to be safe to call from either
 
+		Api.Activity.SetExitReason( "menu" );
+
 		if ( IGameInstance.Current is not null )
 		{
 			IGameInstance.Current.Close();
@@ -185,6 +190,9 @@ public static partial class Game
 			Log.Warning( $"Called Game.Load( {gameIdent} ) but we're in the editor, so just stopping." );
 			return;
 		}
+
+		var sameGame = string.Equals( Ident?.Split( '#' )[0], gameIdent?.Split( '#' )[0], StringComparison.OrdinalIgnoreCase );
+		Api.Activity.GameRequested( new( sameGame ? "reload" : "game", gameIdent ) );
 
 		if ( Networking.IsActive && Networking.IsHost )
 		{

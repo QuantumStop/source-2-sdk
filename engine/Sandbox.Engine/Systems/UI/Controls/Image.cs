@@ -6,6 +6,9 @@
 	[Library( "image" ), Alias( "img" ), Expose]
 	public partial class Image : Panel
 	{
+		Vector2 _textureSize;
+		int _textureVersion;
+
 		/// <summary>
 		/// The texture being displayed by this panel.
 		/// </summary>
@@ -16,6 +19,8 @@
 			{
 				if ( field == value ) return;
 				field = value;
+				_textureSize = value.IsValid() ? value.Size : default;
+				_textureVersion = value?.DirtyVersion ?? 0;
 				LayoutTree.MarkDirty();
 				SetNeedsPreLayout();
 			}
@@ -38,6 +43,22 @@
 
 			if ( !IsValid ) return;
 			Texture = texture;
+		}
+
+		public override void Tick()
+		{
+			base.Tick();
+
+			// Loading can replace the contents of the same cached Texture wrapper.
+			if ( Texture is null || Texture.DirtyVersion == _textureVersion ) return;
+			_textureVersion = Texture.DirtyVersion;
+
+			var size = Texture.IsValid() ? Texture.Size : default;
+			if ( size == _textureSize ) return;
+			_textureSize = size;
+
+			LayoutTree.MarkDirty();
+			SetNeedsPreLayout();
 		}
 
 		float oldScaleToScreen = 1.0f;

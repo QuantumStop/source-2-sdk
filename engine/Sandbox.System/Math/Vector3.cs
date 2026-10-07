@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 /// </summary>
 [JsonConverter( typeof( Sandbox.Internal.JsonConvert.Vector3Converter ) )]
 [StructLayout( LayoutKind.Sequential )]
+[Description( "A 3-dimensional vector. Typically represents a position, size, or direction in 3D space." )]
 public partial struct Vector3 : System.IEquatable<Vector3>, IParsable<Vector3>, IInterpolator<Vector3>
 {
 	internal System.Numerics.Vector3 _vec;

@@ -106,7 +106,7 @@ internal sealed class UISurface : IDisposable
 	/// </summary>
 	public void SetMouseButton( MouseButtons button, bool down, KeyboardModifiers modifiers = default ) => Input.SetMouseButton( button, down, modifiers );
 
-	internal void SetMouseButton( NativeEngine.ButtonCode button, bool down, KeyboardModifiers modifiers ) => Input.SetMouseButton( button, down, modifiers );
+	internal void SetMouseButton( NativeEngine.ButtonCode button, bool down, KeyboardModifiers modifiers, int clickCount = 1 ) => Input.SetMouseButton( button, down, modifiers, clickCount );
 
 	internal void SetKey( NativeEngine.ButtonCode button, bool down, KeyboardModifiers modifiers ) => Input.SetKey( button, down, modifiers );
 

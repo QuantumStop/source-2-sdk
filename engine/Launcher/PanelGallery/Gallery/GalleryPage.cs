@@ -15,18 +15,28 @@ public record GalleryPageInfo( string Title, string Icon, Func<Panel> Create, st
 		new( "Virtual Grid", "grid_view", () => new VirtualControlsPage( true ), "Controls" ),
 		new( "Scene Panel", "view_in_ar", () => new ScenePanelPage(), "Controls" ),
 		new( "SVG Rendering", "draw", () => new SvgRenderingPage(), "System" ),
-		new( "Scene View", "public", () => new SceneViewDemoPage(), "Demos" ),
+		new( "Scene View", "public", () => new SceneViewDemoPage(), "Scene" ),
+		new( "SpriteRenderer", "animation", () => new SpriteRendererPage(), "Scene" ),
+		new( "Sprite Lighting & Depth", "light_mode", () => new SpriteLightingPage(), "Scene" ),
 		new( "Calculator", "calculate", () => new CalculatorPage(), "Demos" ),
 		new( "Buttons", "smart_button", () => new ButtonsPage(), "Controls/Input" ),
 		new( "Text Entry", "edit", () => new TextEntryPage(), "Controls/Input" ),
+		new( "Script Editor", "code", () => new ScriptControlPage(), "Controls/Input" ),
 		new( "Value Controls", "123", () => new InputControlsPage(), "Controls/Input" ),
 		new( "Checkbox", "check_box", () => new CheckboxPage(), "Controls/Input" ),
 		new( "Focus", "keyboard_tab", () => new FocusPage(), "System" ),
 		new( "Colour", "palette", () => new ColorControlsPage(), "Controls/Input" ),
+		new( "Canvas Panel", "pan_tool", () => new CanvasPanelPage(), "Controls/Display" ),
+		new( "Graph Panel", "show_chart", () => new GraphPanelPage(), "Controls/Display" ),
+		new( "Curve Editor", "timeline", () => new CurveEditorPage(), "Controls/Input" ),
 		new( "Grouping", "table_rows", () => new LayoutControlsPage(), "Controls/Layout" ),
+		new( "Toolbar", "view_week", () => new ToolbarPage(), "Controls/Layout" ),
+		new( "Tabs", "tab", () => new TabsPage(), "Controls/Layout" ),
+		new( "Status Bar", "info", () => new StatusBarPage(), "Controls/Layout" ),
 		new( "Folder Select", "folder_open", () => new FolderSelectorPage(), "Controls/Input" ),
 		new( "Sliders", "tune", () => new SlidersPage(), "Controls/Input" ),
 		new( "Split Container", "vertical_split", () => new SplitContainerPage(), "Controls/Layout" ),
+		new( "Docking", "tab", () => new DockingPage(), "Controls/Layout" ),
 		new( "Tree View", "account_tree", () => new TreeViewPage(), "Controls/Layout" ),
 		new( "Images", "image", () => new DisplayPanelsPage(), "Controls/Display" ),
 		new( "Rect", "crop_landscape", () => new DrawPage( "Rectangle" ), "Painter Shapes" ),
@@ -51,6 +61,7 @@ public record GalleryPageInfo( string Title, string Icon, Func<Panel> Create, st
 		new( "Outlines", "border_outer", () => new DrawPage( "Outlines" ), "Painter/Appearance" ),
 		new( "Coverage", "blur_on", () => new DrawPage( "Coverage" ), "Painter/Appearance" ),
 		new( "Text", "text_fields", () => new DrawPage( "Text" ), "Painter/Text" ),
+		new( "Sprites", "animation", () => new SpritePage(), "Painter/Appearance" ),
 		new( "Text measurement", "straighten", () => new DrawPage( "Text measurement" ), "Painter/Text" ),
 		new( "Clipping", "content_cut", () => new DrawPage( "Clipping" ), "Painter/State" ),
 		new( "Transforms", "transform", () => new DrawPage( "Transforms" ), "Painter/State" ),
@@ -82,6 +93,46 @@ public record GalleryPageInfo( string Title, string Icon, Func<Panel> Create, st
 /// </summary>
 public abstract class GalleryPage : Panel
 {
+	ScenePanel sceneView;
+	CameraComponent sceneCamera;
+	float sceneHorizontalFov;
+	float sceneOrthoHeight;
+
+	/// <summary>
+	/// Give the scene the window height, with independently scrolling controls alongside it.
+	/// </summary>
+	protected void UseSceneLayout( ScenePanel view, CameraComponent camera )
+	{
+		AddClass( "full-page scene-gallery" );
+		view.RemoveClass( "scene-control-demo" );
+		view.AddClass( "scene-gallery-viewport" );
+		var children = Children.ToArray();
+		var controls = Add.Panel( "scene-gallery-controls" );
+		foreach ( var child in children )
+			if ( child != view ) controls.AddChild( child );
+		sceneView = view;
+		sceneCamera = camera;
+		sceneHorizontalFov = camera.FieldOfView;
+		sceneOrthoHeight = camera.OrthographicHeight;
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+		if ( sceneCamera is null || !sceneCamera.IsValid() ) return;
+		var size = sceneView.Box.RectInner.Size;
+		if ( size.x <= 0 || size.y <= 0 ) return;
+		// Orthographic projection derives world units per pixel from this height.
+		// Screen.Size describes the game screen, not this panel's render target.
+		sceneCamera.CustomSize = size;
+		// Preserve the composition in both axes: wide windows gain space at the sides,
+		// tall windows gain space above and below instead of cropping the subject.
+		var aspect = size.x / size.y;
+		sceneCamera.OrthographicHeight = sceneOrthoHeight * MathF.Max( 1, 1.5f / aspect );
+		sceneCamera.FovAxis = CameraComponent.Axis.Vertical;
+		sceneCamera.FieldOfView = Math.Clamp( MathF.Atan( MathF.Tan( sceneHorizontalFov * MathF.PI / 360 ) / MathF.Min( aspect, 1.5f ) ) * 360 / MathF.PI, 1, 179 );
+	}
+
 	protected GalleryPage( string title, string blurb )
 	{
 		AddClass( "gallery-page" );

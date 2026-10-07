@@ -212,7 +212,17 @@ public partial class PanelRenderTreeBuilder : Microsoft.AspNetCore.Components.Re
 		{
 			Children ??= new();
 
-			var child = Children.FirstOrDefault( x => x.Hash == hash );
+			// Not FirstOrDefault - the predicate would capture hash and allocate a closure every call.
+			Block child = null;
+
+			foreach ( var candidate in Children )
+			{
+				if ( candidate.Hash != hash ) continue;
+
+				child = candidate;
+				break;
+			}
+
 			if ( child == null )
 			{
 				child = new Block();

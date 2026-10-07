@@ -21,6 +21,12 @@ internal partial class UISystem
 	internal InputEventQueue InputEventQueue = new();
 
 	/// <summary>
+	/// Roots participating in frame and input processing. Keep RootPanels for maintenance and teardown.
+	/// Use indices because panel callbacks can add or remove roots during iteration.
+	/// </summary>
+	internal ActiveRootEnumerable GetActiveRoots( bool reverse = false ) => new( this, reverse );
+
+	/// <summary>
 	/// Tooltips for the panels in this UI. Each instance has its own, so a tooltip in one window
 	/// has nothing to do with the game screen's.
 	/// </summary>
@@ -42,9 +48,9 @@ internal partial class UISystem
 	/// </summary>
 	internal Panel FindPanelAt( Vector2 position )
 	{
-		for ( int i = RootPanels.Count - 1; i >= 0; i-- )
+		foreach ( var root in GetActiveRoots( reverse: true ) )
 		{
-			var hit = UISurface.FindPanelAt( RootPanels[i], position, null );
+			var hit = UISurface.FindPanelAt( root, position, null );
 			if ( hit is not null ) return hit;
 		}
 
@@ -93,10 +99,8 @@ internal partial class UISystem
 	{
 		GlobalCommandList.Reset();
 
-		for ( int i = RootPanels.Count - 1; i >= 0; i-- )
+		foreach ( var root in GetActiveRoots( reverse: true ) )
 		{
-			var root = RootPanels[i];
-			if ( !root.IsValid ) continue;
 			if ( root.RenderedManually || root.IsWorldPanel ) continue;
 
 			GlobalCommandList.InsertList( root.PanelCommandList );
@@ -180,10 +184,22 @@ internal partial class UISystem
 	{
 		RootPanels.RemoveAll( x => x == null );
 
-		for ( int i = 0; i < RootPanels.Count(); i++ )
+		// Release held input before skipping a suspended scene's panels.
+		if ( NextFocus?.Scene?.IsSuspended == true ) ReleaseFocusSubtree( NextFocus );
+		if ( CurrentFocus?.Scene?.IsSuspended == true ) ReleaseFocusSubtree( CurrentFocus );
+		if ( Panel.MouseCapture?.Scene?.IsSuspended == true ) Panel.MouseCapture.SetMouseCapture( false );
+
+		if ( Input.Active?.Scene?.IsSuspended == true || Input.Hovered?.Scene?.IsSuspended == true )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].TickInternal();
+			Input.CancelPointerInteraction();
+			Input.SetHovered( null );
+			Input.Clear();
+			Tooltips.Clear();
+		}
+
+		foreach ( var root in GetActiveRoots() )
+		{
+			root.TickInternal();
 		}
 	}
 
@@ -191,28 +207,25 @@ internal partial class UISystem
 	{
 		var screenRect = new Rect( 0, 0, Size.x, Size.y );
 
-		for ( int i = 0; i < RootPanels.Count(); i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].PreLayout( screenRect );
+			root.PreLayout( screenRect );
 		}
 	}
 
 	internal void Layout()
 	{
-		for ( int i = 0; i < RootPanels.Count(); i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].CalculateLayout();
+			root.CalculateLayout();
 		}
 	}
 
 	internal void PostLayout()
 	{
-		for ( int i = 0; i < RootPanels.Count(); i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].PostLayout();
+			root.PostLayout();
 		}
 	}
 
@@ -220,11 +233,8 @@ internal partial class UISystem
 	{
 		ThreadSafe.AssertIsMainThread();
 
-		for ( int i = 0; i < RootPanels.Count; i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			var root = RootPanels[i];
-			if ( !root.IsValid ) continue;
-
 			if ( root is Sandbox.UI.WorldPanel { SceneObject: not null } wp )
 			{
 				wp.SceneObject.BuildCommandList();
@@ -240,19 +250,18 @@ internal partial class UISystem
 	/// </summary>
 	internal void TickSurfaceInput( bool allowMouseInput )
 	{
-		for ( int i = 0; i < RootPanels.Count; i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].TickInputInternal();
+			root.TickInputInternal();
 		}
 
-		Input.Tick( RootPanels.Where( p => !p.IsWorldPanel ).OrderByDescending( x => x.ComputedStyle?.ZIndex ?? 0 ), allowMouseInput );
+		Input.Tick( GetScreenInputRoots(), allowMouseInput );
 
 		TickFocus();
 
 		// With nothing focused the keys go to the root, so a surface can have window wide shortcuts
 		// instead of dropping every key press
-		InputEventQueue.TickFocused( CurrentFocus ?? RootPanels.FirstOrDefault() );
+		InputEventQueue.TickFocused( CurrentFocus ?? GetActiveRoots().FirstOrDefault() );
 		InputEventQueue.Tick( Input.Hovered, Input.Active );
 
 		Tooltips.SetHovered( allowMouseInput ? Input.Hovered : null, Input.CursorPosition );
@@ -261,16 +270,15 @@ internal partial class UISystem
 
 	internal void TickInput( bool allowMouseInput )
 	{
-		for ( int i = 0; i < RootPanels.Count(); i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid ) continue;
-			RootPanels[i].TickInputInternal();
+			root.TickInputInternal();
 		}
 
 		//
 		// Tick various input systems
 		//
-		Input.Tick( RootPanels.Where( p => !p.IsWorldPanel ).OrderByDescending( x => x.ComputedStyle?.ZIndex ?? 0 ), allowMouseInput && DoAnyPanelsWantMouseVisible() );
+		Input.Tick( GetScreenInputRoots(), allowMouseInput && DoAnyPanelsWantMouseVisible() );
 
 		TickWorldInput();
 
@@ -375,35 +383,49 @@ internal partial class UISystem
 		var scene = Game.ActiveScene;
 		if ( !scene.IsValid() ) return;
 
-		var rootPanels = scene.GetAllComponents<WorldPanel>();
-		var worldInputs = scene.GetAllComponents<WorldInput>();
+		var worldPanels = _worldInputPanels;
+		bool collected = false;
 
-		foreach ( var worldInput in worldInputs )
+		foreach ( var worldInput in scene.Query<WorldInput>() )
 		{
-			worldInput.WorldPanelInput.Tick( rootPanels.Select( x => x.GetPanel() as RootPanel ), true );
+			if ( scene.IsSuspended )
+			{
+				worldInput.WorldPanelInput.CancelPointerInteraction();
+				worldInput.WorldPanelInput.Clear();
+				continue;
+			}
+
+			// Collect after the first input is found, so a scene without world inputs does no work
+			if ( !collected )
+			{
+				collected = true;
+				foreach ( var worldPanel in scene.Query<WorldPanel>() )
+					worldPanels.Add( worldPanel.GetPanel() as RootPanel );
+			}
+
+			worldInput.WorldPanelInput.Tick( worldPanels, true );
 		}
+
+		worldPanels.Clear();
 	}
+
+	readonly List<RootPanel> _worldInputPanels = new();
 
 	bool DoAnyPanelsWantMouseVisible()
 	{
 		if ( Mouse.Visibility == MouseVisibility.Visible ) return true;
 		if ( Mouse.Visibility == MouseVisibility.Hidden && !Game.IsMenu ) return false;
 
-		for ( int i = 0; i < RootPanels.Count; i++ )
+		foreach ( var root in GetActiveRoots() )
 		{
-			if ( !RootPanels[i].IsValid )
+			if ( !root.IsVisible )
 				continue;
 
-			if ( !RootPanels[i].IsVisible )
+			if ( root.IsWorldPanel )
 				continue;
 
-			if ( RootPanels[i].IsWorldPanel )
+			if ( !root.ChildrenWantMouseInput )
 				continue;
-
-			if ( !RootPanels[i].ChildrenWantMouseInput )
-				continue;
-
-			if ( Game.IsMenu && RootPanels[i].RenderedManually && !Game.IsMainMenuVisible ) continue;
 
 			return true;
 		}

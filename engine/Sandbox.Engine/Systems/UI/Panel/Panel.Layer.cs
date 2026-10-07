@@ -8,6 +8,7 @@ public partial class Panel
 	string PanelLayerRTName => field ??= $"PanelLayer.{GetHashCode()}";
 
 	internal bool HasPanelLayer => _paintCache.Layer is not null;
+	internal Rect PanelLayerBounds => _paintCache.Layer.Bounds;
 
 	/// <summary>
 	/// Called by Render after closing a panel's offscreen target to composite it into the parent destination.
@@ -16,12 +17,13 @@ public partial class Panel
 	void DrawLayer( Painter painter )
 	{
 		var layer = _paintCache.Layer;
-		painter.Composite( new RenderTargetHandle { Name = PanelLayerRTName }, Box.RectOuter, layer.Filter, layer.Mask,
+		painter.Composite( new RenderTargetHandle { Name = PanelLayerRTName }, PanelLayerBounds, layer.Filter, layer.Mask,
 			layer.MaskScope, CollectionsMarshal.AsSpan( layer.DropShadows ), layer.BorderWidth, layer.BorderColor );
 	}
 
 	sealed class LayerPaint
 	{
+		internal Rect Bounds;
 		internal Painter.Filter Filter;
 		internal Painter.Mask? Mask;
 		internal MaskScope MaskScope;
@@ -42,6 +44,7 @@ public partial class Panel
 		internal void Update( Panel panel, FilterMode sampling )
 		{
 			var style = panel.ComputedStyle;
+			Bounds = CalculateBounds( panel );
 			Filter = new Painter.Filter
 			{
 				Blur = style.FilterBlur.Value.GetPixels( 1 ),
@@ -79,6 +82,29 @@ public partial class Panel
 			_maskImage = style.MaskImage;
 			_maskSize = _maskImage?.Size ?? default;
 			_maskVersion = _maskImage?.DirtyVersion ?? 0;
+		}
+
+		/// <summary>
+		/// Fits the margin box and outset shadows inside an integer-sized offscreen target.
+		/// </summary>
+		static Rect CalculateBounds( Panel panel )
+		{
+			var bounds = panel.Box.RectOuter;
+			foreach ( var shadow in panel.ComputedStyle.BoxShadow )
+			{
+				if ( shadow.Inset || shadow.Color.a <= 0 ) continue;
+
+				// Match the renderer's shadow quad: border box + spread + three-sigma blur.
+				var shape = (panel.Box.Rect + new Vector2( shadow.OffsetX, shadow.OffsetY )).Grow( shadow.Spread );
+				bounds.Add( shape.Grow( MathF.Ceiling( shadow.Blur * 1.5f ) ) );
+			}
+
+			// Round outward to integer target pixels without clipping fractional shadows.
+			bounds.Left = MathF.Floor( bounds.Left );
+			bounds.Top = MathF.Floor( bounds.Top );
+			bounds.Right = MathF.Ceiling( bounds.Right );
+			bounds.Bottom = MathF.Ceiling( bounds.Bottom );
+			return bounds;
 		}
 	}
 }

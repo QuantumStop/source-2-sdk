@@ -5,7 +5,9 @@ namespace Sandbox;
 /// <summary>
 /// Records 2D drawing commands. Obtained from Painter.Begin() or a panel's OnDraw callback.
 /// Copies share drawing state. Dispose a destination-owned painter to submit; panel-supplied painters remain owned by the panel.
+/// Copies stay on the stack and are only valid on the recording thread until that recording ends.
 /// </summary>
+[Expose]
 public readonly ref partial struct Painter
 {
 	readonly Painter.Context _context;

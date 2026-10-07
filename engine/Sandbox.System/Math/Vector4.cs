@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 [DataContract]
 [JsonConverter( typeof( Sandbox.Internal.JsonConvert.Vector4Converter ) )]
 [StructLayout( LayoutKind.Explicit, Pack = 16, Size = 16 )]
+[Description( "A 4-dimensional vector or point." )]
 public struct Vector4 : System.IEquatable<Vector4>, IParsable<Vector4>
 {
 	[FieldOffset( 0 )]

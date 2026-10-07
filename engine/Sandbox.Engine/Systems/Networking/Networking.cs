@@ -243,6 +243,7 @@ public static partial class Networking
 		if ( !sockets.IsValid ) return;
 
 		Log.Info( "Bootstrap Networking..." );
+		utils.InitializeRelayNetwork();
 
 		// conna: fuck it, let's set these to insane values.
 		var maxBufferSize = 1024 * 1024 * 64;
@@ -480,12 +481,9 @@ public static partial class Networking
 		}
 
 		//
-		// Did the menu want to override the lobby's privacy mode?
+		// Did the menu ask for a privacy mode? The more private of it and the game's own wins
 		//
-		if ( LaunchArguments.PrivacyOverride is { } privacy )
-		{
-			config.Privacy = privacy;
-		}
+		config.Privacy = LaunchArguments.ResolvePrivacy( config.Privacy );
 
 		_ = CreateLobbyAsync( config, lobbyCts.Token );
 	}
@@ -705,9 +703,39 @@ public static partial class Networking
 		_ = TryConnect( target );
 	}
 
-	static async Task<bool> TryConnect( string target, int retries = 30 )
+	/// <summary>
+	/// Leave the previous session before connecting. Platform games unload their package too;
+	/// standalone games keep the package that their handshake expects to already be loaded.
+	/// </summary>
+	static void LeaveCurrentGame()
 	{
+		// Standalone joins reuse the loaded package: their handshake does not load it again.
+		if ( !Application.IsStandalone && IGameInstance.Current is not null )
+		{
+			IGameInstanceDll.Current.CloseGame();
+		}
+
 		Disconnect();
+	}
+
+	internal static async Task<bool> TryConnect( string target, int retries = 30, CancellationToken token = default, Action<string> onFailure = null )
+	{
+		var request = Api.Activity.PendingRequest;
+		var success = false;
+		try
+		{
+			return success = await TryConnectInternal( target, retries, token, onFailure );
+		}
+		finally
+		{
+			if ( !success && !IsMatchmaking ) Api.Activity.CancelRequest( request );
+		}
+	}
+
+	static async Task<bool> TryConnectInternal( string target, int retries, CancellationToken token, Action<string> onFailure )
+	{
+		token.ThrowIfCancellationRequested();
+		LeaveCurrentGame();
 
 		if ( string.IsNullOrWhiteSpace( target ) )
 		{
@@ -720,7 +748,7 @@ public static partial class Networking
 		//
 		if ( ulong.TryParse( target, out var steamId ) )
 		{
-			return await TryConnectSteamId( steamId, retries );
+			return await TryConnectSteamIdInternal( steamId, retries, token, onFailure );
 		}
 
 		SentrySdk.AddBreadcrumb( $"Connect to '{target}'", "network.connect" );
@@ -731,6 +759,7 @@ public static partial class Networking
 		LoadingScreen.Title = "Connecting";
 
 		OnTryConnect( target );
+		token.ThrowIfCancellationRequested();
 
 		var count = 0;
 		while ( count < retries )
@@ -761,10 +790,16 @@ public static partial class Networking
 				LastConnectionString = target;
 			}
 
-			var success = await AwaitSuccessfulConnection();
+			var attemptSystem = System;
+			var success = await AwaitSuccessfulConnection( token );
 			if ( success ) return true;
 
-			if ( System is null )
+			if ( attemptSystem?.FailureReason is { } reason )
+			{
+				onFailure?.Invoke( reason );
+				return false;
+			}
+			if ( !ReferenceEquals( System, attemptSystem ) )
 				return false;
 
 			Log.Info( $"Couldn't connect, retrying ({count}/{retries})" );
@@ -773,17 +808,30 @@ public static partial class Networking
 			Disconnect();
 		}
 
-		IGameInstanceDll.Current.Disconnect( $"Connection failed after {retries} retries." );
+		ReportConnectionFailure( $"Could not establish a connection to {target} after {retries} attempts. No initial game handshake was received.", onFailure );
 		return false;
 	}
 
-	static async Task<bool> AwaitSuccessfulConnection()
-	{
-		for ( var i = 0; i < 30; i++ )
-		{
-			await Task.Delay( 100 );
+	internal const double InitialConnectionTimeout = 30;
 
-			if ( System is null )
+	static async Task<bool> AwaitSuccessfulConnection( CancellationToken token = default, double timeout = 3 )
+	{
+		var system = System;
+		var timer = global::System.Diagnostics.Stopwatch.StartNew();
+		while ( timer.Elapsed.TotalSeconds < timeout )
+		{
+			try
+			{
+				await Task.Delay( 100, token );
+			}
+			catch ( OperationCanceledException ) when ( system?.FailureReason is not null )
+			{
+				// Reporting a real failure also tears down/cancels the connection. Preserve
+				// that reason instead of mistaking the resulting cancellation for a user cancel.
+				return false;
+			}
+
+			if ( system is null || !ReferenceEquals( System, system ) || system.IsDisconnected || system.FailureReason is not null )
 				return false;
 
 			if ( Connection.Local?.State > Connection.ChannelState.Unconnected )
@@ -793,9 +841,31 @@ public static partial class Networking
 		return false;
 	}
 
+	static void ReportConnectionFailure( string message, Action<string> onFailure )
+	{
+		onFailure?.Invoke( message );
+		// A caller handling the error owns its UI. Still cancel loading and tear down the game.
+		IGameInstanceDll.Current.Disconnect( onFailure is null ? message : null );
+	}
+
 	public static async Task<bool> TryConnectSteamId( SteamId steamId, int retries = 30 )
 	{
-		Disconnect();
+		var request = Api.Activity.PendingRequest;
+		var success = false;
+		try
+		{
+			return success = await TryConnectSteamIdInternal( steamId, retries );
+		}
+		finally
+		{
+			if ( !success && !IsMatchmaking ) Api.Activity.CancelRequest( request );
+		}
+	}
+
+	static async Task<bool> TryConnectSteamIdInternal( SteamId steamId, int retries, CancellationToken token = default, Action<string> onFailure = null )
+	{
+		token.ThrowIfCancellationRequested();
+		LeaveCurrentGame();
 
 		SentrySdk.AddBreadcrumb( $"Connect to '{steamId}'", "network.connect" );
 		Assert.IsNull( System );
@@ -806,13 +876,14 @@ public static partial class Networking
 
 		LastConnectionString = steamId.ToString();
 		OnTryConnect( LastConnectionString );
+		token.ThrowIfCancellationRequested();
 
 		if ( steamId.AccountType == SteamId.AccountTypes.Lobby )
 		{
 			lobbyCts?.Cancel();
-			lobbyCts = new();
+			lobbyCts = CancellationTokenSource.CreateLinkedTokenSource( token );
 
-			return await JoinSteamLobbyServer( steamId, retries, lobbyCts.Token );
+			return await JoinSteamLobbyServer( steamId, retries, lobbyCts.Token, onFailure );
 		}
 
 		var count = 0;
@@ -825,10 +896,16 @@ public static partial class Networking
 				System.Connect( new SteamNetwork.IdConnection( steamId, 77 ) );
 			}
 
-			var success = await AwaitSuccessfulConnection();
+			var attemptSystem = System;
+			var success = await AwaitSuccessfulConnection( token );
 			if ( success ) return true;
 
-			if ( System is null )
+			if ( attemptSystem?.FailureReason is { } reason )
+			{
+				onFailure?.Invoke( reason );
+				return false;
+			}
+			if ( !ReferenceEquals( System, attemptSystem ) )
 				return false;
 
 			Log.Info( $"Couldn't connect, retrying ({count}/{retries})" );
@@ -837,11 +914,40 @@ public static partial class Networking
 			Disconnect();
 		}
 
-		IGameInstanceDll.Current.Disconnect( $"Connection failed after {retries} retries." );
+		ReportConnectionFailure( $"Could not establish a Steam connection after {retries} attempts. No initial game handshake was received.", onFailure );
 		return false;
 	}
 
-	static async Task<bool> JoinSteamLobbyServer( ulong steamid, int retries, CancellationToken token = default )
+	static readonly SemaphoreSlim _lobbyJoinLock = new( 1, 1 );
+
+	static async Task<bool> JoinSteamLobbyServer( ulong steamid, int retries, CancellationToken token = default, Action<string> onFailure = null )
+	{
+		// Steam's join request cannot be cancelled. Finish cleaning up an obsolete request
+		// before retrying: leaving its lobby late could otherwise evict the new attempt.
+		try
+		{
+			await _lobbyJoinLock.WaitAsync( token );
+		}
+		catch ( OperationCanceledException ) when ( token.IsCancellationRequested )
+		{
+			return false;
+		}
+
+		try
+		{
+			return await JoinSteamLobbyServerCore( steamid, retries, token, onFailure );
+		}
+		catch ( OperationCanceledException ) when ( token.IsCancellationRequested )
+		{
+			return false;
+		}
+		finally
+		{
+			_lobbyJoinLock.Release();
+		}
+	}
+
+	static async Task<bool> JoinSteamLobbyServerCore( ulong steamid, int retries, CancellationToken token, Action<string> onFailure )
 	{
 		LoadingScreen.CurrentContext = LoadingScreen.Context.NetworkConnect;
 		LoadingScreen.OverlayPanelTypeName = ProjectSettings.Loading?.GetPolicy( LoadingSettings.LoadingContext.NetworkConnect ).OverlayPanelTypeName;
@@ -852,10 +958,13 @@ public static partial class Networking
 		var count = 0;
 		while ( count < retries )
 		{
-			var result = await SteamLobbySocket.Join( steamid );
+			var result = await SteamLobbySocket.Join( steamid, token );
 
 			if ( token.IsCancellationRequested )
+			{
+				result.Socket?.Dispose();
 				return false;
+			}
 
 			if ( result.Response == RoomEnter.Success )
 			{
@@ -867,7 +976,7 @@ public static partial class Networking
 			if ( result.Response != RoomEnter.DoesntExist )
 			{
 				// the lobby exists, but we failed to join for some reason. no point in retrying.
-				IGameInstanceDll.Current.Disconnect( $"Failed to join lobby: {result.Response}" );
+				ReportConnectionFailure( result.Error ?? $"Steam could not join the lobby: {result.Response}.", onFailure );
 				return false;
 			}
 
@@ -877,7 +986,14 @@ public static partial class Networking
 			// the lobby doesn't exist, it might be because the host is still setting up.
 			// let's wait a bit and retry.
 
-			await Task.Delay( 2000 );
+			try
+			{
+				await Task.Delay( 2000, token );
+			}
+			catch ( OperationCanceledException ) when ( token.IsCancellationRequested )
+			{
+				return false;
+			}
 
 			if ( token.IsCancellationRequested )
 				return false;
@@ -886,8 +1002,9 @@ public static partial class Networking
 		if ( lobbySocket is null )
 		{
 			LoadingScreen.IsVisible = false;
+			
+			ReportConnectionFailure( $"Steam could not find the lobby after {retries} attempts. The host may have closed it or created a new lobby.", onFailure );
 
-			// Try another one?
 			return false;
 		}
 
@@ -912,11 +1029,23 @@ public static partial class Networking
 			System.AddSocket( lobbySocket );
 		}
 
-		var success = await AwaitSuccessfulConnection();
+		var attemptSystem = System;
+		var timer = global::System.Diagnostics.Stopwatch.StartNew();
+		var success = await AwaitSuccessfulConnection( token, InitialConnectionTimeout );
 		if ( success ) return true;
 
+		if ( attemptSystem.FailureReason is { } reportedFailure )
+		{
+			onFailure?.Invoke( reportedFailure );
+			return false;
+		}
+		// An older attempt must not disconnect a newer one or replace its error.
+		token.ThrowIfCancellationRequested();
+		if ( !ReferenceEquals( System, attemptSystem ) )
+			return false;
+		var error = attemptSystem.FailureReason ?? lobbySocket.DescribeConnectionFailure( timer.Elapsed.TotalSeconds );
 		Disconnect();
-		IGameInstanceDll.Current.Disconnect( "Connection timed out." );
+		ReportConnectionFailure( error, onFailure );
 		return false;
 	}
 
@@ -938,7 +1067,10 @@ public static partial class Networking
 	/// </summary>
 	internal static async Task<bool> ClientReconnect( ReconnectMsg data )
 	{
-		IGameInstanceDll.Current?.CloseGame();
+		var sameGame = data.Game is null || string.Equals( Game.Ident?.Split( '#' )[0], data.Game.Split( '#' )[0], StringComparison.OrdinalIgnoreCase );
+		Api.Activity.GameRequested( new( sameGame ? "reload" : "game", data.Game ) );
+
+		LeaveCurrentGame();
 
 		string address = LastConnectionString;
 		if ( string.IsNullOrWhiteSpace( address ) )
@@ -946,8 +1078,6 @@ public static partial class Networking
 			IGameInstanceDll.Current.Disconnect( "Reconnect failed, missing target address." );
 			return false;
 		}
-
-		Disconnect();
 
 		Log.Info( $"Reconnecting to {address}" );
 

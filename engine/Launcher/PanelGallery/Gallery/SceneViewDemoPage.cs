@@ -142,6 +142,7 @@ public sealed class SceneViewDemoPage : GalleryPage
 		var fill = scene.CreateObject();
 		fill.WorldRotation = Rotation.From( -30, 180, 0 );
 		fill.Components.Create<DirectionalLight>().LightColor = GalleryPalette.Cyan * 0.5f;
+		UseSceneLayout( view, lens );
 	}
 
 	/// <summary>

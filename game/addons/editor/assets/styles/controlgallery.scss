@@ -55,7 +55,7 @@
 
 // The property editors fill whatever they're given, so the page has to say how wide that is
 .gallery-page .form,
-.gallery-page ControlSheet { width: 460px; flex-shrink: 0; }
+.gallery-page ControlSheet { width: 100%; flex-shrink: 0; }
 .gallery-page .form .textentry,
 .gallery-page ControlSheet .textentry { width: auto; flex-grow: 1; }
 .gallery-page .folderselector { width: 460px; }
@@ -190,6 +190,7 @@
 .menulist .menu-widget.textentry { height: 26px; }
 .gallery-page .tooltip-edge { justify-content: flex-end; }
 .gallery-page .textentry { min-width: 240px; }
+.gallery-page VectorControl .textentry { min-width: 0; width: auto; }
 .os-tooltip .custom-tooltip { flex-direction: row; align-items: center; }
 .os-tooltip .custom-tooltip .icon { margin-right: 6px; color: $accent; }
 .style-light .gallery-page .tooltip-group { border-color: $l-line; }
@@ -576,3 +577,95 @@ $wb-orange: #ff8800;
 .gallery-page .scene-control-demo { position: relative; }
 
 .gallery-page .scene-control-demo.orbital-demo { height: 640px; }
+
+// Scene demos occupy the available window height. Controls scroll without moving the camera view.
+.gallery-page.scene-gallery { flex-direction: row; min-width: 0; overflow: hidden; }
+.gallery-page.scene-gallery .scene-gallery-viewport { flex-grow: 1; flex-shrink: 1; flex-basis: 0; width: 0; height: 100%; position: relative; min-width: 0; min-height: 0; border: 0; border-radius: 0; }
+.gallery-page.scene-gallery .scene-gallery-controls { width: 280px; max-width: 45%; height: 100%; flex-shrink: 0; flex-direction: column; overflow: scroll; padding: 20px; border-left: 1px solid $line; }
+.gallery-page.scene-gallery .scene-gallery-controls > * { flex-shrink: 0; }
+.gallery-page.scene-gallery .scene-gallery-controls .case { margin-bottom: 20px; }
+.gallery-page.scene-gallery .scene-gallery-controls .demo-actions { flex-direction: column; align-items: stretch; }
+.gallery-page.scene-gallery .scene-gallery-controls .slidercontrol { width: 100%; min-width: 0; }
+.gallery-page.scene-gallery .scene-gallery-controls .reference-note { margin-bottom: 16px; }
+.style-light .gallery-page.scene-gallery .scene-gallery-controls { border-color: $l-line; }
+.gallery-page.scene-gallery .scene-camera-modes { width: 100%; flex-direction: row; margin-bottom: 10px; gap: 4px; }
+.gallery-page.scene-gallery .scene-camera-modes > .button { flex-grow: 1; flex-basis: 0; min-width: 0; padding: 8px 4px; font-size: 12px; text-transform: none; letter-spacing: 0; justify-content: center; }
+.gallery-page.scene-gallery .scene-gallery-controls .row.column > .checkbox { margin-right: 0; margin-bottom: 12px; }
+
+// Docking - pane styles also apply outside the gallery, in floating OS windows.
+
+.gallery-page.docking-page .case { margin-bottom: 14px; }
+.gallery-page.docking-page .demo-dock-workspace { width: 100%; height: 560px; min-width: 0; flex-shrink: 0; margin-bottom: 18px; border: 1px solid $line; background-color: $surface; overflow: hidden; }
+.gallery-page.docking-page .output { white-space: pre-wrap; }
+.demo-dock-window { flex-direction: column; }
+.dock-demo-pane { width: 100%; height: 100%; min-width: 0; min-height: 0; flex-direction: column; gap: 10px; padding: 12px; overflow: scroll; background-color: $dock-surface; }
+.dock-demo-pane > * { flex-shrink: 0; }
+.dock-demo-pane .textentry, .gallery-page .dock-demo-pane .textentry { width: 100%; min-width: 0; flex-shrink: 0; }
+.dock-demo-pane .dock-demo-notes { height: 130px; }
+.dock-demo-pane > .button { align-self: flex-start; }
+.dock-demo-heading { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: $text-faint; }
+.dock-demo-muted { color: $text-muted; }
+.dock-demo-list { flex-direction: column; }
+.dock-demo-object { padding: 5px 8px; border-left: 1px solid $line; margin-left: 8px; }
+.dock-demo-files { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.dock-demo-import { align-items: center; flex-wrap: wrap; gap: 12px; }
+.dock-demo-log { white-space: pre-wrap; font-family: Roboto Mono; color: $positive; }
+.dock-demo-scene { background-color: $dock-surface; }
+.dock-demo-viewport { flex-grow: 1; min-height: 120px; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed $line; border-radius: 6px; background: radial-gradient( rgba( $accent, 0.12 ), rgba( $accent, 0 ) ); }
+.dock-demo-scene-icon { font-size: 54px; color: $accent; margin-bottom: 10px; }
+.style-light .demo-dock-workspace, .style-light .dock-demo-pane { background-color: $l-surface; border-color: $l-line; }
+.style-light .dock-demo-scene { background-color: $l-surface; }
+.style-light .dock-demo-heading { color: $l-text-faint; }
+.style-light .dock-demo-muted { color: $l-text-muted; }
+.style-light .dock-demo-object, .style-light .dock-demo-viewport { border-color: $l-line; }
+
+// Canvas gallery: ordinary panel trees in canvas coordinates.
+.editor-window .canvas-demo-card
+{
+	position: absolute;
+	width: 220px;
+	padding: 12px;
+	gap: 10px;
+	flex-direction: column;
+	background-color: $surface;
+	border: 1px solid $line;
+	border-radius: 4px;
+	color: $text;
+	pointer-events: all;
+	> .canvas-demo-heading { padding: 2px 0px 8px 0px; font-weight: 600; cursor: move; }
+	> .canvas-demo-description { color: $text-muted; font-size: 11px; }
+	> .textentry { flex-shrink: 0; width: 100%; min-width: 0; }
+}
+
+.editor-window .canvas-demo-card.selected { border-color: #3278ed; }
+
+.editor-window .canvas-handle-help { color: $text-muted; font-size: 12px; margin-bottom: 10px; }
+.editor-window .canvas-handle-readout { color: $text-muted; font-size: 12px; padding: 10px 0px; }
+.editor-window .canvas-handle-demo
+{
+	width: 100%;
+	height: 300px;
+	background-color: #101216;
+	border: 1px solid #242830;
+
+	.demo-handle
+	{
+		width: 100px;
+		height: 30px;
+		align-items: center;
+		justify-content: center;
+		border-radius: 5px;
+		border: 1px solid #5896ed;
+		background-color: #203855;
+		color: #d7e7ff;
+		font-size: 12px;
+		cursor: move;
+
+		&.horizontal, &.vertical { border-color: #bb9af7; background-color: #383047; }
+		&.snap { border-color: #78cca2; background-color: #203c32; }
+		&.bounded { border-color: #e8b56b; background-color: #443923; }
+		&:hover { border-color: white; }
+		&.drag-disabled { opacity: 0.35; cursor: default; }
+		> label { pointer-events: none; }
+	}
+}

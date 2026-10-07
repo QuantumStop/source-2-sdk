@@ -34,6 +34,29 @@ public class ButtonsPage : GalleryPage
 		row.AddChild( new Sandbox.UI.Button( null, "calendar_month", "iconbutton", Clicked ) );
 		row.AddChild( new Sandbox.UI.Button( null, "delete", "iconbutton", Clicked ) );
 
+		row = Case( "Texture icons" );
+		var texture = Texture.Load( "/tools/images/common/save.png" );
+		row.AddChild( new Sandbox.UI.Button( "Save", null, "flatbutton", Clicked ) { IconTexture = texture } );
+		row.AddChild( new Sandbox.UI.Button( null, null, "iconbutton", Clicked ) { IconTexture = texture, Tooltip = "Save (texture icon)" } );
+		row.AddChild( new Sandbox.UI.Button( "Disabled", null, "flatbutton", Clicked ) { IconTexture = texture, Disabled = true } );
+
+		row = Case( "Switch between a texture and a glyph" );
+		Sandbox.UI.Button switchIcon = null;
+		switchIcon = new Sandbox.UI.Button( "Switch icon", "save", "flatbutton", () =>
+		{
+			switchIcon.IconTexture = switchIcon.IconTexture is null ? texture : null;
+			Clicked();
+		} )
+		{ IconTexture = texture };
+		row.AddChild( switchIcon );
+
+		row = Case( "Texture icons in a toolbar" );
+		var toolbar = row.AddChild( new Toolbar() );
+		toolbar.AddButton( "Open", null, Clicked ).IconTexture = Texture.Load( "/tools/images/common/open.png" );
+		toolbar.AddButton( "Save", null, Clicked ).IconTexture = texture;
+		toolbar.AddSeparator();
+		toolbar.AddButton( "", "settings", Clicked ).Tooltip = "Glyph icon alongside textures";
+
 		_output = Output();
 	}
 

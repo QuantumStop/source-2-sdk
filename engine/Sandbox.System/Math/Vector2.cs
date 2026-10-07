@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 /// </summary>
 [JsonConverter( typeof( Sandbox.Internal.JsonConvert.Vector2Converter ) )]
 [StructLayout( LayoutKind.Sequential )]
+[Description( "A 2-dimensional vector. Typically represents a position, size, or direction in 2D space." )]
 public partial struct Vector2 : System.IEquatable<Vector2>, IParsable<Vector2>, IInterpolator<Vector2>
 {
 	internal System.Numerics.Vector2 _vec;

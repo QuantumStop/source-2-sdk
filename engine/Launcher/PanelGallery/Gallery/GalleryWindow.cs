@@ -135,6 +135,7 @@ public class GalleryWindow : Panel
 		"Painter Shapes" => 4,
 		"System" => 5,
 		"WorldPanel" => 6,
+		"Scene" => 7,
 		_ => int.MaxValue
 	};
 
@@ -172,6 +173,7 @@ public class GalleryWindow : Panel
 		"Painter Shapes" => "category",
 		"Css Styles" => "science",
 		"WorldPanel" => "view_in_ar",
+		"Scene" => "public",
 		_ => "folder"
 	};
 

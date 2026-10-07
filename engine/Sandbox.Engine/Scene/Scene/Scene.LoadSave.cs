@@ -116,9 +116,6 @@ public partial class Scene : GameObject
 			using var blobs = BlobDataSerializer.Load( sceneFile.BinaryData, sceneFile.ResourcePath );
 			using var batchGroup = CallbackBatch.Batch();
 
-			// Clear cached binary data now that we've loaded it
-			sceneFile.BinaryData = null;
-
 			if ( sceneFile.GameObjects is not null )
 			{
 				foreach ( var json in sceneFile.GameObjects )

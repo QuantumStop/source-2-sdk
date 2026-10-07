@@ -33,7 +33,7 @@ public class PanelGalleryAppSystem : PanelAppSystem
 
 		// Borderless - the title bar in this one is panels, same as everything else. "-width 1600 -height 1400"
 		// overrides the size, for screenshotting a whole page at once.
-		var window = new PanelWindow( "Panel Gallery", new Vector2( IntArg( "-width", 1280 ), IntArg( "-height", 860 ) ), new Vector2( -1, -1 ), true );
+		var window = new PanelWindow( "Panel Gallery", new Vector2( IntArg( "-width", 1280 ), IntArg( "-height", 860 ) ), null, true );
 		window.Root.AddChild( new GalleryWindow( window ) );
 		if ( !Environment.GetCommandLineArgs().Any( x => x.Equals( "-width", StringComparison.OrdinalIgnoreCase ) || x.Equals( "-height", StringComparison.OrdinalIgnoreCase ) ) )
 		{

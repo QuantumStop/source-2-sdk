@@ -100,6 +100,25 @@ public abstract partial class BaseStyles : ICloneable
 
 		switch ( property )
 		{
+			case "overscroll-behavior":
+				var words = SplitTopLevel( value );
+				if ( words.Count is < 1 or > 2 ) return false;
+				var x = ParseOverscrollBehavior( words[0] );
+				var y = ParseOverscrollBehavior( words[^1] );
+				if ( !x.HasValue || !y.HasValue ) return false;
+				OverscrollBehaviorX = x;
+				OverscrollBehaviorY = y;
+				return true;
+			case "overscroll-behavior-x":
+				var behaviorX = ParseOverscrollBehavior( value );
+				if ( !behaviorX.HasValue ) return false;
+				OverscrollBehaviorX = behaviorX;
+				return true;
+			case "overscroll-behavior-y":
+				var behaviorY = ParseOverscrollBehavior( value );
+				if ( !behaviorY.HasValue ) return false;
+				OverscrollBehaviorY = behaviorY;
+				return true;
 			case "caret-width":
 				{
 					var l = Length.Parse( value );
@@ -127,33 +146,6 @@ public abstract partial class BaseStyles : ICloneable
 				return SetOverflow( value, x => OverflowX = x );
 			case "overflow-y":
 				return SetOverflow( value, x => OverflowY = x );
-			case "overscroll-behavior":
-				{
-					var words = value.Split( ' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries );
-					if ( words.Length is < 1 or > 2 ) return false;
-
-					var x = ParseOverscrollBehavior( words[0] );
-					var y = ParseOverscrollBehavior( words[^1] );
-					if ( !x.HasValue || !y.HasValue ) return false;
-
-					OverscrollBehaviorX = x;
-					OverscrollBehaviorY = y;
-					return true;
-				}
-			case "overscroll-behavior-x":
-				{
-					var behaviorX = ParseOverscrollBehavior( value );
-					if ( !behaviorX.HasValue ) return false;
-					OverscrollBehaviorX = behaviorX;
-					return true;
-				}
-			case "overscroll-behavior-y":
-				{
-					var behaviorY = ParseOverscrollBehavior( value );
-					if ( !behaviorY.HasValue ) return false;
-					OverscrollBehaviorY = behaviorY;
-					return true;
-				}
 			case "scrollbar-width":
 				return SetScrollbarWidth( value );
 			case "scrollbar-gutter":
@@ -186,37 +178,6 @@ public abstract partial class BaseStyles : ICloneable
 		_caretblinkrate ??= 1.0f;
 
 		FillDefaultsGenerated();
-	}
-
-	static bool TryParseTimeSeconds( string value, out float seconds )
-	{
-		seconds = 0;
-		if ( string.IsNullOrWhiteSpace( value ) )
-			return false;
-
-		value = value.Trim();
-
-		if ( value.EndsWith( "ms", StringComparison.OrdinalIgnoreCase ) )
-		{
-			var num = value[..^2].Trim();
-			if ( !float.TryParse( num, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ms ) )
-				return false;
-
-			seconds = ms / 1000f;
-			return true;
-		}
-
-		if ( value.EndsWith( "s", StringComparison.OrdinalIgnoreCase ) )
-		{
-			var num = value[..^1].Trim();
-			if ( !float.TryParse( num, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s ) )
-				return false;
-
-			seconds = s;
-			return true;
-		}
-
-		return float.TryParse( value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out seconds );
 	}
 
 
@@ -364,20 +325,10 @@ public abstract partial class BaseStyles : ICloneable
 
 	public override int GetHashCode()
 	{
-		var hash = new HashCode();
+		var generated_hash = GetHashCodeGenerated();
 
-		hash.Add( GetHashCodeGenerated() );
+		generated_hash = HashCode.Combine( generated_hash, _backgroundImage, _borderImageSource, _maskImage, _backgroundPlaybackPaused, _bordershape );
 
-		// can't do .Combine because we have 9
-		hash.Add( _backgroundImage );
-		hash.Add( _borderImageSource );
-		hash.Add( _maskImage );
-		hash.Add( _backgroundPlaybackPaused );
-		hash.Add( _bordershape );
-		hash.Add( _caretwidth );
-		hash.Add( _caretblink );
-		hash.Add( _caretblinkrate );
-
-		return hash.ToHashCode();
+		return generated_hash;
 	}
 }

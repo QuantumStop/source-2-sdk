@@ -11,7 +11,6 @@ public class OverscrollBehaviorTests : UiTestPage
 		StyleSheet.Load( "/Pages/OverscrollBehaviorTests.scss" );
 		Add.Label( "overscroll-behavior", "heading" );
 		Add.Label( "Wheel or drag inside each box. At the inner panel's edge, auto scrolls the outer panel; contain bounces locally; none holds still.", "intro" );
-
 		var cases = Add.Panel( "examples" );
 		foreach ( var behavior in new[] { "auto", "contain", "none", "auto none" } )
 		{
@@ -23,12 +22,11 @@ public class OverscrollBehaviorTests : UiTestPage
 
 		Add.Label( "Single scroll containers", "heading" );
 		Add.Label( "Wheel or drag past either edge to compare bounce on and off. These examples stay where you scroll them.", "intro" );
-
 		var singleCases = Add.Panel( "examples" );
 		foreach ( var behavior in new[] { "contain", "none" } )
 		{
 			var card = singleCases.Add.Panel( "example" );
-			card.Add.Label( $"Bounce {(behavior == "contain" ? "on" : "off")} - overscroll-behavior: {behavior}", "caption" );
+			card.Add.Label( $"Bounce {(behavior == "contain" ? "on" : "off")} — overscroll-behavior: {behavior}", "caption" );
 			var scroll = card.Add.Panel( "single" );
 			scroll.Style.Set( $"overscroll-behavior: {behavior};" );
 			var rows = scroll.Add.Panel( "rows" );
@@ -43,7 +41,7 @@ public class OverscrollBehaviorDemo : Panel
 	{
 		AddClass( "outer" );
 		var content = Add.Panel( "outer-content" );
-		content.Add.Label( "OUTER - scrolls only with auto", "marker" );
+		content.Add.Label( "OUTER — scrolls only with auto", "marker" );
 		var inner = content.Add.Panel( "inner" );
 		inner.Style.Set( $"overscroll-behavior: {behavior};" );
 		var rows = inner.Add.Panel( "rows" );

@@ -1,83 +1,39 @@
-using NativeEngine;
-using Sandbox.DataModel;
 using System;
-using System.Drawing;
 using System.IO;
-using System.Text.Json;
 
-namespace Editor
+internal sealed class EditorSplashScreen : PanelWindow
 {
-	internal class EditorSplashScreen : Widget
-	{
-		internal static EditorSplashScreen Singleton;
+	internal static EditorSplashScreen Singleton;
 
 		Pixmap BackgroundImage;
 
-		const float ProgressAreaHeight = 14;
-		const float LogOverlayHeight = 30;
-		const float BottomAreaHeight = ProgressAreaHeight;
-		const float ProgressInset = 2;
-		Color ProgressTrackColor = new Color( 42f / 255f, 52f / 255f, 79f / 255f, 1f );
-		Color ProgressFillColor = new Color( 52f / 255f, 80f / 255f, 160f / 255f, 1f );
-
-		string PendingMessage = "Starting...";
-		string DisplayedMessage = "Starting...";
-
-		internal const string DefaultSplashScreen = "common/splash_screen.png";
-		internal const string DefaultIcon = "common/logo.png";
+		const float InfoAreaHeight = 64;
 
 		public EditorSplashScreen() : base( null, true )
 		{
 			WindowFlags = WindowFlags.Window | WindowFlags.Customized | WindowFlags.FramelessWindowHint | WindowFlags.MSWindowsFixedSizeDialogHint;
-
 			Singleton = this;
 			DeleteOnClose = true;
 
-			string projectFile = Sandbox.Utility.CommandLine.GetSwitch( "-project", "" ).TrimQuoted();
-			JsonElement root = default;
+			WindowTitle = "Opening s&box Editor";
+			SetWindowIcon( Pixmap.FromFile( "logo_rounded.png" ) );
+			BackgroundImage = LoadSplashImage();
 
-			if ( !string.IsNullOrEmpty( projectFile ) && File.Exists( projectFile ) )
-			{
-				using var doc = JsonDocument.Parse( File.ReadAllText( projectFile ) );
-				root = doc.RootElement.Clone();
-			}
-
-			string projectName = ResolveProjectTitle( root );
-			WindowTitle = $"Opening {projectName}";
-
-			SetWindowIcon(
-				EditorUtility.Projects.ResolveProjectAsset(
-					root,
-					projectFile,
-					ProjectConfig.MetaIconKey,
-					DefaultIcon,
-					Pixmap.FromFile
-				)
-			);
-
-			BackgroundImage = EditorUtility.Projects.ResolveProjectAsset(
-				root,
-				projectFile,
-				ProjectConfig.MetaSplashKey,
-				DefaultSplashScreen,
-				Pixmap.FromFile
-			);
-
-			// We get the colors from the splash, so that the progress bar 
-			// matches the overall tone of the image.
-			UpdateProgressColorsFromSplash();
-
+			// load any saved geometry
 			string geometryCookie = EditorCookie.GetString( "splash.geometry", null );
 			RestoreGeometry( geometryCookie );
 
 			var aspect = (float)BackgroundImage.Height / BackgroundImage.Width;
-			Size = new( 580, (580 * aspect).FloorToInt() + BottomAreaHeight );
+			Size = new( 700, (700 * aspect).FloorToInt() + InfoAreaHeight );
 
 			Show();
+
 			UpdateGeometry();
 			CenterWindow();
-			Focus();
 
+			//
+			// Resample background image if dpi scale is gonna make us draw it bigger
+			//
 			if ( DpiScale != 1.0f )
 			{
 				BackgroundImage = BackgroundImage.Resize( BackgroundImage.Size * DpiScale );
@@ -88,23 +44,36 @@ namespace Editor
 			ConstrainToScreen();
 
 			g_pToolFramework2.SetStallMonitorMainThreadWindow( _widget );
-			Logging.OnMessage += OnConsoleMessage;
+		}
+
+		/// <summary>
+		/// Try to load project's splash_screen.png from its root,
+		/// Falls back to the default built-in screen
+		/// </summary>
+		static Pixmap LoadSplashImage()
+		{
+			var projectPath = Sandbox.Utility.CommandLine.GetSwitch( "-project", "" ).TrimQuoted();
+
+			if ( !string.IsNullOrEmpty( projectPath ) )
+			{
+				var projectDir = Path.GetDirectoryName( Path.GetFullPath( projectPath ) );
+				var customSplash = Path.Combine( projectDir, "splash_screen.png" );
+
+				if ( File.Exists( customSplash ) )
+				{
+					var pixmap = Pixmap.FromFile( customSplash );
+					if ( pixmap is not null )
+						return pixmap;
+				}
+			}
+
+			return Pixmap.FromFile( "splash_screen.png" );
 		}
 
 		public override void OnDestroyed()
 		{
-			Logging.OnMessage -= OnConsoleMessage;
-
 			base.OnDestroyed();
 			Singleton = null;
-		}
-
-		void OnConsoleMessage( LogEvent e )
-		{
-			OnMessage( e.Message );
-
-			g_pToolFramework2.Spin();
-			NativeEngine.EngineGlobal.ToolsStallMonitor_IndicateActivity();
 		}
 
 		public static void StartupFinish()
@@ -118,40 +87,29 @@ namespace Editor
 			Singleton = null;
 		}
 
-		public void OnMessage( string message )
-		{
-			PendingMessage = message;
-			LatestMessage = message;
-			Update();
-		}
-
 		string LatestMessage;
 		float Progress;
 
-		/// <summary>
-		/// Updates the progress bar
-		/// </summary>
-		public static void SetProgress( float progress )
-		{
-			if ( !Singleton.IsValid() ) return;
+	/// <summary>
+	/// Updates the progress bar.
+	/// </summary>
+	public static void SetProgress( float progress )
+	{
+		if ( Singleton is not { IsOpen: true } splash ) return;
+		splash.ProgressBar.Style.Width = Length.Percent( progress.Clamp( 0f, 1f ) * 100 );
+		Pump();
+	}
 
-			Singleton.Progress = progress.Clamp( 0f, 1f );
-			Singleton.Update();
-		}
-
-		/// <summary>
-		/// Set the current displayed message
-		/// </summary>
-		public static void SetMessage( string message )
-		{
-			if ( !Singleton.IsValid() ) return;
-
-			Singleton.LatestMessage = message;
-			Singleton.Update();
-
-			g_pToolFramework2.Spin();
-			NativeEngine.EngineGlobal.ToolsStallMonitor_IndicateActivity();
-		}
+	/// <summary>
+	/// Set the current displayed message.
+	/// </summary>
+	public static void SetMessage( string message )
+	{
+		if ( Singleton is not { IsOpen: true } splash ) return;
+		splash.MessageLabel.Text = message ?? "Starting editor…";
+		Application.Spin();
+		NativeEngine.EngineGlobal.ToolsStallMonitor_IndicateActivity();
+	}
 
 		protected override bool OnClose()
 		{

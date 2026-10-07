@@ -146,6 +146,20 @@ public partial class Panel
 	public bool AcceptsFocus { get; set; }
 
 	/// <summary>
+	/// True by default. Whether clicking this panel gives it focus. Controls that only want focus for
+	/// keyboard navigation, like buttons, turn this off - clicking one focuses its nearest ancestor
+	/// that takes focus from a click instead, or clears focus if there isn't one.
+	/// </summary>
+	[Hide]
+	public bool FocusOnClick { get; set; } = true;
+
+	/// <summary>
+	/// The panel this one belongs to for focus - where a click that this panel won't take focus
+	/// for looks next. Usually the parent, but a popup belongs to the panel that opened it.
+	/// </summary>
+	internal virtual Panel FocusOwner => Parent;
+
+	/// <summary>
 	/// Describe what to do with keyboard input. The default is InputMode.UI which means that when
 	/// focused, this panel will receive Keys Typed and Button Events.
 	/// If you set this to InputMode.Game, this panel will redirect its inputs to the game, which means
@@ -238,6 +252,15 @@ public partial class Panel
 	public virtual void OnKeyTyped( char k )
 	{
 		Parent?.OnKeyTyped( k );
+	}
+
+	/// <summary>
+	/// Called for a typed character with the modifier keys held when it was received.
+	/// By default, forwards to <see cref="OnKeyTyped(char)"/>.
+	/// </summary>
+	public virtual void OnKeyTyped( char k, KeyboardModifiers modifiers )
+	{
+		OnKeyTyped( k );
 	}
 
 	/// <summary>

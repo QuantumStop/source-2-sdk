@@ -344,8 +344,8 @@ internal static class GpuFontText
 		public List<uint> Tiles = new();
 		public GpuBuffer<GPUBoxInstance> InstanceBuffer;
 		public GpuBuffer<uint> TileBuffer;
-		public int InstancesUploaded;
-		public int TilesUploaded;
+		public readonly Dictionary<IntPtr, int> InstancesUploaded = new();
+		public readonly Dictionary<IntPtr, int> TilesUploaded = new();
 	}
 
 	static readonly object _lock = new();
@@ -377,8 +377,6 @@ internal static class GpuFontText
 			var placement = new Placement( slot.Frame, slot.Instances.Count, slot.Tiles.Count, (width + TileSize - 1) / TileSize, width, height );
 			BinTiles( CollectionsMarshal.AsSpan( instances ), slot.Tiles, placement.TilesX, (height + TileSize - 1) / TileSize );
 			slot.Instances.AddRange( instances );
-			GpuFontGlyphCache.Append( ref slot.InstanceBuffer, slot.Instances, ref slot.InstancesUploaded, 256 );
-			GpuFontGlyphCache.Append( ref slot.TileBuffer, slot.Tiles, ref slot.TilesUploaded, 256 );
 			return placement;
 		}
 	}
@@ -389,14 +387,21 @@ internal static class GpuFontText
 	/// </summary>
 	public static void Bind( RenderAttributes attributes, ulong frame )
 	{
-		foreach ( var slot in _slots )
+		lock ( _lock )
 		{
-			if ( slot.Frame != frame || slot.InstanceBuffer is null ) continue;
+			foreach ( var slot in _slots )
+			{
+				if ( slot.Frame != frame || slot.Instances.Count == 0 ) continue;
 
-			GpuFontGlyphCache.Bind( attributes );
-			attributes.Set( "TextInstances", slot.InstanceBuffer );
-			attributes.Set( "TextTiles", slot.TileBuffer );
-			return;
+				// Here rather than where the blocks were appended, so the copy lands in the display list about to draw
+				GpuFontGlyphCache.Append( ref slot.InstanceBuffer, slot.Instances, slot.InstancesUploaded, 256 );
+				GpuFontGlyphCache.Append( ref slot.TileBuffer, slot.Tiles, slot.TilesUploaded, 256 );
+
+				GpuFontGlyphCache.Bind( attributes );
+				attributes.Set( "TextInstances", slot.InstanceBuffer );
+				attributes.Set( "TextTiles", slot.TileBuffer );
+				return;
+			}
 		}
 	}
 
@@ -540,8 +545,8 @@ internal static class GpuFontText
 			slot.Frame = Application.FrameCount;
 			slot.Instances.Clear();
 			slot.Tiles.Clear();
-			slot.InstancesUploaded = 0;
-			slot.TilesUploaded = 0;
+			slot.InstancesUploaded.Clear();
+			slot.TilesUploaded.Clear();
 		}
 
 		return slot;

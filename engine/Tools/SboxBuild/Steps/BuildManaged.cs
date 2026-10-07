@@ -78,17 +78,18 @@ internal class BuildManaged( bool clean = false )
 				Directory.CreateDirectory( publishRoot );
 				var completedLaunchers = 0;
 				BuildDisplay.Status( $"Publish {launcherRid} launchers" );
-				BuildDisplay.Progress( completedLaunchers, 6 );
 
-				foreach ( var project in new[]
+				var launcherProjects = new[]
 				{
 					"Sbox/Sbox.csproj",
 					"SboxDev/Sbox-Dev.csproj",
 					"StandaloneTest/Sbox-Launcher.csproj",
-					"SboxStandalone/Sbox-Standalone.csproj",
 					"SboxServer/Sbox-Server.csproj",
 					"SboxBench/SboxBench.csproj"
-				} )
+				};
+				BuildDisplay.Progress( completedLaunchers, launcherProjects.Length );
+
+				foreach ( var project in launcherProjects )
 				{
 					var output = Path.Combine( publishRoot, Path.GetFileNameWithoutExtension( project ) );
 					var launcherDir = Path.Combine( engineDir, "Launcher" );
@@ -117,13 +118,12 @@ internal class BuildManaged( bool clean = false )
 						"Sbox/Sbox.csproj" => "sbox",
 						"SboxDev/Sbox-Dev.csproj" => "sbox-dev",
 						"StandaloneTest/Sbox-Launcher.csproj" => "sbox-launcher",
-						"SboxStandalone/Sbox-Standalone.csproj" => "sbox-standalone",
 						"SboxServer/Sbox-Server.csproj" => "sbox-server",
 						_ => "benchmark"
 					};
 					var extension = OperatingSystem.IsWindows() ? ".exe" : "";
 					File.Copy( Path.Combine( output, name + extension ), Path.Combine( rootDir, "game", name + extension ), true );
-					BuildDisplay.Progress( ++completedLaunchers, 6 );
+					BuildDisplay.Progress( ++completedLaunchers, launcherProjects.Length );
 				}
 
 				Directory.Delete( publishRoot, true );
@@ -133,13 +133,15 @@ internal class BuildManaged( bool clean = false )
 
 				// delete any old .runtimeconfig.json that are hanging around
 				BuildDisplay.Status( "Remove old launcher files" );
-				foreach ( var name in new[] { "sbox", "sbox-dev", "sbox-launcher", "sbox-standalone", "sbox-server", "benchmark" } )
+				var staleFiles = new[] { "sbox", "sbox-dev", "sbox-launcher", "sbox-server", "benchmark" }
+					.SelectMany( name => new[] { $"{name}.dll", $"{name}.runtimeconfig.json" } )
+					// sbox-standalone belongs in bin/managed; a copy in the root would match the depot's *.exe
+					.Concat( ["sbox-standalone", "sbox-standalone.exe", "sbox-standalone.dll", "sbox-standalone.runtimeconfig.json"] );
+
+				foreach ( var file in staleFiles )
 				{
-					foreach ( var extension in new[] { ".dll", ".runtimeconfig.json" } )
-					{
-						var looseFile = Path.Combine( rootDir, "game", name + extension );
-						if ( File.Exists( looseFile ) ) File.Delete( looseFile );
-					}
+					var looseFile = Path.Combine( rootDir, "game", file );
+					if ( File.Exists( looseFile ) ) File.Delete( looseFile );
 				}
 			}
 

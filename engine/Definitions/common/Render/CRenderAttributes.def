@@ -60,5 +60,7 @@ native class CRenderAttributes as NativeEngine.CRenderAttributes
 	void MergeToPtr( CRenderAttributes attrList );
 
 	bool IsEmpty();
+	static bool AreEqual( CRenderAttributes left, CRenderAttributes right, bool includeParents );
+	void SetParent( CRenderAttributes parent );
 	void Clear( bool freeMemory, bool resetParent );
 }

@@ -213,7 +213,7 @@ public partial class Terrain
 	/// <summary>
 	/// Rebuild the baked normal map after height edits.
 	/// </summary>
-	void RebakeNormalMap()
+	internal void RebakeNormalMap()
 	{
 		if ( !Graphics.IsAvailable || Storage is null )
 			return;

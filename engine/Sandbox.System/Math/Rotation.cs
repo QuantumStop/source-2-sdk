@@ -12,6 +12,7 @@ using Sandbox.Interpolation;
 /// </summary>
 [JsonConverter( typeof( Sandbox.Internal.JsonConvert.RotationConverter ) )]
 [StructLayout( LayoutKind.Sequential )]
+[Description( "A quaternion rotation in 3D space. Unlike Angles, it cannot store multiple revolutions around an axis." )]
 public struct Rotation : System.IEquatable<Rotation>, IParsable<Rotation>, IInterpolator<Rotation>
 {
 	internal System.Numerics.Quaternion _quat;

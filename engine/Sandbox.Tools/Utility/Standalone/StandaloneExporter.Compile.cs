@@ -1,5 +1,3 @@
-using System;
-using System.Text;
 using System.Text.Json;
 
 namespace Editor;
@@ -23,9 +21,6 @@ partial class StandaloneExporter
 		}
 
 		Dictionary<string, object> extrafiles = new();
-
-		var orderedList = generated.Select( x => x.Compiler.AssemblyName ).ToList();
-		var json = JsonSerializer.Serialize( orderedList, new JsonSerializerOptions { WriteIndented = true } );
 
 		foreach ( var assembly in generated )
 		{

@@ -91,6 +91,10 @@ public partial class Panel
 			// Dirty
 
 			UpdateSceneIndex();
+
+			// Hidden parents can skip layout, so refresh inherited visibility on reparenting.
+			// Unstyled panels get their initial visibility during their first layout.
+			if ( ComputedStyle is not null ) UpdateVisibility();
 		}
 	}
 

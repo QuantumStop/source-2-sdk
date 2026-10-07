@@ -8,6 +8,8 @@ public enum SoundFormat : byte
 	PCM8,
 	MP3,
 	ADPCM,
+	Opus,
+	Vorbis,
 };
 
 /// <summary>
@@ -515,6 +517,9 @@ public partial class SoundFile : Resource, IValid
 
 			while ( !mixer.IsReadyToMix() )
 			{
+				// A decoder failure is terminal, not an async load still in progress.
+				if ( !mixer.ShouldContinueMixing() ) return null;
+
 				await Task.Yield();
 
 				if ( timeout > 10 )

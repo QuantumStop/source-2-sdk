@@ -10,6 +10,8 @@ namespace Sandbox;
 [AssetType( Name = "Surface Description", Extension = "surface", Category = "Physics", Flags = AssetTypeFlags.NoEmbedding, IconColor = "#4596ec" )]
 public partial class Surface : GameResource
 {
+	CPhysSurfaceProperties _nativeSurface;
+
 	/// <summary>
 	/// Per-context lookup of loaded surfaces by their physics index.
 	/// Each GlobalContext (Menu, Game) owns its own dictionary so that
@@ -114,6 +116,7 @@ public partial class Surface : GameResource
 
 	protected override void OnDestroy()
 	{
+		_nativeSurface = default;
 		if ( All.TryGetValue( Index, out var v ) && v == this )
 		{
 			All.Remove( Index );
@@ -124,6 +127,8 @@ public partial class Surface : GameResource
 	{
 		var controller = g_pPhysicsSystem.GetSurfacePropertyController();
 		CPhysSurfaceProperties props = controller.AddProperty( ResourceName, "default", Description ?? "" );
+		_nativeSurface = props;
+		props.m_bHasScrapeSounds = HasScrapeSounds;
 
 		NameHash = props.m_nameHash;
 		Index = props.m_nIndex;

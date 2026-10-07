@@ -681,6 +681,7 @@ public partial class Panel
 		ScrollOffset = new Vector2( ScrollOffset.x, ScrollSize.y );
 		IsScrollAtBottom = true;
 		ScrollVelocity.y = 0;
+		scrollVelocityVelocity.y = 0;
 
 	}
 
@@ -706,6 +707,7 @@ public partial class Panel
 		// Bring it to a stop
 		if ( ScrollVelocity.y.AlmostEqual( 0, 0.01f ) ) ScrollVelocity.y = 0;
 		if ( ScrollVelocity.x.AlmostEqual( 0, 0.01f ) ) ScrollVelocity.x = 0;
+
 	}
 
 	/// <summary>

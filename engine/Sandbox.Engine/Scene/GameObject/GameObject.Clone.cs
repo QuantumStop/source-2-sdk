@@ -119,10 +119,10 @@ public partial class GameObject
 
 		if ( original.IsPrefabInstanceRoot || original is PrefabScene )
 		{
-			var prefabSource = original.PrefabInstance?.PrefabSource;
+			var prefabSource = original.PrefabInstance?.PrefabSource ?? default;
 			if ( original is PrefabScene prefabScene && prefabScene.Source is PrefabFile prefabFile )
 			{
-				prefabSource = prefabFile.ResourcePath;
+				prefabSource = ResourceId.Get( prefabFile );
 			}
 
 			var isNested = original.IsNestedPrefabInstanceRoot || (original.IsOutermostPrefabInstanceRoot && context.IsCloningPrefab);

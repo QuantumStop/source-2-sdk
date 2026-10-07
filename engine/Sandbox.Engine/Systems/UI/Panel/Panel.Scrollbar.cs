@@ -103,7 +103,7 @@ public partial class Panel
 	/// <summary>
 	/// The clip rect less any scrollbar gutter, so content doesn't show through under the bar
 	/// </summary>
-	internal Rect ContentClipRect
+	public Rect ContentClipRect
 	{
 		get
 		{

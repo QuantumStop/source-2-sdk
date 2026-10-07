@@ -124,7 +124,6 @@ internal static class ScreenshotService
 			if ( screenSizeChanged )
 			{
 				Screen.Size = requestedSize;
-				RenderTarget.Flush();
 			}
 
 			camera.CustomSize = requestedSize;
@@ -179,7 +178,6 @@ internal static class ScreenshotService
 			if ( screenSizeChanged )
 			{
 				Screen.Size = previousScreenSize;
-				RenderTarget.Flush();
 				ResizeUI( camera, previousScreenSize );
 			}
 

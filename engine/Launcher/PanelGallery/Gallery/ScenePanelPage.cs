@@ -34,6 +34,7 @@ public class ScenePanelPage : GalleryPage
 		var light = scene.CreateObject();
 		light.WorldRotation = Rotation.From( 45, 30, 0 );
 		light.Components.Create<DirectionalLight>().LightColor = Color.White * 2;
+		UseSceneLayout( panel, camera );
 	}
 
 	public override void Tick()

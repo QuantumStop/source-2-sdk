@@ -36,9 +36,9 @@ internal static class GpuFontGlyphCache
 	static GpuBuffer<Vector2> _curveBuffer;
 	static GpuBuffer<uint> _bandBuffer;
 	static GpuBuffer<Glyph> _tableBuffer;
-	static int _curvesUploaded;
-	static int _bandsUploaded;
-	static int _tableUploaded;
+	static readonly Dictionary<IntPtr, int> _curvesUploaded = new();
+	static readonly Dictionary<IntPtr, int> _bandsUploaded = new();
+	static readonly Dictionary<IntPtr, int> _tableUploaded = new();
 
 	/// <summary>
 	/// A colour glyph's layers from COLR v0, which v1 fonts like Segoe UI Emoji still carry: outline glyphs
@@ -131,7 +131,7 @@ internal static class GpuFontGlyphCache
 	}
 
 	/// <summary>
-	/// Upload anything encoded since the last bind and point the shader at the buffers. Only ever appends,
+	/// Upload anything this context hasn't uploaded yet and point the shader at the buffers. Only ever appends,
 	/// so a dispatch already recorded against the old contents still reads what it expects.
 	/// </summary>
 	public static void Bind( RenderAttributes attributes )
@@ -154,28 +154,32 @@ internal static class GpuFontGlyphCache
 	{
 		lock ( _lock )
 		{
-			Append( ref _curveBuffer, _curves, ref _curvesUploaded, 4096 );
-			Append( ref _bandBuffer, _bands, ref _bandsUploaded, 4096 );
-			Append( ref _tableBuffer, _table, ref _tableUploaded, 4096 );
+			Append( ref _curveBuffer, _curves, _curvesUploaded, 4096 );
+			Append( ref _bandBuffer, _bands, _bandsUploaded, 4096 );
+			Append( ref _tableBuffer, _table, _tableUploaded, 4096 );
 		}
 	}
 
 	/// <summary>
-	/// Grow the buffer to hold the list and upload whatever was appended since last time. Growing re-uploads
-	/// from the start, since the new buffer holds none of it.
+	/// Grow the buffer to hold the list and upload what the calling render context hasn't uploaded into it yet. A copy is
+	/// only visible to draws in the context that recorded it, so the watermark is per context, and it never rewinds:
+	/// once any context's copy has been submitted the bytes are in the buffer for good.
 	/// </summary>
-	internal static void Append<T>( ref GpuBuffer<T> buffer, List<T> data, ref int uploaded, int minimum ) where T : unmanaged
+	internal static void Append<T>( ref GpuBuffer<T> buffer, List<T> data, Dictionary<IntPtr, int> uploaded, int minimum ) where T : unmanaged
 	{
 		if ( buffer == null || buffer.ElementCount < data.Count )
 		{
 			buffer = new GpuBuffer<T>( Math.Max( minimum, (int)System.Numerics.BitOperations.RoundUpToPowerOf2( (uint)data.Count ) ) );
-			uploaded = 0;
+			uploaded.Clear();
 		}
 
-		if ( uploaded < data.Count )
+		IntPtr context = Graphics.Context;
+		int done = uploaded.GetValueOrDefault( context );
+
+		if ( done < data.Count )
 		{
-			buffer.SetData<T>( CollectionsMarshal.AsSpan( data ).Slice( uploaded ), uploaded );
-			uploaded = data.Count;
+			buffer.SetData<T>( CollectionsMarshal.AsSpan( data ).Slice( done ), done );
+			uploaded[context] = data.Count;
 		}
 	}
 

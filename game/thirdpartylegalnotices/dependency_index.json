@@ -512,23 +512,8 @@
 			]
 		},
 		{
-			"Name": "glslang",
-			"Comment": "Khronos reference GLSL/HLSL front end; we build it to obtain SPVRemapper and the SPIR-V tooling libraries.",
-			"UsedBy": [
-				"shaderpreprocessing"
-			],
-			"License": "glslang",
-			"ProjectUrl": "https://github.com/KhronosGroup/glslang",
-			"Linkage": "static",
-			"Copyright": [
-				"2002-2024 The Khronos Group Inc.",
-				"2012-2016 LunarG, Inc.",
-				"2013-2016 Google, Inc."
-			]
-		},
-		{
 			"Name": "SPIRV-Tools",
-			"Comment": "SPIR-V optimization, validation and reflection tooling.",
+			"Comment": "SPIR-V optimization, validation and reflection tooling. Also provides the id canonicalization that glslang's SPVRemapper used to.",
 			"UsedBy": [
 				"shaderpreprocessing"
 			],
@@ -1094,7 +1079,7 @@
 		},
 		{
 			"Name": "FidelityFX SDK",
-			"Comment": "AMD FidelityFX Super Resolution upscaling technologies. Includes FSR1 (spatial) and FSR3 (temporal) used by the rendering pipeline.",
+			"Comment": "AMD FidelityFX Super Resolution upscaling technologies. Includes FSR1 (spatial) and FSR3 (temporal) used by the rendering pipeline. Bundles a glslangValidator binary to build its shaders, licensed separately under licenses/glslang.",
 			"UsedBy": [
 				"engine2"
 			],
@@ -1102,7 +1087,8 @@
 			"ProjectUrl": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK",
 			"Linkage": "static",
 			"Copyright": [
-				"2024 Advanced Micro Devices, Inc."
+				"2024 Advanced Micro Devices, Inc.",
+				"glslangValidator: 2002-2024 The Khronos Group Inc., 2012-2016 LunarG, Inc., 2013-2016 Google, Inc."
 			]
 		},
 		{

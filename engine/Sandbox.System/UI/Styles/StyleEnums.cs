@@ -715,17 +715,13 @@ public enum ScrollbarGutter
 	StableBothEdges = 2
 }
 
-/// <summary>
-/// Possible values for the <c>overscroll-behavior</c> CSS property.
-/// </summary>
+/// <summary>Controls scroll chaining and boundary bounce on a scroll container.</summary>
 public enum OverscrollBehavior
 {
-	/// <summary>Scroll can chain to an ancestor and the last scroll container can bounce locally.</summary>
-	Auto = 0,
-
-	/// <summary>Scroll does not chain to an ancestor, but this panel can still bounce locally.</summary>
-	Contain = 1,
-
-	/// <summary>Scroll does not chain to an ancestor and cannot move past its scroll limits.</summary>
-	None = 2
+	/// <summary>Allow scroll chaining and boundary bounce.</summary>
+	Auto,
+	/// <summary>Allow boundary bounce but prevent scroll chaining.</summary>
+	Contain,
+	/// <summary>Prevent both scroll chaining and boundary bounce.</summary>
+	None
 }

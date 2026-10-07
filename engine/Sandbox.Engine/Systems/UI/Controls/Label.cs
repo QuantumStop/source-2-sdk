@@ -178,6 +178,7 @@ namespace Sandbox.UI
 					return;
 
 				_text = value;
+				ClearStyleSpans();
 				StringInfo.String = value ?? string.Empty;
 				CaretSantity();
 				LayoutTree?.MarkDirty();
@@ -357,6 +358,8 @@ namespace Sandbox.UI
 				sizeFinalized = false;
 			}
 
+			_textBlock.StyleSpans = styleSpans;
+			_textBlock.StyleSpanScale = ScaleToScreen;
 			if ( _textBlock.UpdateStyles( ComputedStyle ) )
 			{
 				LayoutTree.MarkDirty();
@@ -490,6 +493,13 @@ namespace Sandbox.UI
 		}
 
 		public int GetLetterAtScreenPosition( Vector2 pos ) => GetLetterAt( ScreenPositionToTextRectPosition( pos ) );
+
+		/// <summary>
+		/// Returns the text element under a screen position, or -1 outside the text.
+		/// Unlike caret hit testing, both halves of a character return the same index.
+		/// </summary>
+		public int GetCharacterAtScreenPosition( Vector2 pos ) =>
+			_textBlock?.GetCharacterAt( ScreenPositionToTextRectPosition( pos ) ) ?? -1;
 
 		Vector2 ScreenPositionToTextRectPosition( Vector2 pos )
 		{

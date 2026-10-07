@@ -167,6 +167,8 @@ var Members = new Dictionary<string, (string TypeName, string DefaultValue, bool
 	{ "OutlineOffset",				("Length?",				"0",							false)},
 	{ "Isolation",					("Isolation?",			"UI.Isolation.Auto",			false)},
 	{ "ScrollbarWidth",				("Length?",				"0",							true)},
+	{ "OverscrollBehaviorX", ("OverscrollBehavior?", "UI.OverscrollBehavior.Auto", false)},
+	{ "OverscrollBehaviorY", ("OverscrollBehavior?", "UI.OverscrollBehavior.Auto", false)},
 	{ "ScrollbarGutter",			("ScrollbarGutter?",	"UI.ScrollbarGutter.Auto",		false)},
 	{ "ScrollbarThumbColor",		("Color?",				"null",							true)},
 	{ "ScrollbarTrackColor",		("Color?",				"null",							true)}

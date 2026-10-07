@@ -1,5 +1,6 @@
 using Sandbox.Diagnostics;
 using Sandbox.Engine.Settings;
+using Sandbox.Engine;
 
 namespace Sandbox;
 
@@ -88,12 +89,15 @@ public static partial class DebugOverlay
 
 			var rs = RenderSettings.Instance;
 			var displayMode = rs.Fullscreen ? "Exclusive FS" : (rs.Borderless ? "Borderless" : "Windowed");
-			_infoDisplay = $"{displayMode}   VSync {(rs.VSync ? "on" : "off")}   {EngineLoop.DisplayRefreshRate:0}Hz   "
+			var surface = GameSurface.Current;
+			var vsync = surface?.VSync ?? rs.VSync;
+			var refreshRate = surface?.RefreshRate ?? 0;
+			_infoDisplay = $"{displayMode}   VSync {(vsync ? "on" : "off")}   {refreshRate:0}Hz   "
 				+ $"{Screen.Width:0}x{Screen.Height:0}   {rs.AntiAliasQuality}   Upscale {rs.UpscalerMode}";
 
-			var effective = EngineLoop.EffectiveMaxFrameRate;
+			var limit = EngineLoop.FrameRateLimit;
 			_infoCaps = $"fps_max {rs.MaxFrameRate}   fps_max_menu {rs.MaxFrameRateMenu}   fps_max_inactive {rs.MaxFrameRateInactive}   "
-				+ (effective > 0 ? $"-> capped at {effective:0} by {EngineLoop.MaxFrameRateSource}" : "-> uncapped");
+				+ (limit.FramesPerSecond > 0 ? $"-> capped at {limit.FramesPerSecond:0} by {limit.Source}" : "-> uncapped");
 
 			var found = CollectWorst();
 			_infoWorst = "Slowest ms, worst/avg frame of last 60   ";

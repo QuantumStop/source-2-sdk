@@ -22,6 +22,9 @@ internal partial class NetworkSystem
 	/// </summary>
 	public bool IsDisconnected { get; private set; }
 
+	/// <summary>The peer's actual failure, retained after teardown for the join UI.</summary>
+	internal string FailureReason { get; set; }
+
 	/// <summary>
 	/// Are we currently disconnecting from networking?
 	/// </summary>

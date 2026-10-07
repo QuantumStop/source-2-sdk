@@ -99,6 +99,11 @@ internal sealed class NavigationSimulation
 		if ( agent.Link is not null ) return;
 		var query = agent.Query;
 		var settings = agent.Options;
+		if ( agent.NeedsRepair )
+		{
+			agent.NeedsRepair = false;
+			if ( !agent.NeedsPath && !Repair( agent ) ) agent.Path.Clear();
+		}
 		if ( agent.Path.Count == 0 || !query.IsValidPolyRef( agent.Path[0], settings.Filter ) )
 		{
 			agent.HasRoute = false;
@@ -141,6 +146,18 @@ internal sealed class NavigationSimulation
 			agent.NeedsPath = false;
 			agent.HasRoute = true;
 		}
+	}
+
+	private bool Repair( SimulationAgent agent )
+	{
+		var settings = agent.Options;
+		var extents = Vector3.Max( PlacementExtents, new Vector3( settings.Radius * 2.1f, settings.Height * 1.51f, settings.Radius * 2.1f ) );
+		var status = agent.Query.FindNearestPoly( agent.Position, extents, settings.Filter, out var poly, out var point, out _ );
+		if ( status.Failed() || poly == 0 ) return false;
+		agent.Position = point;
+		int index = agent.Path.IndexOf( poly );
+		if ( index >= 0 ) { agent.Path.RemoveRange( 0, index ); return true; }
+		return planningQuery.RepairPath( poly, point, agent.PathTarget, settings.Filter, agent.Path, 64 );
 	}
 
 	private void CaptureFrame( bool collisions = false )
@@ -276,9 +293,9 @@ internal sealed class NavigationSimulation
 			agent.Path.RemoveRange( 0, commonPath );
 			for ( int v = commonVisited + 1; v < visitedCount; v++ ) agent.Path.Insert( 0, visited[v] );
 			// Sliding across a seam or avoiding an agent can leave the planned
-			// corridor. Replan from that polygon instead of steering backwards
+			// corridor. Rejoin it ahead from that polygon instead of steering backwards
 			// through the old entrance, which can create a loop at tile corners.
-			agent.NeedsPath |= commonVisited < visitedCount - 1;
+			agent.NeedsRepair |= commonVisited < visitedCount - 1;
 		}
 		if ( agent.Query.GetPolyHeight( agent.Path[0], position, out float height ).Succeeded() ) position.y = height;
 		agent.Position = position;
@@ -376,7 +393,11 @@ internal sealed class NavigationSimulation
 					{
 						var relative = wish - other.Velocity;
 						float closing = -Vector3.Dot( relative, normal );
-						if ( closing > 0 && distance - radius < closing * 0.75f )
+						// Radial closing alone diverts the agent around neighbours its
+						// course already clears. Require a predicted overlap as well.
+						float approach = relative.LengthSquared > 0.000001f ? -Vector3.Dot( offset, relative ) / relative.LengthSquared : 0;
+						float miss = approach > 0 ? (offset + relative * approach).Length : distance;
+						if ( closing > 0 && miss < radius && distance - radius < closing * 0.75f )
 						{
 							// Consistent passing side breaks head-on symmetry.
 							var side = new Vector3( -normal.z, 0, normal.x );
@@ -388,6 +409,10 @@ internal sealed class NavigationSimulation
 			}
 		// Keep dense groups from multiplying steering forces or overriding arrival braking.
 		var result = wish + correction / Math.Max( 1, neighbourCount );
+		// Avoidance may slow the approach but must not cancel it. A high Separation
+		// otherwise leaves an agent unable to reach a goal beside another agent.
+		float forward = Vector3.Dot( result, wish ), floor = wish.LengthSquared * 0.25f;
+		if ( forward < floor ) result += wish * ((floor - forward) / MathF.Max( wish.LengthSquared, 0.0001f ));
 		return result.Length > wish.Length ? result.Normal * wish.Length : result;
 	}
 
@@ -416,7 +441,7 @@ internal sealed class SimulationAgent
 	internal long WallRevision = -1;
 	internal int WallCount;
 	// A requested repair does not invalidate the corridor already being followed.
-	internal bool NeedsPath, HasRoute, Partial, Removed, HadOverlap;
+	internal bool NeedsPath, NeedsRepair, HasRoute, Partial, Removed, HadOverlap;
 	internal long PathRevision = -1;
 	internal long LinkStartedUpdate;
 
@@ -451,7 +476,10 @@ internal sealed class SimulationAgent
 			Position = position;
 			WallRevision = -1;
 			RestingPosition = null;
-			if ( Link is null ) { HasRoute = false; Path.Clear(); NeedsPath = Target.HasValue; }
+			if ( Link is not null ) return;
+			// Moving along an existing route only needs its start repaired.
+			if ( HasRoute && Target.HasValue && Path.Count > 0 && !NeedsPath ) { NeedsRepair = true; return; }
+			HasRoute = false; Path.Clear(); NeedsPath = Target.HasValue;
 		}
 	}
 

@@ -11,6 +11,7 @@ namespace Sandbox;
 /// Represents a rectangle.
 /// </summary>
 [StructLayout( LayoutKind.Sequential )]
+[Description( "A rectangle with a position and size in 2D space." )]
 public struct Rect : System.IEquatable<Rect>
 {
 	private float left;

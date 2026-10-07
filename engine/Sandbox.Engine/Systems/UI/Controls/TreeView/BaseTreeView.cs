@@ -553,7 +553,7 @@ public abstract class BaseTreeView : Panel
 		else if ( bottom > scrollY + viewportHeight ) scrollY = bottom - viewportHeight;
 		else return;
 
-		ScrollVelocity = 0;
+		StopScrollVelocity();
 		ScrollOffset = ScrollOffset.WithY( MathF.Max( 0, scrollY ) * ScaleToScreen );
 		SetNeedsFinalLayout();
 	}

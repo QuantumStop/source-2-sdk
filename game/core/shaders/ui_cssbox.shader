@@ -291,8 +291,11 @@ PS
 				vImage *= bgTint;
 			#endif
 
-			vBox.rgb = lerp( vBox.rgb, vImage.rgb, saturate( vImage.a + ( 1 - vBox.a ) ) );
-			vBox.a = max( vBox.a, vImage.a );
+			// Source-over: weight by the image's share of the combined alpha, so a transparent
+			// texel can't tint a translucent box and vImage.a alone wouldn't darken it either
+			float flOverAlpha = vImage.a + vBox.a * ( 1 - vImage.a );
+			vBox.rgb = lerp( vBox.rgb, vImage.rgb, flOverAlpha > 0 ? vImage.a / flOverAlpha : 0 );
+			vBox.a = flOverAlpha;
 		}
 		
 		o.vColor = vBox;
@@ -307,6 +310,7 @@ PS
 
 		// Premultiplied content already sits in the target's space, see ui/gamma.hlsl
 		#if ( D_BLENDMODE == 3 )
+			o.vColor = UI_ApplyLighting( i.vPositionPs, o.vColor );
 			o.vColor = UI_ApplyClip( o.vColor, true );
 			return o;
 		#else

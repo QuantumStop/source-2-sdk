@@ -37,20 +37,20 @@ internal class PrefabInstanceData
 	/// <summary>
 	/// The filename of the prefab this object is defined in.
 	/// </summary>
-	public string PrefabSource { get; private set; }
+	public ResourceId PrefabSource { get; private set; }
 
-	public PrefabInstanceData( string prefabSource, GameObject prefabInstanceRoot, bool isNested )
+	public PrefabInstanceData( ResourceId prefabSource, GameObject prefabInstanceRoot, bool isNested )
 	{
 		_instanceRoot = prefabInstanceRoot;
 		PrefabSource = prefabSource;
 		_isNested = isNested;
 	}
 
-	internal sealed record OwnershipSnapshot( string Source, bool IsNested, Dictionary<Guid, Guid> Mappings )
+	internal sealed record OwnershipSnapshot( ResourceId Source, bool IsNested, Dictionary<Guid, Guid> Mappings )
 	{
 		internal void Restore( GameObject root )
 		{
-			if ( root.PrefabInstance is not { } instance || instance.PrefabSource != Source )
+			if ( root.PrefabInstance is not { } instance || instance.PrefabSource.Path != Source.Path )
 			{
 				root.InitPrefabInstance( Source, IsNested );
 				instance = root.PrefabInstance;
@@ -61,6 +61,14 @@ internal class PrefabInstanceData
 	}
 
 	internal OwnershipSnapshot CaptureOwnership() => new( PrefabSource, IsNested, new( _prefabGuidToInstanceGuid ) );
+
+	/// <summary>
+	/// Update the ResourceId used to track the prefab source, needed incase the prefab file was renamed or moved.
+	/// </summary>
+	internal void UpdateSource( PrefabFile prefabFile )
+	{
+		PrefabSource = ResourceId.Get( prefabFile );
+	}
 
 	/// <summary>
 	/// Deterministically derives a stable instance guid for a prefab object with no persisted mapping

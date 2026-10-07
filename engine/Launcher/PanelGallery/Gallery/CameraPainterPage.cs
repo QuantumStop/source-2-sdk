@@ -7,7 +7,7 @@ public sealed class CameraPainterPage : GalleryPage
 {
 	public static readonly GalleryPageInfo[] Pages =
 	[
-		new( "HUD & Overlay", "videocam", () => new CameraPainterPage(), "Demos" ),
+		new( "HUD & Overlay", "videocam", () => new CameraPainterPage(), "Scene" ),
 	];
 
 	public CameraPainterPage() : base( "HUD & Overlay",
@@ -15,7 +15,6 @@ public sealed class CameraPainterPage : GalleryPage
 	{
 		var controls = Case( "Camera painters" );
 		var view = AddChild<CameraPainterView>();
-		view.SetProperty( "style", "width: 100%; height: 560px; flex-shrink: 0;" );
 		var scene = view.RenderScene;
 		var cameraObject = scene.CreateObject();
 		cameraObject.WorldPosition = new Vector3( -180, 100, 80 );
@@ -46,6 +45,7 @@ public sealed class CameraPainterPage : GalleryPage
 		Toggle( controls, "Animate", value => demo.Animate = value );
 		Toggle( controls, "UI overlap strip", value => demo.ShowUi = value );
 		Add.Label( "The boxes and nametags should follow the moving cube without lag. The pink box is expanded by 6px so both are visible. The UI strip covers cyan drawing, while pink draws above it. Toggle each callback independently: both should append to the same frame, disappear when disabled, and remain visible when animation is paused.", "page-blurb" );
+		UseSceneLayout( view, camera );
 	}
 
 	static void Toggle( Panel parent, string label, Action<bool> changed ) =>
