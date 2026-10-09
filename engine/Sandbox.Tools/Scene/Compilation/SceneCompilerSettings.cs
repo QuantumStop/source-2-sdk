@@ -10,6 +10,12 @@ internal sealed record SceneCompilerSettings
 {
 	internal const string MetadataProperty = "sceneCompileSettings";
 
+	/// <summary>Combine eligible static meshes and props into shared aggregates.</summary>
+	public bool AggregateGeometry { get; init; } = true;
+
+	/// <summary>Build collision for compiled geometry.</summary>
+	public bool BuildPhysics { get; init; } = true;
+
 	/// <summary>
 	/// What an extra aggregate costs, in fragments, when deciding whether to split geometry into
 	/// two of them. Higher makes fewer, bigger aggregates that cull less well.
@@ -36,6 +42,8 @@ internal sealed record SceneCompilerSettings
 
 	static SceneCompilerSettings LoadDefaults() => new()
 	{
+		AggregateGeometry = EditorCookie.Get( "scenecompiler.aggregategeometry", true ),
+		BuildPhysics = EditorCookie.Get( "scenecompiler.buildphysics", true ),
 		AggregateCost = EditorCookie.Get( "scenecompiler.aggregatecost", 32.0f ),
 		MaxChunkSize = EditorCookie.Get( "scenecompiler.maxchunksize", 2048.0f ),
 	};
@@ -52,6 +60,8 @@ internal sealed record SceneCompilerSettings
 	/// </summary>
 	public void SaveDefaults()
 	{
+		EditorCookie.Set( "scenecompiler.aggregategeometry", AggregateGeometry );
+		EditorCookie.Set( "scenecompiler.buildphysics", BuildPhysics );
 		EditorCookie.Set( "scenecompiler.aggregatecost", AggregateCost );
 		EditorCookie.Set( "scenecompiler.maxchunksize", MaxChunkSize );
 	}

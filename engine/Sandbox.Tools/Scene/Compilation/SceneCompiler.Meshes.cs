@@ -9,7 +9,7 @@ partial class SceneCompiler
 	/// <summary>
 	/// Turn the meshes we couldn't weld into the world into models of their own.
 	/// </summary>
-	static async Task<int> ConvertMeshes( Scene compiled, MeshComponent[] meshes, SceneFolder folder, string outputFolder, string resourceFolder, SceneCompileStatistics statistics, Func<int, int, Task> step, SceneCompileSession session )
+	static async Task<int> ConvertMeshes( Scene compiled, MeshComponent[] meshes, SceneFolder folder, string outputFolder, string resourceFolder, SceneCompileStatistics statistics, Func<int, int, Task> step, SceneCompileSession session, bool buildPhysics )
 	{
 		var converted = 0;
 
@@ -19,7 +19,7 @@ partial class SceneCompiler
 			// editor, which has no business drawing a frame with someone else's scene pushed.
 			using ( compiled.Push() )
 			{
-				if ( Convert( meshes[i], folder, $"{outputFolder}/mesh_{converted}.vmdl_c", $"{resourceFolder}/mesh_{converted}.vmdl", statistics, session ) )
+				if ( Convert( meshes[i], folder, $"{outputFolder}/mesh_{converted}.vmdl_c", $"{resourceFolder}/mesh_{converted}.vmdl", statistics, session, buildPhysics ) )
 					converted++;
 			}
 
@@ -32,9 +32,9 @@ partial class SceneCompiler
 	/// <summary>
 	/// Replace one mesh with a renderer and a collider drawing the model we build from it.
 	/// </summary>
-	static bool Convert( MeshComponent mesh, SceneFolder folder, string path, string resourcePath, SceneCompileStatistics statistics, SceneCompileSession session )
+	static bool Convert( MeshComponent mesh, SceneFolder folder, string path, string resourcePath, SceneCompileStatistics statistics, SceneCompileSession session, bool buildPhysics )
 	{
-		if ( Build( mesh, resourcePath, statistics ) is not { } built )
+		if ( Build( mesh, resourcePath, statistics, buildPhysics ) is not { } built )
 		{
 			session.Warn( $"Mesh '{mesh.GameObject.Name}' has no triangulated geometry. Removing it from the compiled scene.", mesh );
 			return false;
@@ -55,7 +55,7 @@ partial class SceneCompiler
 			renderer.Enabled = mesh.Enabled;
 		}
 
-		if ( mesh.Collision != MeshComponent.CollisionType.None )
+		if ( buildPhysics && mesh.Collision != MeshComponent.CollisionType.None )
 		{
 			var properties = mesh.Serialize().AsObject();
 			properties.Remove( "__guid" );
@@ -76,7 +76,7 @@ partial class SceneCompiler
 	/// collision it was set to use - a mesh builds a hull and a mesh shape and picks between them
 	/// as it goes, which a model collider has no way of knowing.
 	/// </summary>
-	static Model Build( MeshComponent mesh, string resourcePath, SceneCompileStatistics statistics )
+	static Model Build( MeshComponent mesh, string resourcePath, SceneCompileStatistics statistics, bool buildPhysics )
 	{
 		if ( mesh.Mesh is null )
 			return null;
@@ -89,8 +89,8 @@ partial class SceneCompiler
 
 		var builder = Model.Builder.WithName( resourcePath );
 
-		var hull = mesh.Collision == MeshComponent.CollisionType.Hull;
-		var collides = hull || mesh.Collision == MeshComponent.CollisionType.Mesh;
+		var hull = buildPhysics && mesh.Collision == MeshComponent.CollisionType.Hull;
+		var collides = buildPhysics && (hull || mesh.Collision == MeshComponent.CollisionType.Mesh);
 
 		var positions = collides ? new List<Vector3>() : null;
 		var indices = hull ? null : new List<int>();
