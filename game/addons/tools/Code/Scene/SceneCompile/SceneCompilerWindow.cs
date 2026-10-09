@@ -45,7 +45,6 @@ internal sealed class SceneCompilerWindow : Dialog
 	/// <summary>
 	/// Bring up the compiler for the active scene, reusing the window if it's already open.
 	/// </summary>
-	[Event( "scene.compile.show-report" )]
 	internal static void Open( string page = "Report" )
 	{
 		SceneCompileSession.Current.Refresh();

@@ -13,7 +13,7 @@ internal sealed class SceneCompileSettingsWidget : Widget
 	readonly List<Action> _refreshNumbers = new();
 	Scene _scene;
 	string _path;
-	(float AggregateCost, float MaxChunkSize) _displayedSettings;
+	(bool AggregateGeometry, float AggregateCost, float MaxChunkSize) _displayedSettings;
 	bool _refreshing;
 
 	internal SceneCompileSettingsWidget( Widget parent ) : base( parent )
@@ -23,6 +23,14 @@ internal sealed class SceneCompileSettingsWidget : Widget
 		Layout = Layout.Column();
 		Layout.Margin = 12;
 		Layout.Spacing = 6;
+		VerticalSizeMode = SizeMode.CanShrink;
+		var aggregate = Layout.Add( new Checkbox( "Aggregate meshes + props", this ) );
+		aggregate.ToolTip = "Combine eligible static geometry. When off, meshes compile individually and props stay separate.";
+		aggregate.StateChanged += _ =>
+		{
+			if ( CanEdit ) _session.AggregateGeometry = aggregate.Value;
+		};
+		_refreshNumbers.Add( () => aggregate.Value = _session.AggregateGeometry );
 		var grid = Layout.Grid();
 		grid.Spacing = 6;
 
@@ -46,7 +54,7 @@ internal sealed class SceneCompileSettingsWidget : Widget
 		var footer = Layout.AddRow();
 		footer.Add( new Button.Clear( "Reset defaults", "restart_alt" )
 		{
-			ToolTip = "Reset aggregate cost and target chunk size to their default values.",
+			ToolTip = "Enable aggregation and reset aggregate cost and target chunk size to their defaults.",
 			Clicked = () =>
 			{
 				if ( CanEdit )
@@ -56,8 +64,6 @@ internal sealed class SceneCompileSettingsWidget : Widget
 			}
 		} );
 		footer.AddStretchCell();
-
-		Layout.AddStretchCell();
 
 		_session.Changed += RefreshControls;
 		RefreshControls();
@@ -83,7 +89,11 @@ internal sealed class SceneCompileSettingsWidget : Widget
 			edit.Text = $"{get():G9}";
 		};
 
-		_refreshNumbers.Add( () => edit.Text = $"{get():G9}" );
+		_refreshNumbers.Add( () =>
+		{
+			edit.Text = $"{get():G9}";
+			edit.Enabled = _session.AggregateGeometry;
+		} );
 		return edit;
 	}
 
@@ -95,7 +105,7 @@ internal sealed class SceneCompileSettingsWidget : Widget
 
 		var scene = _session.Scene;
 		var path = scene?.Source?.ResourcePath;
-		var settings = (_session.AggregateCost, _session.MaxChunkSize);
+		var settings = (_session.AggregateGeometry, _session.AggregateCost, _session.MaxChunkSize);
 		if ( scene != _scene || path != _path || _displayedSettings != settings )
 		{
 			// Replace stale text before rebinding, so a pending edit cannot affect another scene.

@@ -26,6 +26,7 @@ public sealed class SceneCompileSession
 	bool _playing;
 	bool _notifying;
 	FastTimer _elapsed;
+	DateTimeOffset _startedAt;
 	FastTimer _phaseElapsed;
 
 	public Scene Scene { get; private set; }
@@ -51,6 +52,18 @@ public sealed class SceneCompileSession
 		&& _scanError is null && _settingsError is null
 		&& SceneEditorSession.Active is { IsPrefabSession: false, HasUnsavedChanges: false } editor
 		&& editor.Scene == Scene;
+
+	public bool AggregateGeometry
+	{
+		get => _settings.AggregateGeometry;
+		set => Settings = _settings with { AggregateGeometry = value };
+	}
+
+	public bool BuildPhysics
+	{
+		get => _settings.BuildPhysics;
+		set => Settings = _settings with { BuildPhysics = value };
+	}
 
 	public float AggregateCost
 	{
@@ -168,10 +181,12 @@ public sealed class SceneCompileSession
 		_cancel.Dispose();
 		_cancel = new();
 		_elapsed = FastTimer.StartNew();
+		_startedAt = DateTimeOffset.Now;
 		try
 		{
 			RefreshSources();
 			ClearResult();
+			Line( $"Start build: {_startedAt:yyyy-MM-dd HH:mm:ss}" );
 			if ( Error is { } error )
 				throw new InvalidOperationException( error );
 			if ( _sources?.Asset is null || _unsaved )
@@ -179,9 +194,7 @@ public sealed class SceneCompileSession
 
 			if ( !HasCompileGeometry )
 			{
-				_status = "Nothing to compile";
-				Running = false;
-				Line( _status );
+				Finish( "Nothing to compile" );
 				return;
 			}
 
@@ -267,13 +280,16 @@ public sealed class SceneCompileSession
 		HasResult = true;
 		_result = _sources?.Report;
 		var duration = TimeSpan.FromMilliseconds( _elapsed.ElapsedMilliSeconds );
+		var completedAt = DateTimeOffset.Now;
 		if ( Statistics is not null )
 		{
-			Statistics.CompletedAt = DateTimeOffset.Now;
+			Statistics.CompletedAt = completedAt;
 			Statistics.Duration = duration;
 			Statistics.Stages = Array.AsReadOnly( _stages.ToArray() );
 		}
-		_lines.Add( $"{title} in {duration.TotalSeconds:n2}s" );
+		if ( title != "Done" )
+			_lines.Add( title );
+		_lines.Add( $"End build: {completedAt:yyyy-MM-dd HH:mm:ss}, elapsed time {(long)duration.TotalHours}h:{duration.Minutes:00}m:{duration.Seconds:00}s.{duration.Milliseconds:000}ms" );
 		Running = false;
 		var name = Name;
 		var detail = summary is not null ? string.Join( "\n", summary ) : Error ?? title;

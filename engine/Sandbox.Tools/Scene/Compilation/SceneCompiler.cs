@@ -150,7 +150,9 @@ internal static partial class SceneCompiler
 		await Task.Delay( 1, session.Cancel );
 
 		var processed = new HashSet<Guid>();
-		var plan = await Plan( meshes, props, processed, settings, Step, session.Cancel );
+		var plan = settings.AggregateGeometry
+			? await Plan( meshes, props, processed, settings, Step, session.Cancel )
+			: new CompilePlan( [], [], [] );
 
 		var plans = plan.Aggregates;
 		var statistics = new SceneCompileStatistics();
@@ -171,10 +173,13 @@ internal static partial class SceneCompiler
 			await Step( i + 1, plans.Length );
 		}
 
-		session.Phase( "Building collision" );
-		await Task.Delay( 1, session.Cancel );
-
-		var collision = await BuildCollision( plan.Collision, plan.Shapes, sceneFolder, outputFolder, Step );
+		var collision = new List<(string Tags, PhysicsGroupDescription Physics)>();
+		if ( settings.BuildPhysics )
+		{
+			session.Phase( "Building collision" );
+			await Task.Delay( 1, session.Cancel );
+			collision = await BuildCollision( plan.Collision, plan.Shapes, sceneFolder, outputFolder, Step );
+		}
 
 		var converted = 0;
 		SceneFile file = null;
@@ -188,7 +193,7 @@ internal static partial class SceneCompiler
 			session.Phase( $"Converting {leftovers.Length} meshes" );
 			await Task.Delay( 1, session.Cancel );
 
-			converted = await ConvertMeshes( compiled, leftovers, sceneFolder, outputFolder, resourceFolder, statistics, Step, session );
+			converted = await ConvertMeshes( compiled, leftovers, sceneFolder, outputFolder, resourceFolder, statistics, Step, session, settings.BuildPhysics );
 			processed.UnionWith( leftovers.Select( mesh => mesh.Id ) );
 		}
 

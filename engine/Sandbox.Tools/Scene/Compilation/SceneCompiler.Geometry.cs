@@ -231,7 +231,7 @@ partial class SceneCompiler
 			var tags = TagKey( source.GameObject );
 			var visible = !source.HideInGame;
 
-			if ( source.Collision == MeshComponent.CollisionType.Hull )
+			if ( settings.BuildPhysics && source.Collision == MeshComponent.CollisionType.Hull )
 			{
 				// The live model omits editor-hidden faces. Use the same complete snapshot as
 				// rendering. Material surfaces belong to triangles, not the mesh's single hull.
@@ -242,7 +242,7 @@ partial class SceneCompiler
 				shapes.Add( new HullShape( [.. points], source.Surface, tags ) );
 			}
 
-			var collides = source.Collision == MeshComponent.CollisionType.Mesh;
+			var collides = settings.BuildPhysics && source.Collision == MeshComponent.CollisionType.Mesh;
 
 			foreach ( var submesh in submeshes )
 			{
@@ -291,7 +291,8 @@ partial class SceneCompiler
 
 				if ( Collider( go ) is { } collider )
 				{
-					AddModelCollision( collision, shapes, physics, collider.Model, collider.WorldTransform, collider.Surface, TagKey( go ) );
+					if ( settings.BuildPhysics )
+						AddModelCollision( collision, shapes, physics, collider.Model, collider.WorldTransform, collider.Surface, TagKey( go ) );
 					processed.Add( collider.Id );
 				}
 			}
