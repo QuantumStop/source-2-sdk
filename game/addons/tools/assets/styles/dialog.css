@@ -30,10 +30,6 @@ Dialog Button {
 	min-width: 70px;
 }
 
-Dialog PresetButton {
-	min-width: 50px;
-}
-
 Dialog Separator {
 	background-color: $Border;
 }

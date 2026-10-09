@@ -145,11 +145,12 @@ sealed class SceneCompileToolbar : Widget
 	}
 
 	[Menu( "Editor", "Scene/Compile Scene", "hardware", Priority = 1001 )]
+	[Shortcut( "scene.compile", "F9", typeof( SceneViewWidget ) )]
 	public static async void Compile()
 	{
 		if ( Game.IsPlaying )
 			return;
-		
+
 		await SceneCompileSession.Current.StartAsync();
 	}
 
@@ -204,8 +205,8 @@ sealed class SceneCompileToolbar : Widget
 
 		_advanced = _menu.AddMenu( "Advanced settings", "tune" );
 		_advanced.AddWidget( new SceneCompileSettingsWidget( _advanced ) { FixedWidth = 350 } );
-		_report = _menu.AddOption( "View report", "list", () => IgnisSceneCompilerWindow.Open() );
-		_log = _menu.AddOption( "View log", "notes", () => IgnisSceneCompilerWindow.Open( "Log" ) );
+		_report = _menu.AddOption( "View report", "list", () => SceneCompilerWindow.Open() );
+		_log = _menu.AddOption( "View log", "notes", () => SceneCompilerWindow.Open( "Log" ) );
 		_menuReady = true;
 		UpdateControls();
 		_menu.OpenAt( ScreenRect.BottomLeft + new Vector2( 0, 4 ), false );

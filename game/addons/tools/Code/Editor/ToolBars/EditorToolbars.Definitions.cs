@@ -580,7 +580,7 @@ public static partial class EditorToolBars
 			Description = "Compile Map",
 			Checkable = false,
 			ActionType = ToolActionType.MethodCall,
-			Method = () => IgnisSceneCompilerWindow.Open(),
+			Method = () => SceneCompilerWindow.Open(),
 			DisableDuringPlay = false,
 			ConditionalOn = "Run Game"
 		},
@@ -604,7 +604,7 @@ public static partial class EditorToolBars
 			Method = () => SceneViewWidget.Current.ViewportTools.OpenNetworkSettings(),
 			DisableDuringPlay = false,
 			ConditionalOn = "Run Game"
-		},		
+		},
 	];
 	}
 
