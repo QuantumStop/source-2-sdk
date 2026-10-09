@@ -54,7 +54,6 @@ public partial class MeshTool : EditorTool
 
 		SetMoveMode<PositionMode>();
 
-		LoadActiveMaterial();
 		LoadToolbarCookies();
 	}
 

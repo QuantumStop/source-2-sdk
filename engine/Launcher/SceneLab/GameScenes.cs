@@ -113,7 +113,6 @@ internal static class GameScenes
 		var go = camera.GameObject;
 		var tonemapping = go.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 
 		go.Components.Create<Bloom>();
 		var color = go.Components.Create<ColorAdjustments>();
@@ -350,7 +349,7 @@ internal static class GameScenes
 		PostProps();
 
 		var go = camera.GameObject;
-		go.Components.Create<Tonemapping>().AutoExposureEnabled = false;
+		go.Components.Create<Tonemapping>();
 		var dof = go.Components.Create<Sandbox.DepthOfField>();
 		dof.FocalDistance = 300;
 
@@ -396,7 +395,7 @@ internal static class GameScenes
 		var scene = Stage( out var camera );
 		using var _ = scene.Push();
 		PostProps();
-		camera.GameObject.Components.Create<Tonemapping>().AutoExposureEnabled = false;
+		camera.GameObject.Components.Create<Tonemapping>();
 
 		var ui = ScreenUI( "Screen UI" );
 		var card = ui.Add.Panel( "card" );
@@ -456,7 +455,6 @@ internal static class GameScenes
 		var go = camera.GameObject;
 		var tonemapping = go.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 		go.Components.Create<Bloom>();
 
 		var ui = ScreenUI( "Early UI", ScreenPanel.RenderTiming.BeforePostProcess );
@@ -754,7 +752,6 @@ internal static class GameScenes
 		var go = camera.GameObject;
 		var tonemapping = go.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 		go.Components.Create<Bloom>();
 
 		return scene;
@@ -787,7 +784,6 @@ internal static class GameScenes
 
 		var tonemapping = camera.GameObject.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 
 		var after = Prop( "After UI", "models/dev/sphere.vmdl", new Vector3( -40, 30, 40 ), new Color( 1, 0.5f, 0.2f ), scale: 0.5f ).RenderOptions;
 		after.Game = false;
@@ -841,7 +837,6 @@ internal static class GameScenes
 
 		var tonemapping = camera.GameObject.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 
 		Prop( "Behind Glass", "models/dev/box.vmdl", new Vector3( 40, 30, 30 ), new Color( 1, 0.5f, 0.2f ), "materials/dev/primary_white_trans.vmat", 0.4f );
 		// No shadows: glass's dithered shadow doesn't match native's yet (AGENTS.md, Open work), and isn't what this checks
@@ -1339,8 +1334,8 @@ internal static class GameScenes
 		sun.LightColor *= 0.2f;
 
 		var tonemapping = camera.GameObject.Components.Create<Tonemapping>();
-		tonemapping.AutoExposureEnabled = true;
-		tonemapping.Rate = 10;
+		var autoExposure = camera.GameObject.Components.Create<Sandbox.AutoExposure>();
+		autoExposure.Rate = 10;
 
 		return scene;
 	}

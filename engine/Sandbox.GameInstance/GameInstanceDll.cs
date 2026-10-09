@@ -568,7 +568,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		if ( !string.IsNullOrEmpty( message ) )
 		{
 			//	using var scope = GlobalContext.MenuScope();
-			IModalSystem.Current.Notice( "Disconnected", message, "wifi_off" );
+			IModalSystem.Current?.Notice( "Disconnected", message, "wifi_off" );
 		}
 
 		LoadingScreen.IsVisible = false;

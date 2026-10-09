@@ -95,6 +95,15 @@ public static partial class EditorUtility
 			string metadataKey,
 			string fallbackPath,
 			Func<string, Pixmap> loader )
+			=> ResolveProjectAsset<Pixmap>( root, projectFile, metadataKey, fallbackPath, loader );
+
+		// The SDL splash uses Bitmap, Qt windows continue to use the Pixmap overload.
+		internal static T ResolveProjectAsset<T>(
+			JsonElement root,
+			string projectFile,
+			string metadataKey,
+			string fallbackPath,
+			Func<string, T> loader ) where T : class
 		{
 			if ( root.ValueKind != JsonValueKind.Object || string.IsNullOrEmpty( projectFile ) )
 				return loader( fallbackPath );
@@ -102,8 +111,8 @@ public static partial class EditorUtility
 			string relative = null;
 
 			// Try metadata lookup: Metadata[metadataKey]
-			if ( root.TryGetProperty( "Metadata", out var meta ) &&
-				meta.TryGetProperty( metadataKey, out var metaValue ) )
+			if ( root.TryGetProperty( "Metadata", out var meta ) && meta.ValueKind == JsonValueKind.Object &&
+				meta.TryGetProperty( metadataKey, out var metaValue ) && metaValue.ValueKind == JsonValueKind.String )
 			{
 				relative = metaValue.GetString();
 			}
@@ -117,7 +126,7 @@ public static partial class EditorUtility
 
 			// Load resolved file or fallback, just in case
 			return File.Exists( fullPath )
-				? loader( fullPath )
+				? loader( fullPath ) ?? loader( fallbackPath )
 				: loader( fallbackPath );
 		}
 

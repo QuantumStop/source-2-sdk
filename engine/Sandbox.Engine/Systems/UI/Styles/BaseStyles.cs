@@ -1,4 +1,4 @@
-﻿namespace Sandbox.UI;
+namespace Sandbox.UI;
 
 public abstract partial class BaseStyles : ICloneable
 {
@@ -155,6 +155,37 @@ public abstract partial class BaseStyles : ICloneable
 		}
 
 		return false;
+	}
+
+	static bool TryParseTimeSeconds( string value, out float seconds )
+	{
+		seconds = 0;
+		if ( string.IsNullOrWhiteSpace( value ) )
+			return false;
+
+		value = value.Trim();
+
+		if ( value.EndsWith( "ms", StringComparison.OrdinalIgnoreCase ) )
+		{
+			var num = value[..^2].Trim();
+			if ( !float.TryParse( num, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ms ) )
+				return false;
+
+			seconds = ms / 1000f;
+			return true;
+		}
+
+		if ( value.EndsWith( "s", StringComparison.OrdinalIgnoreCase ) )
+		{
+			var num = value[..^1].Trim();
+			if ( !float.TryParse( num, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s ) )
+				return false;
+
+			seconds = s;
+			return true;
+		}
+
+		return float.TryParse( value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out seconds );
 	}
 
 	static OverscrollBehavior? ParseOverscrollBehavior( string value ) => value.Trim().ToLowerInvariant() switch

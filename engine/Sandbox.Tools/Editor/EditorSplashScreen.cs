@@ -1,98 +1,164 @@
+using Sandbox.DataModel;
+using Sandbox.Engine;
+using Sandbox.UI;
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
+using PanelLabel = Sandbox.UI.Label;
+
+namespace Editor;
 
 internal sealed class EditorSplashScreen : PanelWindow
 {
 	internal static EditorSplashScreen Singleton;
 
-		Pixmap BackgroundImage;
+	internal const string DefaultSplashScreen = "common/splash_screen.png";
+	internal const string DefaultIcon = "common/logo.png";
+	const float SplashWidth = 580;
+	const float ProgressAreaHeight = 14;
+	const float LogOverlayHeight = 30;
+	const float ProgressInset = 2;
 
-		const float InfoAreaHeight = 64;
+	readonly Texture BackgroundImage;
+	readonly Panel ProgressBar;
+	readonly PanelLabel MessageLabel;
+	Color ProgressTrackColor = new( 42f / 255f, 52f / 255f, 79f / 255f, 1f );
+	Color ProgressFillColor = new( 52f / 255f, 80f / 255f, 160f / 255f, 1f );
+	long LastFrame;
+	bool IsPumping;
+	string LatestMessage = "Starting...";
 
-		public EditorSplashScreen() : base( null, true )
+	public EditorSplashScreen() : base( "Opening S&Box Editor", new Vector2( SplashWidth, 384 ), EditorCookie.Get<Vector2?>( "splash.position", null ), borderless: true )
+	{
+		try
 		{
-			WindowFlags = WindowFlags.Window | WindowFlags.Customized | WindowFlags.FramelessWindowHint | WindowFlags.MSWindowsFixedSizeDialogHint;
+			Resizable = false;
+			CanMaximize = false;
+			CanClose = false;
+			ResizeBorder = 0;
+			DropShadow = false;
+			RoundedCorners = false;
+
+			var projectFile = Sandbox.Utility.CommandLine.GetSwitch( "-project", "" ).TrimQuoted();
+			var config = ReadProjectConfig( projectFile );
+			Title = $"Opening {ResolveProjectTitle( config )}";
+
+			using var image = EditorUtility.Projects.ResolveProjectAsset<Bitmap>( config, projectFile, ProjectConfig.MetaSplashKey, DefaultSplashScreen, LoadImage );
+			using var icon = EditorUtility.Projects.ResolveProjectAsset<Bitmap>( config, projectFile, ProjectConfig.MetaIconKey, DefaultIcon, LoadImage );
+			SetIcon( icon );
+			BackgroundImage = image.ToTexture();
+			UpdateProgressColorsFromSplash( image );
+
+			var imageHeight = MathF.Floor( SplashWidth * image.Height / image.Width );
+			Size = new Vector2( SplashWidth, imageHeight + ProgressAreaHeight );
+			MoveToCenter();
+
+			Root.AddClass( "window-drag" );
+			Root.Style.Position = PositionMode.Relative;
+			Root.Style.FlexDirection = FlexDirection.Column;
+
+			var artwork = Root.Add.Panel();
+			artwork.Style.Position = PositionMode.Relative;
+			artwork.Style.Height = imageHeight;
+			artwork.Style.FlexShrink = 0;
+			artwork.Style.BackgroundImage = BackgroundImage;
+			artwork.Style.Set( "background-size: 100% 100%; background-repeat: no-repeat;" );
+
+			// Keep our translucent status strip over the artwork.
+			var status = artwork.Add.Panel();
+			status.Style.Set( "position: absolute; left: 0; right: 0; top: 0; padding: 4px 8px; align-items: center;" );
+			status.Style.Height = LogOverlayHeight;
+			status.Style.BackgroundColor = Color.Black.WithAlpha( 0.55f );
+			MessageLabel = status.AddChild<PanelLabel>();
+			MessageLabel.Selectable = false;
+			MessageLabel.Text = LatestMessage;
+			MessageLabel.Style.Set( "font-family: Century Gothic; font-size: 13px; font-weight: 400; white-space: nowrap; overflow: hidden;" );
+			MessageLabel.Style.FontColor = Color.White.WithAlpha( 0.85f );
+
+			var track = Root.Add.Panel();
+			track.Style.Height = ProgressAreaHeight;
+			track.Style.FlexShrink = 0;
+			track.Style.Padding = ProgressInset;
+			track.Style.BackgroundColor = ProgressTrackColor;
+			ProgressBar = track.Add.Panel();
+			ProgressBar.Style.Width = 0;
+			ProgressBar.Style.Height = Length.Percent( 100 );
+			ProgressBar.Style.Set( "border-radius: 2px;" );
+			ProgressBar.Style.BackgroundColor = ProgressFillColor;
+
 			Singleton = this;
-			DeleteOnClose = true;
-
-			WindowTitle = "Opening s&box Editor";
-			SetWindowIcon( Pixmap.FromFile( "logo_rounded.png" ) );
-			BackgroundImage = LoadSplashImage();
-
-			// load any saved geometry
-			string geometryCookie = EditorCookie.GetString( "splash.geometry", null );
-			RestoreGeometry( geometryCookie );
-
-			var aspect = (float)BackgroundImage.Height / BackgroundImage.Width;
-			Size = new( 700, (700 * aspect).FloorToInt() + InfoAreaHeight );
-
-			Show();
-
-			UpdateGeometry();
-			CenterWindow();
-
-			//
-			// Resample background image if dpi scale is gonna make us draw it bigger
-			//
-			if ( DpiScale != 1.0f )
-			{
-				BackgroundImage = BackgroundImage.Resize( BackgroundImage.Size * DpiScale );
-			}
-
-			WidgetUtil.MakeWindowDraggable( _widget );
-
-			ConstrainToScreen();
-
-			g_pToolFramework2.SetStallMonitorMainThreadWindow( _widget );
+			Logging.OnMessage += OnConsoleMessage;
 		}
-
-		/// <summary>
-		/// Try to load project's splash_screen.png from its root,
-		/// Falls back to the default built-in screen
-		/// </summary>
-		static Pixmap LoadSplashImage()
+		catch
 		{
-			var projectPath = Sandbox.Utility.CommandLine.GetSwitch( "-project", "" ).TrimQuoted();
-
-			if ( !string.IsNullOrEmpty( projectPath ) )
-			{
-				var projectDir = Path.GetDirectoryName( Path.GetFullPath( projectPath ) );
-				var customSplash = Path.Combine( projectDir, "splash_screen.png" );
-
-				if ( File.Exists( customSplash ) )
-				{
-					var pixmap = Pixmap.FromFile( customSplash );
-					if ( pixmap is not null )
-						return pixmap;
-				}
-			}
-
-			return Pixmap.FromFile( "splash_screen.png" );
+			Dispose();
+			throw;
 		}
+	}
 
-		public override void OnDestroyed()
+	static JsonElement ReadProjectConfig( string projectFile )
+	{
+		if ( string.IsNullOrEmpty( projectFile ) || !File.Exists( projectFile ) ) return default;
+		try
 		{
-			base.OnDestroyed();
+			using var document = JsonDocument.Parse( File.ReadAllText( projectFile ) );
+			return document.RootElement.Clone();
+		}
+		catch ( Exception e )
+		{
+			Log.Warning( $"Couldn't read splash branding from '{projectFile}': {e.Message}" );
+			return default;
+		}
+	}
+
+	static string ResolveProjectTitle( JsonElement root )
+	{
+		if ( root.ValueKind == JsonValueKind.Object && root.TryGetProperty( "Title", out var title ) && title.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace( title.GetString() ) )
+			return title.GetString();
+
+		return "S&Box Editor";
+	}
+
+	static Bitmap LoadImage( string path )
+	{
+		try
+		{
+			// Project assets are absolute paths: the project has not been mounted yet.
+			var bytes = Path.IsPathRooted( path )
+				? File.ReadAllBytes( path )
+				: FileSystem.Root.ReadAllBytes( $"/core/tools/images/{path}" ).ToArray();
+			return Bitmap.CreateFromBytes( bytes );
+		}
+		catch ( Exception e )
+		{
+			Log.Warning( $"Couldn't load splash asset '{path}': {e.Message}" );
+			return null;
+		}
+	}
+
+	void OnConsoleMessage( LogEvent message )
+	{
+		// Logging can reenter while a frame is being drawn. Only touch panels in Pump.
+		LatestMessage = message.Message;
+		Pump();
+	}
+
+	private protected override void OnClosing()
+	{
+		Logging.OnMessage -= OnConsoleMessage;
+		EditorCookie.Set( "splash.position", Position );
+		if ( Singleton == this )
+		{
+			g_pToolFramework2.SetStallMonitorPanelWindow( IntPtr.Zero );
 			Singleton = null;
 		}
+		BackgroundImage?.Dispose();
+		base.OnClosing();
+	}
 
-		public static void StartupFinish()
-		{
-			if ( Singleton.IsValid() )
-			{
-				EditorCookie.Set( "splash.geometry", Singleton.SaveGeometry() );
-				Singleton.Destroy();
-			}
+	public static void StartupFinish() => Singleton?.Dispose();
 
-			Singleton = null;
-		}
-
-		string LatestMessage;
-		float Progress;
-
-	/// <summary>
-	/// Updates the progress bar.
-	/// </summary>
 	public static void SetProgress( float progress )
 	{
 		if ( Singleton is not { IsOpen: true } splash ) return;
@@ -100,116 +166,69 @@ internal sealed class EditorSplashScreen : PanelWindow
 		Pump();
 	}
 
-	/// <summary>
-	/// Set the current displayed message.
-	/// </summary>
 	public static void SetMessage( string message )
 	{
 		if ( Singleton is not { IsOpen: true } splash ) return;
-		splash.MessageLabel.Text = message ?? "Starting editor…";
+		splash.LatestMessage = message ?? "Starting...";
 		Application.Spin();
 		NativeEngine.EngineGlobal.ToolsStallMonitor_IndicateActivity();
 	}
 
-		protected override bool OnClose()
+	internal static void RestoreStallMonitor()
+	{
+		if ( Singleton is { IsOpen: true } splash )
+			g_pToolFramework2.SetStallMonitorPanelWindow( splash.Handle );
+	}
+
+	/// <summary>Present during blocking startup, including nested Qt event loops.</summary>
+	internal static void Pump()
+	{
+		if ( Singleton is not { IsOpen: true } splash || splash.IsPumping ) return;
+		if ( Stopwatch.GetElapsedTime( splash.LastFrame ).TotalMilliseconds < 16 ) return;
+
+		splash.IsPumping = true;
+		try
 		{
-			return false;
+			SdlEvents.Poll();
+			if ( !splash.IsOpen || (!splash.IsVisible && splash.IsShown) ) return;
+			splash.MessageLabel.Text = splash.LatestMessage;
+			if ( splash.Frame() ) PanelWindows.FrameEnd();
+			RestoreStallMonitor();
+			splash.LastFrame = Stopwatch.GetTimestamp();
 		}
-
-		protected override void OnPaint()
+		finally
 		{
-			var imageRect = LocalRect;
-			imageRect.Bottom -= BottomAreaHeight;
-			Paint.Draw( imageRect, BackgroundImage );
+			splash.IsPumping = false;
+		}
+	}
 
-			DisplayedMessage = PendingMessage;
+	void UpdateProgressColorsFromSplash( Bitmap image )
+	{
+		int stepX = Math.Max( 1, image.Width / 56 );
+		int stepY = Math.Max( 1, image.Height / 56 );
+		double sumR = 0, sumG = 0, sumB = 0, weightSum = 0;
 
-			var logRect = new Rect( imageRect.Left, imageRect.Top, imageRect.Width, LogOverlayHeight );
-			var progressAreaRect = new Rect( LocalRect.Left, imageRect.Bottom, LocalRect.Width, ProgressAreaHeight );
-
-			Paint.ClearPen();
-			Paint.SetBrush( Color.Black.WithAlpha( 0.55f ) );
-			Paint.DrawRect( logRect );
-
-			var textRect = logRect.Shrink( 8, 4 );
-
-			Paint.SetPen( Color.White.WithAlpha( 0.85f ) );
-			Paint.SetFont( "Century Gothic", 8, 400 );
-			Paint.DrawText( textRect, LatestMessage ?? DisplayedMessage ?? "Bootstrapping..", TextFlag.LeftCenter );
-
-			Paint.ClearPen();
-			Paint.SetBrush( ProgressTrackColor );
-			Paint.DrawRect( progressAreaRect );
-
-			if ( Progress > 0f )
+		for ( int y = 0; y < image.Height; y += stepY )
+		{
+			for ( int x = 0; x < image.Width; x += stepX )
 			{
-				var fillRect = progressAreaRect.Shrink( ProgressInset );
-				fillRect.Width *= Progress;
-
-				Paint.SetBrush( ProgressFillColor );
-				Paint.DrawRect( fillRect, 2.0f );
+				var color = image.GetPixel( x, y );
+				if ( color.a <= 0.01f ) continue;
+				sumR += color.r * color.a;
+				sumG += color.g * color.a;
+				sumB += color.b * color.a;
+				weightSum += color.a;
 			}
 		}
 
-		private string ResolveProjectTitle( JsonElement root )
-		{
-			if ( root.TryGetProperty( "Title", out var titleProp ) )
-				return titleProp.GetString();
-
-			return "S&Box Editor";
-		}
-
-		void UpdateProgressColorsFromSplash()
-		{
-			if ( BackgroundImage is null || BackgroundImage.Width <= 0 || BackgroundImage.Height <= 0 )
-				return;
-
-			int stepX = Math.Max( 1, BackgroundImage.Width / 56 );
-			int stepY = Math.Max( 1, BackgroundImage.Height / 56 );
-
-			double sumR = 0;
-			double sumG = 0;
-			double sumB = 0;
-			double weightSum = 0;
-
-			for ( int y = 0; y < BackgroundImage.Height; y += stepY )
-			{
-				for ( int x = 0; x < BackgroundImage.Width; x += stepX )
-				{
-					var c = BackgroundImage.GetPixel( x, y );
-					if ( c.a <= 0.01f )
-						continue;
-
-					double w = c.a;
-					sumR += c.r * w;
-					sumG += c.g * w;
-					sumB += c.b * w;
-					weightSum += w;
-				}
-			}
-
-			if ( weightSum <= 0.0 )
-				return;
-
-			float avgR = (float)(sumR / weightSum);
-			float avgG = (float)(sumG / weightSum);
-			float avgB = (float)(sumB / weightSum);
-
-			// Keep the splash tone, but nudge it brighter for a clearer progress fill.
-			ProgressFillColor = new Color(
-				Math.Min( 1f, avgR * 0.85f + 0.12f ),
-				Math.Min( 1f, avgG * 0.85f + 0.12f ),
-				Math.Min( 1f, avgB * 0.85f + 0.12f ),
-				1f
-			);
-
-			// Same hue family, much darker for contrast against the fill.
-			ProgressTrackColor = new Color(
-				Math.Max( 0.03f, ProgressFillColor.r * 0.22f ),
-				Math.Max( 0.03f, ProgressFillColor.g * 0.22f ),
-				Math.Max( 0.03f, ProgressFillColor.b * 0.22f ),
-				1f
-			);
-		}
+		if ( weightSum <= 0 ) return;
+		ProgressFillColor = new Color(
+			Math.Min( 1f, (float)(sumR / weightSum) * 0.85f + 0.12f ),
+			Math.Min( 1f, (float)(sumG / weightSum) * 0.85f + 0.12f ),
+			Math.Min( 1f, (float)(sumB / weightSum) * 0.85f + 0.12f ), 1f );
+		ProgressTrackColor = new Color(
+			Math.Max( 0.03f, ProgressFillColor.r * 0.22f ),
+			Math.Max( 0.03f, ProgressFillColor.g * 0.22f ),
+			Math.Max( 0.03f, ProgressFillColor.b * 0.22f ), 1f );
 	}
 }

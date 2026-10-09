@@ -139,16 +139,8 @@ internal static class LobbyManager
 	{
 		Log.Info( $"Got invite to lobby {lobbyid} from {memberid}" );
 
-		var friend = new Friend( memberid );
-		var lobby = new Steamworks.Data.Lobby( lobbyid );
-
-		// TODO - store pending invites somewhere, or something?
-		// What if they're in a game?
-
-		using ( IMenuDll.Current?.PushScope() )
-		{
-			IMenuSystem.Current.Question( $"{friend.Name} invited you to a party!", "celebration", () => _ = PartyRoom.Join( lobby ), null );
-		}
+		// The platform menu was removed. Keep invitations as something we know about
+		// until that UI supplies a way to accept it, never join a party just as is rn.
 	}
 
 	static IEnumerable<ILobby> EnumerateLobbies( ulong id )

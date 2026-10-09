@@ -1,15 +1,19 @@
-using Native;
+using Sandbox.Engine;
 using System;
 
 namespace Editor;
 
 /// <summary>
-/// Registers a widget with the input system, so it uses SDL.
+/// Registers a widget with the input system to use SDL and manages
+/// inputs and focus as it relates to the editor's game widget.
 /// </summary>
 public static class GameMode
 {
 	static SceneRenderingWidget _inPlay;
 	static IntPtr _playWindow;
+	static IntPtr _hostWindow;
+	static IntPtr _editorMainWindow;
+	static bool _ownsHostWindowRegistration;
 	internal static IntPtr PlayWindow { get; private set; }
 	internal static SceneRenderingWidget PlayWidget => _inPlay.IsValid() ? _inPlay : null;
 
@@ -24,7 +28,9 @@ public static class GameMode
 	/// <param name="widget"></param>
 	public static void SetPlayWidget( SceneRenderingWidget widget )
 	{
-		if ( _inPlay == widget ) return;
+		var renderWindow = widget._widget.winId();
+		var hostWindow = (widget.GetWindow() ?? widget)._widget.winId();
+		if ( _inPlay == widget && _playWindow == renderWindow && _hostWindow == hostWindow ) return;
 
 		ClearPlayMode();
 
@@ -39,6 +45,18 @@ public static class GameMode
 
 		_playWindow = widget._widget.winId();
 		NativeEngine.InputSystem.RegisterWindowWithSDL( _playWindow );
+
+		// Our detached play windows need their own SDL host for relative mouse and IME input.
+		var editorWindow = Sandbox.Internal.GlobalToolsNamespace.EditorWindow;
+		_editorMainWindow = editorWindow.IsValid() ? editorWindow._widget.winId() : IntPtr.Zero;
+		_hostWindow = hostWindow;
+		_ownsHostWindowRegistration = hostWindow != IntPtr.Zero && hostWindow != _playWindow && hostWindow != _editorMainWindow;
+		if ( _ownsHostWindowRegistration )
+		{
+			NativeEngine.InputSystem.RegisterWindowWithSDL( hostWindow );
+			if ( _editorMainWindow != IntPtr.Zero ) WindowInput.SetEditorMainWindow( hostWindow );
+		}
+
 		PlayWindow = NativeEngine.GameWindowNative.FromNativeHandle( _playWindow );
 		NativeEngine.GameWindowNative.SetRenderTarget( PlayWindow, widget.SwapChain );
 
@@ -46,7 +64,6 @@ public static class GameMode
 		// m_bIsMainWindow flag so GetGPUFrameTimeMS reports the running game's GPU frame time.
 		g_pRenderDevice.SetSwapChainIsMainWindow( widget.SwapChain, true );
 
-		_focusWindowId = renderWindowId;
 		_inPlay = widget;
 
 		// Starting play through automation must not activate a background or minimized editor.
@@ -58,8 +75,6 @@ public static class GameMode
 	/// </summary>
 	public static void ClearPlayMode()
 	{
-		UnregisterCurrent();
-
 		if ( _inPlay is null )
 			return;
 
@@ -78,8 +93,16 @@ public static class GameMode
 		// Teardown also runs after Qt destroys the widget, when winId() is no longer safe.
 		Sandbox.Engine.WindowInput.OnEditorGameFocusChange( _playWindow, false );
 		NativeEngine.GameWindowNative.SetRenderTarget( IntPtr.Zero, default );
+		if ( _ownsHostWindowRegistration )
+		{
+			if ( _editorMainWindow != IntPtr.Zero ) WindowInput.SetEditorMainWindow( _editorMainWindow );
+			NativeEngine.InputSystem.UnregisterWindowFromSDL( _hostWindow );
+		}
 		NativeEngine.InputSystem.UnregisterWindowFromSDL( _playWindow );
 		_playWindow = default;
+		_hostWindow = default;
+		_editorMainWindow = default;
+		_ownsHostWindowRegistration = false;
 		PlayWindow = default;
 
 		g_pRenderDevice.SetSwapChainIsMainWindow( widget.SwapChain, false );
@@ -90,7 +113,7 @@ public static class GameMode
 	/// </summary>
 	private static void WidgetFocused( FocusChangeReason reason )
 	{
-		if ( _focusWindowId == 0 )
+		if ( _inPlay is null )
 			return;
 
 		Sandbox.Engine.WindowInput.OnEditorGameFocusChange( _playWindow, true );
@@ -101,67 +124,21 @@ public static class GameMode
 	/// </summary>
 	private static void WidgetBlurred( FocusChangeReason reason )
 	{
-		if ( _focusWindowId == 0 )
+		if ( _inPlay is null )
 			return;
 
 		Sandbox.Engine.WindowInput.OnEditorGameFocusChange( _playWindow, false );
 	}
 
-	static void UnregisterCurrent()
+	private static void OnPlayWidgetMouseMove( Vector2 local )
 	{
-		if ( _inPlay.IsValid() )
-		{
-			_inPlay.Blur();
-		}
+		// SDL handles position when the widget is focused, only fill in the gap when unfocused.
+		if ( _inPlay is null || _inPlay.IsFocused )
+			return;
 
-		if ( _focusSource.IsValid() )
-		{
-			_focusSource.Focused -= WidgetFocused;
-			_focusSource.Blurred -= WidgetBlurred;
-		}
+		var pos = new Vector2( (int)local.x, (int)local.y );
+		var delta = pos - InputRouter.MouseCursorPosition;
 
-		if ( _focusWindowId != 0 )
-		{
-			NativeEngine.InputSystem.OnEditorGameFocusChange( _focusWindowId, false );
-		}
-
-		if ( _registeredRenderWindowId != 0 )
-		{
-			NativeEngine.InputSystem.UnregisterWindowFromSDL( _registeredRenderWindowId );
-		}
-
-		if ( _ownsHostWindowRegistration && _registeredHostWindowId != 0 )
-		{
-			NativeEngine.InputSystem.UnregisterWindowFromSDL( _registeredHostWindowId );
-		}
-
-		if ( _switchedEditorMainWindow && _editorMainWindowId != 0 )
-		{
-			NativeEngine.InputSystem.SetEditorMainWindow( _editorMainWindowId );
-		}
-
-		_inPlay = null;
-		_focusSource = null;
-		_registeredHostWindowId = 0;
-		_registeredRenderWindowId = 0;
-		_focusWindowId = 0;
-		_editorMainWindowId = 0;
-		_switchedEditorMainWindow = false;
-		_ownsHostWindowRegistration = false;
-	}
-
-	static bool IsEditorMainWindow( nint windowId )
-	{
-		var editorMainId = GetEditorMainWindowId();
-		return editorMainId != 0 && editorMainId == windowId;
-	}
-
-	static nint GetEditorMainWindowId()
-	{
-		var editorWindow = Sandbox.Internal.GlobalToolsNamespace.EditorWindow;
-		if ( !editorWindow.IsValid() )
-			return 0;
-
-		return (nint)editorWindow._widget.winId();
+		InputRouter.OnMousePositionChange( pos.x, pos.y, delta.x, delta.y );
 	}
 }

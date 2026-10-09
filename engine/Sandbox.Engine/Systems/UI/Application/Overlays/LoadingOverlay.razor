@@ -13,13 +13,11 @@
 
 			<Image class="loading-clock" src="ui/static/elements/stopwatch.png"/>
 
-			@if ( string.IsNullOrWhiteSpace( LoadingScreen.Title ) )
+			<div class="status">@Status</div>
+
+			@if ( DownloadPercent is { } percent )
 			{
-				<div class="status">@FormatStatus( LoadingScreen.Tasks.FirstOrDefault()?.Title )</div>
-			}
-			else
-			{
-				<div class="status">@FormatStatus( LoadingScreen.Title )</div>
+				<div class="download-status">@percent% downloaded</div>
 			}
 
 		</div>
@@ -33,6 +31,35 @@
 	public const string LoadingSplash = "ui/static/ignis_splash.png";
 
 	bool ShouldShow => LoadingScreen.IsVisible;
+	string Status => FormatStatus( string.IsNullOrWhiteSpace( LoadingScreen.Title )
+		? LoadingScreen.Tasks.FirstOrDefault()?.Title
+		: LoadingScreen.Title );
+
+	// Weight packages by bytes, including completed downloads, so parallel downloads share one total.
+	// This is download progress only: scene loading/compilation can still follow a completed download.
+	int? DownloadPercent
+	{
+		get
+		{
+			double total = 0;
+			double downloaded = 0;
+			foreach ( var download in LoadingScreen.Downloads )
+			{
+				if ( download.TotalSize <= 0 ) continue;
+				total += download.TotalSize;
+				downloaded += download.TotalSize * download.Fraction;
+			}
+
+			if ( total > 0 )
+				return (int)Math.Floor( Math.Clamp( downloaded / total, 0, 1 ) * 100 );
+
+			// Party preloads can report a single download without reserving packages first.
+			if ( LoadingScreen.Progress is { TotalSize: > 0 } progress && double.IsFinite( progress.Fraction ) )
+				return (int)Math.Floor( Math.Clamp( progress.Fraction, 0, 1 ) * 100 );
+
+			return null;
+		}
+	}
 
 	string FormatStatus( string text )
 	{
@@ -58,7 +85,7 @@
 	}
 
 	protected override int BuildHash()
-		=> HashCode.Combine( ShouldShow, LoadingScreen.Title, LoadingScreen.Subtitle, LoadingScreen.Media );
+		=> HashCode.Combine( ShouldShow, Status, LoadingScreen.Subtitle, DownloadPercent );
 	
 	public override void Tick()
 	{

@@ -92,6 +92,8 @@ engine/TestResults/
 /game/config/**/*.json
 /game/config/**/*.json.backup
 /game/core/cfg/*.vcfg
+/game/core/cfg/machine_convars.json
+/game/core/cfg/user_keys*
 /game/core/cfg/video.txt
 /game/core/cfg/video_tools.txt
 /game/data

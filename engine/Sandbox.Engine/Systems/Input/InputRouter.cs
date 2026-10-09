@@ -101,12 +101,11 @@ internal static partial class InputRouter
 
 			public bool MoveNext()
 			{
-				// Looked up as we go, like the iterator did: the menu first, then the game (if we even have a game menu!)
-				while ( _next < 2 )
+				// Our UI shares the game context
+				while ( _next < 1 )
 				{
-					var context = _next++ == 0
-						? IMenuDll.Current?.InputContext
-						: (IGameInstance.Current is not null ? IGameInstanceDll.Current.InputContext : null);
+					_next++;
+					var context = IGameInstance.Current is not null ? IGameInstanceDll.Current.InputContext : null;
 
 					if ( context is null ) continue;
 

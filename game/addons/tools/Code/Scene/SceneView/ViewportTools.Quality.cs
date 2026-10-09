@@ -5,7 +5,7 @@ namespace Editor;
 partial class ViewportTools
 {
 	// Global settings shared with the game, not a per-viewport override.
-	void OpenQualityMenu()
+	public void OpenQualityMenu()
 	{
 		var menu = new ContextMenu( this );
 		var settings = EditorUtility.RenderSettings;

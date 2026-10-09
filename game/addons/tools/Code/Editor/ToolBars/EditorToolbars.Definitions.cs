@@ -518,8 +518,8 @@ public static partial class EditorToolBars
 		new () {
 	Name = "Run Game",
 			ShortcutAction = "editor.toggle-play",
-			Icon = "hammer/run_map.png",
-			ToggledIcon = "hammer/run_map_activated.png",
+			Icon = "hammer/play_map.png",
+			ToggledIcon = "hammer/play_map_activated.png",
 			Hotkey = "F5",
 			Description = "Run Game",
 			ActionType = ToolActionType.MethodCall,
@@ -573,11 +573,31 @@ public static partial class EditorToolBars
 
 		new () { Separator=true },
 		new () { Separator=true },
-
+		new () {
+	Name = "Compile Map",
+			ShortcutAction = "editor.compile",
+			Icon = "hammer/run_map.png",
+			Description = "Compile Map",
+			Checkable = false,
+			ActionType = ToolActionType.MethodCall,
+			Method = () => SceneCompilerWindow.Open(),
+			DisableDuringPlay = false,
+			ConditionalOn = "Run Game"
+		},
+		new () {
+	Name = "Graphics Quality",
+			Icon = "hammer/gfx_quality_activated.png",
+			Description = "Graphics Quality",
+			Checkable = false,
+			ActionType = ToolActionType.MethodCall,
+			Method = () => SceneViewWidget.Current.ViewportTools.OpenQualityMenu(),
+			DisableDuringPlay = false,
+			ConditionalOn = "Run Game"
+		},
 		new () {
 	Name = "Network Settings",
 			ShortcutAction = "editor.eject",
-			Icon = "hammer/network_settings.png",
+			Icon = "hammer/network_settings_activated.png",
 			Description = "Network Settings",
 			Checkable = false,
 			ActionType = ToolActionType.MethodCall,

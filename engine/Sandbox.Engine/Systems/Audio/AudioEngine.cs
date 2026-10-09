@@ -65,7 +65,7 @@ public static partial class AudioEngine
 	[ConVar( "snd_mute_losefocus", ConVarFlags.Saved )]
 	public static bool MuteLoseFocus { get; set; }
 
-	public static bool IsFocused => InputSystem.IsAppActive();
+	public static bool IsFocused => WindowInput.IsAppActive();
 
 	/// <summary>
 	/// Called every frame. 

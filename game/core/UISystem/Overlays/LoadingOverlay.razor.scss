@@ -65,6 +65,12 @@ LoadingOverlay.base-default
 			object-fit: contain;
 			flex-shrink: 0;
 		}
+
+		.download-status
+		{
+			font-size: 2vh;
+			font-weight: 400;
+		}
 	}
 
 

@@ -148,7 +148,6 @@ internal static class HeavyScene
 
 		var tonemapping = camera.GameObject.Components.Create<Tonemapping>();
 		tonemapping.Mode = Tonemapping.TonemappingMode.ACES;
-		tonemapping.AutoExposureEnabled = false;
 		camera.GameObject.Components.Create<Bloom>();
 
 		frame = 0;

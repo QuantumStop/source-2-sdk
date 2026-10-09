@@ -75,7 +75,7 @@ public class CameraEditorTool : EditorTool<CameraComponent>
 
 	private void ExitCameraToolMode()
 	{
-		EditorToolManager.CurrentModeName = nameof( ObjectEditorTool );
+		MeshEditor.MeshTool.ActivateTool();
 		SceneViewWidget.Current?.LastSelectedViewportWidget?.SourceCamera = null;
 	}
 
