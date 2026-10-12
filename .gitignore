@@ -143,3 +143,5 @@ game/core/maps/editor/_bakeresourcecache
 !game/samples/sweeper/Assets/c17imgseq/*
 !game/samples/sweeper/Assets/**
 !game/samples/sweeper/code/UI/**
+game/bin/thirdparty/fmod.dll
+game/bin/thirdparty/fmodstudio.dll
