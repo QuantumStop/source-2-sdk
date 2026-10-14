@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sandbox.GameInstance\Sandbox.GameInstance.csproj" />
+    <ProjectReference Include="..\Sandbox.SceneRenderer\Sandbox.SceneRenderer.csproj" />
     <ProjectReference Include="..\Sandbox.Tools\Sandbox.Tools.csproj" />
   </ItemGroup>
 

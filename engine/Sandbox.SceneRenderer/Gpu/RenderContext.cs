@@ -21,6 +21,9 @@ internal sealed class RenderContext : IDisposable
 	bool mergedValid;
 	bool borrowed;
 	RenderContext frame;
+	bool debugMarkers;
+
+	internal bool GpuScopesEnabled => Sandbox.Diagnostics.GpuProfilerStats.Enabled || debugMarkers;
 
 	/// <summary>
 	/// A frame's own context.
@@ -275,27 +278,47 @@ internal sealed class RenderContext : IDisposable
 	}
 
 	/// <summary>
-	/// Start a GPU timing scope for the engine's GPU profiler (native's managed perf markers, which command lists use too),
-	/// while it's on. Zero when it's off, and on the async compute queue, which native's timestamps don't support
-	/// (<c>CSceneSystem::SubmitViews</c>).
+	/// Start an explicitly bounded GPU pass on the current graphics or compute context.
 	/// </summary>
-	public IntPtr BeginGpuScope( string name )
+	public GpuScope BeginGpuScope( string name )
 	{
-		if ( !Sandbox.Diagnostics.GpuProfilerStats.Enabled || AsyncCompute ) return IntPtr.Zero;
+		if ( !GpuScopesEnabled )
+		{
+			return default;
+		}
 
 		// Native takes the name as UTF-8, which a sampler holds; one per name, kept, since layers record on several threads
 		var sampler = gpuScopeNames.GetOrAdd( name, static n => new Sandbox.Rendering.ProfilingSampler( n ) );
-		return CSceneSystem.BeginManagedPerfMarker( context, sampler.NamePtr );
+		var pix = debugMarkers;
+		if ( pix )
+		{
+			context.BeginPixEvent( sampler.NamePtr );
+		}
+
+		var marker = Sandbox.Diagnostics.GpuProfilerStats.Enabled
+			? CSceneSystem.BeginManagedPerfMarker( context, sampler.NamePtr, true, true )
+			: IntPtr.Zero;
+		return new( marker, pix );
 	}
+
+	public readonly record struct GpuScope( IntPtr Marker, bool Pix );
 
 	static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Sandbox.Rendering.ProfilingSampler> gpuScopeNames = new();
 
 	/// <summary>
 	/// End a scope <see cref="BeginGpuScope"/> started.
 	/// </summary>
-	public void EndGpuScope( IntPtr scope )
+	public void EndGpuScope( GpuScope scope )
 	{
-		if ( scope != IntPtr.Zero ) CSceneSystem.EndManagedPerfMarker( context, scope );
+		if ( scope.Marker != IntPtr.Zero )
+		{
+			CSceneSystem.EndManagedPerfMarker( context, scope.Marker );
+		}
+
+		if ( scope.Pix )
+		{
+			context.EndPixEvent();
+		}
 	}
 
 	/// <summary>
@@ -611,6 +634,7 @@ internal sealed class RenderContext : IDisposable
 		borrowed = shared is not null;
 		if ( borrowed && AsyncCompute ) throw new InvalidOperationException( "An async compute context records into its own native context" );
 		context = borrowed ? shared.context : g_pRenderDevice.CreateRenderContext( AsyncCompute ? AsyncComputeQueue : 0 );
+		debugMarkers = borrowed ? shared.debugMarkers : g_pRenderDevice.AreDebugMarkersEnabled();
 
 		// The frame's bindless texture set, as CSceneSystem::InitializeRenderAttributes does for a view
 		if ( frame is null ) Attributes.Get().SetGlobalBindlessDescriptorSet();
@@ -954,12 +978,12 @@ internal sealed class RenderContext : IDisposable
 	}
 
 	/// <summary>
-	/// Resolve depth and build min/max mips using <c>DepthDownsampleLayer</c>.
+	/// Resolve depth and build min/max mips, as native's pipeline does (<see cref="SharedPasses.BuildDepthChain"/>).
 	/// </summary>
 	public void BuildDepthChain( Texture depth, bool multisampled, Texture chain, int width, int height )
 	{
 		Invalidate();
-		Sandbox.Rendering.DepthDownsampleLayer.Render( context, depth, chain, multisampled, width, height );
+		SharedPasses.BuildDepthChain( context, depth, chain, multisampled, width, height );
 	}
 
 	static readonly StringToken SourceDepth = new( "SourceDepth" );
@@ -1004,7 +1028,7 @@ internal sealed class RenderContext : IDisposable
 	}
 
 	/// <summary>
-	/// Quarter-resolution depth blit using <c>QuarterDepthDownsampleLayer</c>, with isolated combos and context view constants.
+	/// Quarter-resolution depth blit (<see cref="SharedPasses.DownsampleQuarterDepth"/>), with isolated combos and context view constants.
 	/// </summary>
 	public void DownsampleQuarterDepth( Graphics.ManagedView target, Texture depth, bool multisampled )
 	{
@@ -1014,7 +1038,7 @@ internal sealed class RenderContext : IDisposable
 		attributes.Set( SourceDepth, depth );
 		using ( new Graphics.Scope( context, target ) )
 		{
-			Sandbox.Rendering.QuarterDepthDownsampleLayer.Render( attributes, multisampled );
+			SharedPasses.DownsampleQuarterDepth( attributes, multisampled );
 		}
 
 		RenderAttributes.Pool.Return( attributes );

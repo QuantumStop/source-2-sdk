@@ -166,6 +166,9 @@ public partial class PartyRoom : ILobby
 		if ( steamLobby.InviteFriend( steamid.ValueUnsigned ) )
 		{
 			Log.Info( $"Party invite to {steamid} sent" );
+
+			// They'll follow us into the game we're in, private or not
+			Networking.AllowJoin( steamid );
 		}
 		else
 		{
@@ -243,8 +246,11 @@ public partial class PartyRoom : ILobby
 	/// </summary>
 	OwnerJoinState DetermineJoinState()
 	{
+		// Still connecting until the host will let the party in, or they'd race our invites and be kicked from a private game
+		var connecting = Networking.IsConnecting || !(Networking.System?.IsReadyForParty ?? true);
+
 		return DetermineJoinState( IGameInstance.Current?.IsLoading ?? LoadingScreen.IsVisible,
-			Networking.IsConnecting, GetGameAddress(), Application.GamePackage is not null && Application.GamePackage is not LocalPackage );
+			connecting, GetGameAddress(), Application.GamePackage is not null && Application.GamePackage is not LocalPackage );
 	}
 
 	internal static OwnerJoinState DetermineJoinState( bool loading, bool connecting, string address, bool hasGame )

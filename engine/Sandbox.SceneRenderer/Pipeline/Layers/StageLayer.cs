@@ -19,12 +19,20 @@ internal sealed class StageLayer : RenderLayer
 	/// </summary>
 	public bool Final { get; }
 
-	public StageLayer( Stage stage, bool color = true, bool final = false ) : base( $"Managed: {stage}" )
+	public StageLayer( Stage stage, bool color = true, bool final = false ) : base( ScopeName( stage ) )
 	{
 		Stage = stage;
 		Color = color;
 		Final = final;
 	}
+
+	internal static string ScopeName( Stage stage ) => stage switch
+	{
+		Stage.AfterViewmodel => "Managed: AfterViewModel",
+		Stage.BeforePostProcess => "Managed: BeforePostProcessing",
+		Stage.AfterPostProcess => "Managed: AfterPostProcessing",
+		_ => $"Managed: {stage}"
+	};
 
 	public override bool IsNeeded( RenderFrame frame ) => frame.Stages is not null;
 
@@ -47,7 +55,7 @@ internal sealed class AsyncStageLayer : RenderLayer
 {
 	public Stage Stage { get; }
 
-	public AsyncStageLayer( Stage stage ) : base( $"Managed: {stage} (async compute)" )
+	public AsyncStageLayer( Stage stage ) : base( $"{StageLayer.ScopeName( stage )} (async compute)" )
 	{
 		Stage = stage;
 	}

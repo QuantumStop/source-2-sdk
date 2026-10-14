@@ -63,6 +63,26 @@ internal class SteamLobbySocket : NetworkSocket, ILobby
 
 	internal override bool SupportsHostMigration => true;
 
+	/// <summary>
+	/// Who the host lets in. Lobbies without it predate privacy being enforced, so assume the worst.
+	/// </summary>
+	internal LobbyPrivacy Privacy => Enum.TryParse<LobbyPrivacy>( SteamLobby.GetData( "access_level" ), out var privacy ) ? privacy : LobbyPrivacy.Private;
+
+	/// <summary>
+	/// Should we tell our Steam friends how to join? Anyone with the lobby id can, so only when the host would let them in.
+	/// </summary>
+	internal bool AdvertiseJoin => Privacy switch
+	{
+		LobbyPrivacy.Public => true,
+		LobbyPrivacy.FriendsOnly => Owner.IsMe,
+		_ => false
+	};
+
+	/// <summary>
+	/// Groups everyone in this game together in the Steam friends list, without giving away the lobby id.
+	/// </summary>
+	internal string PresenceGroup => Privacy == LobbyPrivacy.Public ? $"{LobbySteamId}" : SteamLobby.GetData( "presence_group" );
+
 	public SteamLobbySocket( Lobby lobby )
 	{
 		SteamLobby = lobby;
@@ -145,6 +165,7 @@ internal class SteamLobbySocket : NetworkSocket, ILobby
 		steamlobby.Value.SetData( "protocol", Protocol.Network.ToString() );
 		steamlobby.Value.SetData( "buildid", $"{Application.Version}" );
 		steamlobby.Value.SetData( "access_level", $"{config.Privacy}" );
+		steamlobby.Value.SetData( "presence_group", $"{Guid.NewGuid():N}" );
 
 		return lobby;
 	}

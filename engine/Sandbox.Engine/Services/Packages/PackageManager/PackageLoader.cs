@@ -58,6 +58,19 @@ internal sealed partial class PackageLoader : IDisposable
 		changedPackageDlls.Clear();
 	}
 
+	internal void QueueCompiledAssemblies( IReadOnlyList<CompilerOutput> outputs )
+	{
+		foreach ( var output in outputs )
+		{
+			var package = loadedPackages.FirstOrDefault( x => x.Package is LocalPackage local
+				&& (local.Compiler == output.Compiler || local.EditorCompiler == output.Compiler) );
+			if ( package is null )
+				continue;
+
+			changedPackageDlls.Add( (package, $"/.bin/{output.Compiler.AssemblyName}.dll") );
+		}
+	}
+
 	public void Dispose()
 	{
 		foreach ( var dllWatcher in dllWatchers )
@@ -137,10 +150,7 @@ internal sealed partial class PackageLoader : IDisposable
 										.Where( x => x.ap is not null )
 										.ToArray();
 
-		var changedPackages = changedPackageDlls
-									.Select( x => x.ap )
-									.Distinct()
-									.ToArray();
+		var changedPackages = new HashSet<PackageManager.ActivePackage>();
 
 		//
 		// We need to force-reload any package assemblies that depend on a changed package.
@@ -171,7 +181,9 @@ internal sealed partial class PackageLoader : IDisposable
 			if ( e.filename.EndsWith( ".editor.dll", StringComparison.OrdinalIgnoreCase ) && !ToolsMode )
 				continue;
 
-			var result = LoadAssemblyFromPackage( e.ap, e.filename );
+			var result = LoadAssemblyFromPackage( e.ap, e.filename, skipUnchanged: true );
+			if ( result is not null )
+				changedPackages.Add( e.ap );
 
 			if ( result is not null && !result.FastHotload )
 			{
@@ -236,7 +248,7 @@ internal sealed partial class PackageLoader : IDisposable
 		return assembly is not null;
 	}
 
-	private LoadedAssembly LoadAssemblyFromPackage( PackageManager.ActivePackage ap, string filename, byte[] bytes = null )
+	private LoadedAssembly LoadAssemblyFromPackage( PackageManager.ActivePackage ap, string filename, byte[] bytes = null, bool skipUnchanged = false )
 	{
 		log.Trace( $"Loading \"{filename}\" from {ap.Package.Title}" );
 
@@ -250,6 +262,13 @@ internal sealed partial class PackageLoader : IDisposable
 		Assert.True( ap.AssemblyFileSystem.FileExists( filename ), "File doesn't exist? Maybe a case sensitivity issue??" );
 
 		bytes ??= ap.AssemblyFileSystem.ReadAllBytes( filename ).ToArray();
+		if ( skipUnchanged )
+		{
+			var loaded = Loaded.FirstOrDefault( x => string.Equals( x.Name, assmName, StringComparison.OrdinalIgnoreCase ) );
+			if ( loaded?.CompiledAssemblyBytes is { } previous && bytes.AsSpan().SequenceEqual( previous ) )
+				return null;
+		}
+
 		var dll_stream = new System.IO.MemoryStream( bytes );
 
 		TrustedBinaryStream trustedDll = null;
@@ -563,6 +582,7 @@ internal sealed partial class PackageLoader : IDisposable
 		outgoing.FastHotload = true;
 		outgoing.ModifiedAssembly = incoming?.Assembly;
 		outgoing.CodeArchiveBytes = incoming.CodeArchiveBytes;
+		outgoing.CompiledAssemblyBytes = incoming.CompiledAssemblyBytes;
 		outgoing.Version = incoming.Assembly.GetName().Version;
 		return true;
 	}

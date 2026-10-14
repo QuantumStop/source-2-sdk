@@ -88,7 +88,6 @@ public class PanelLauncherAppSystem : PanelAppSystem
 		window.MinSize = new Vector2( 560, 650 );
 		window.MaxSize = new Vector2( 560, 0 );
 		window.Resizable = true;
-		window.CanResizeHorizontally = false;
 		window.CanMaximize = false;
 
 		var launcher = new LauncherUI.IgnisLauncherWindowRazor { Window = window };

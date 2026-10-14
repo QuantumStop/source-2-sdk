@@ -69,7 +69,7 @@ public class ProjectCreatorPanel : Panel
 		_nameBox.OnTextEdited = _ =>
 		{
 			if ( !_identEdited )
-				_identBox.Text = MakeIdent( ProjectTitle );
+				_identBox.Text = ProjectTemplateFiles.MakeIdent( ProjectTitle );
 
 			UpdatePathPreview();
 		};
@@ -77,7 +77,7 @@ public class ProjectCreatorPanel : Panel
 		var identField = Field( settingsFields, "Ident" );
 		_identBox = identField.AddChild<TextEntry>();
 		_identBox.Placeholder = "source2project";
-		_identBox.Text = MakeIdent( ProjectTitle );
+		_identBox.Text = ProjectTemplateFiles.MakeIdent( ProjectTitle );
 		_identBox.OnTextEdited = _ =>
 		{
 			_identEdited = true;
@@ -124,7 +124,7 @@ public class ProjectCreatorPanel : Panel
 		var buttons = container.Add.Panel( "buttons" );
 
 		_pathPreview = buttons.Add.Label( "", "path-preview" );
-		
+
 		buttons.Add.Panel( "grow" );
 
 		_createButton = buttons.AddChild( new Button( "Create", "add_box", "primarybutton", Create ) );
@@ -251,23 +251,6 @@ public class ProjectCreatorPanel : Panel
 		}
 	}
 
-	static string MakeIdent( string title )
-	{
-		var ident = System.Text.RegularExpressions.Regex.Replace( title.ToLower(), "[^a-z0-9_]", "_" ).Trim( '_' );
-		return ident.Length > 32 ? ident[..32] : ident;
-	}
-
-	static string DefaultProjectName()
-	{
-		string name = "My Project";
-		int i = 1;
-
-		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, MakeIdent( name ) ) ) )
-			name = $"My Project {i++}";
-
-		return name;
-	}
-
 	string ProjectTitle => string.IsNullOrWhiteSpace( _nameBox.Text ) ? "My Project" : _nameBox.Text.Trim();
 
 	string ProjectFolder => string.IsNullOrWhiteSpace( _folderBox.Text ) ? LauncherPreferences.DefaultProjectLocation : _folderBox.Text.Trim();
@@ -276,7 +259,7 @@ public class ProjectCreatorPanel : Panel
 	{
 		get
 		{
-			var ident = MakeIdent( string.IsNullOrWhiteSpace( _identBox.Text ) ? ProjectTitle : _identBox.Text );
+			var ident = ProjectTemplateFiles.MakeIdent( ProjectTitle );
 			return ident.Length == 0 ? "my_project" : ident;
 		}
 	}
@@ -337,7 +320,7 @@ public class ProjectCreatorPanel : Panel
 
 		if ( _selected is not null )
 		{
-			CopyTemplate( _selected.Path, projectPath, config.Ident, config.Title );
+			ProjectTemplateFiles.Copy( _selected.Path, projectPath, config.Ident, config.Title );
 		}
 
 		config.ProjectIcon ??= iconRelativePath;
@@ -370,34 +353,14 @@ public class ProjectCreatorPanel : Panel
 		return $"Editor/Media/{filename}";
 	}
 
-	/// <summary>
-	/// Copy a template into place, replacing $ident and $title the way the Qt creator does. The
-	/// template's own $ident.sbproj is skipped - we write our own.
-	/// </summary>
-	static void CopyTemplate( string from, string to, string ident, string title )
+	static string DefaultProjectName()
 	{
-		foreach ( var file in Directory.EnumerateFiles( from ) )
-		{
-			if ( Path.GetFileName( file ) == "$ident.sbproj" ) continue;
+		string name = "My Project";
+		int i = 1;
 
-			var target = Path.Combine( to, Path.GetFileName( file ).Replace( "$ident", ident ) );
+		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, ProjectTemplateFiles.MakeIdent( name ) ) ) )
+			name = $"My Project {i++}";
 
-			if ( file.EndsWith( ".cs" ) || file.EndsWith( ".json" ) )
-			{
-				var text = File.ReadAllText( file ).Replace( "$title", title ).Replace( "$ident", ident );
-				File.WriteAllText( target, text );
-			}
-			else
-			{
-				File.Copy( file, target, true );
-			}
-		}
-
-		foreach ( var directory in Directory.EnumerateDirectories( from ) )
-		{
-			var target = Path.Combine( to, Path.GetFileName( directory ) );
-			Directory.CreateDirectory( target );
-			CopyTemplate( directory, target, ident, title );
-		}
+		return name;
 	}
 }

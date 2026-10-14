@@ -127,6 +127,7 @@ public static class LoadingScreen
 			//Log.Info( $"Loading: {value}\n{new StackTrace( true ).ToString()}" );
 
 			_loading = value;
+			TextureWebStreaming.UpdateDownloadState();
 
 			// Each load's downloads are its own
 			_downloads.Clear();

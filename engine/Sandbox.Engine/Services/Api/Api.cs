@@ -58,6 +58,11 @@ internal static partial class Api
 			FpsMax = ConVarSystem.GetInt( "fps_max", 0, true ),
 			MSAA = NativeEngine.CSceneSystem.GetMainSwapChainMultisampleType(),
 			VolumeFogDepth = ConVarSystem.GetInt( "volume_fog_depth", 0, true ),
+			AoQuality = AmbientOcclusion.UserQuality,
+			AoResolution = AmbientOcclusion.UserResolution,
+			AoDenoisePasses = AmbientOcclusion.UserDenoisePasses,
+			ManagedSceneRenderer = Rendering.ManagedSceneRendering.Enabled,
+			ManagedAsyncCompute = Rendering.ManagedSceneRendering.AsyncCompute,
 			Application.ExceptionCount,
 
 			// Display mode, so presentation problems can be told apart by how the swapchain was set up

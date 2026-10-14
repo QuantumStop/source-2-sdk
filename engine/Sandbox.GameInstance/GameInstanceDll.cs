@@ -127,6 +127,8 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 	/// </summary>
 	public void ResetEnvironment()
 	{
+		var hadPreviousEnvironment = gameInstance is not null || AssemblyEnroller is not null || DidMountNetworkedFiles;
+
 		using var scope = GlobalContext.GameScope();
 
 		Log.Trace( "Game Menu - ResetEnvironment" );
@@ -252,12 +254,15 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			}
 		};
 
-		// Run GC and finalizers to clear any native resources held
-		GC.Collect();
-		GC.WaitForPendingFinalizers();
+		if ( hadPreviousEnvironment )
+		{
+			// Run GC and finalizers to clear any native resources held
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
 
-		// Run the queue one more time, since some finalizers queue tasks
-		MainThread.RunQueues();
+			// Run the queue one more time, since some finalizers queue tasks
+			MainThread.RunQueues();
+		}
 	}
 
 	/// <summary>
@@ -943,8 +948,9 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 
 		Api.Activity.GameRequested( new( "console", gameIdent ), replace: false );
 
-		// We can load and run projects if we're a Dedicated Server.
-		if ( Application.IsDedicatedServer && gameIdent.ToLower().Contains( ".sbproj" ) )
+		// Local automation can launch a project directly, just like a dedicated server.
+		if ( (Application.IsDedicatedServer || Sandbox.Utility.CommandLine.HasSwitch( "-mcp" ))
+			&& gameIdent.EndsWith( ".sbproj", StringComparison.OrdinalIgnoreCase ) )
 		{
 			await Project.InitializeBuiltIn( false );
 
@@ -955,7 +961,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			var libraries = Path.Combine( project.RootDirectory.FullName, "Libraries" );
 
 			// We should iterate all available libraries and add their projects
-			foreach ( var folder in Directory.EnumerateDirectories( libraries ) )
+			foreach ( var folder in Directory.Exists( libraries ) ? Directory.EnumerateDirectories( libraries ) : [] )
 			{
 				var configs = Directory.EnumerateFiles( folder, "*.sbproj" ).ToArray();
 				if ( configs.Length != 1 ) continue;

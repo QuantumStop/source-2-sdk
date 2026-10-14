@@ -173,22 +173,18 @@ public class ProjectCreator : Dialog
 	{
 		string name = "My Project";
 		int i = 1;
-		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, ConvertToIdent( name ) ) ) )
+		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, ProjectTemplateFiles.MakeIdent( name ) ) ) )
 			name = $"My Project {i++}";
+			
 		return name;
-	}
-
-	static string ConvertToIdent( string title )
-	{
-		return System.Text.RegularExpressions.Regex
-			.Replace( title.ToLower(), "[^a-z0-9_]", "_" )
-			.Trim( '_' );
 	}
 
 	void Validate()
 	{
 		if ( !identEdited )
-			IdentEdit.Text = ConvertToIdent( TitleEdit.Text );
+		{
+			IdentEdit.Text = ProjectTemplateFiles.MakeIdent( TitleEdit.Text );
+		}
 
 		bool enabled = true;
 		if ( string.IsNullOrWhiteSpace( FolderEdit.Text ) ) enabled = false;

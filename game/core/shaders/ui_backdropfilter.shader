@@ -23,6 +23,7 @@ COMMON
 	#include "ui/common.hlsl"
 	
 	DynamicCombo( D_PANEL_OPACITY, 0..1, Sys( ALL ) );
+	DynamicCombo( D_PAINTER_SCREENPIXELS, 0..1, Sys( ALL ) );
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------

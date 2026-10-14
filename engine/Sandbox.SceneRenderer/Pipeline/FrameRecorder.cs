@@ -235,7 +235,7 @@ internal sealed class FrameRecorder : IDisposable
 	static readonly string[] ResourceNames = ["chain", "qdepth", "bloom", "bloom in", "refract"];
 
 	/// <summary>
-	/// The last plan, for <c>overlay_scene_plan</c>: each frame's layers, whether each ran and why not, what it made and read
+	/// The last plan, for the performance hub's frame plan: each frame's layers, whether each ran and why not, what it made and read
 	/// (and of that, what nothing earlier made), its draw work and the segment it recorded in, and the segments.
 	/// </summary>
 	internal Sandbox.Rendering.ManagedFramePlan Snapshot( string camera )
@@ -601,12 +601,15 @@ internal sealed class FrameRecorder : IDisposable
 				handOff.InheritViewConstants( frame.ConstantsKey );
 				RenderContext.Recording = handOff;
 
+				// The graphics-side handoff lives outside the compute layers' own timing scopes.
+				var handOffScope = handOff.BeginGpuScope( "Async compute handoff" );
 				for ( int l = segment.Index; l < segment.Index + segment.Count; l++ )
 				{
 					frame.UseFrameConstants( handOff );
 					layers[l].Layer.HandOff( frame, handOff );
 					handOff.EndPass();
 				}
+				handOff.EndGpuScope( handOffScope );
 			}
 
 			// Context command memory is thread-owned (CRenderBatchList::Start). Serial recording shares the first context.
@@ -617,9 +620,11 @@ internal sealed class FrameRecorder : IDisposable
 			// What the async layers left for graphics, now they're done
 			if ( segment.Join )
 			{
+				var takeBackScope = rc.BeginGpuScope( "Async compute results" );
 				ref var compute = ref segments[asyncSegment];
 				for ( int l = compute.Index; l < compute.Index + compute.Count; l++ )
 					layers[l].Layer.TakeBack( compute.Frame, rc );
+				rc.EndGpuScope( takeBackScope );
 			}
 
 			RecordSegment( ref segment, rc, frame, ref stats );

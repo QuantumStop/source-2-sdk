@@ -133,7 +133,31 @@ public partial class ProjectRow : ItemRow
 		Update();
 	}
 
-	public override void OnClick() => Home.SelectProject( Project );
+	public override void OnClick()
+	{
+		OpenProject();
+	}
+
+	private string GetLaunchArgs( LaunchFlags launchFlags )
+	{
+		var args = new StringBuilder();
+		if ( launchFlags.Contains( LaunchFlags.VR ) || launchFlags.Contains( LaunchFlags.VRDebug ) ) args.Append( " -vr" );
+		if ( launchFlags.Contains( LaunchFlags.VulkanValidation ) ) args.Append( " -vulkan_enable_validation -vulkan_validation_error_assert" );
+		if ( launchFlags.Contains( LaunchFlags.VRDebug ) ) args.Append( " -vrdebug" );
+
+		return args.ToString();
+	}
+
+	private void OpenProject( LaunchFlags launchFlags = LaunchFlags.None )
+	{
+		if ( (DateTime.Now - Project.LastOpened).TotalSeconds < 2.0f )
+			return;
+
+		var args = GetLaunchArgs( launchFlags );
+		OnProjectOpen?.Invoke( args );
+
+		Update();
+	}
 
 	protected override void OnPaint()
 	{

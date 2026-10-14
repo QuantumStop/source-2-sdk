@@ -58,20 +58,17 @@ CS
 	}
 
 	//---------------------------------------------------------------------------------------------------------------------------------------------------------
+	// One bilinear tap on the shared corner averages the 2x2 source texels of an output texel
 	float3 LoadColorSRGB( int2 pixelCoord )
 	{
 		SamplerState sampler = D_DOWNSAMPLE_METHOD == DownsampleMethod::GaussianBorder ? BilinearBorder : BilinearClamp;
 
-		float3 color = MipLevel0.SampleLevel( sampler, pixelCoord * InvTextureSize * 0.5f, 0 ).rgb;
-		color = pow( color, 1.0f / 2.2f );
-		return max( color, 0.0f );
+		float3 color = MipLevel0.SampleLevel( sampler, ( pixelCoord + 0.5f ) * InvTextureSize, 0 ).rgb;
+		return pow( max( color, 0.0f ), 1.0f / 2.2f );
 	}
 
 	float3 LoadColor( int2 pixelCoord )
 	{
-		if( WantsSRGB() )
-			return LoadColorSRGB( pixelCoord );
-
 		return max( MipLevel0[ pixelCoord ].rgb, 0.0f );
 	}
 
@@ -207,8 +204,8 @@ CS
 		// Store 4 unblurred pixels in LDS
 		//
 		int destIdx = vGroupThreadID.x + (vGroupThreadID.y << 4);
-		Store2Pixels(destIdx+0, FilterBilinear( ThreadUL + uint2(0, 0)) , FilterBilinear( ThreadUL + uint2(1, 0)) );
-		Store2Pixels(destIdx+8, FilterBilinear( ThreadUL + uint2(0, 1)) , FilterBilinear( ThreadUL + uint2(1, 1)) );
+		Store2Pixels(destIdx+0, LoadColorSRGB( ThreadUL + uint2(0, 0)) , LoadColorSRGB( ThreadUL + uint2(1, 0)) );
+		Store2Pixels(destIdx+8, LoadColorSRGB( ThreadUL + uint2(0, 1)) , LoadColorSRGB( ThreadUL + uint2(1, 1)) );
 
 		GroupMemoryBarrierWithGroupSync();
 
