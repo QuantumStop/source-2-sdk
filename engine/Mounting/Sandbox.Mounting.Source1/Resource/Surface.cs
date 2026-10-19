@@ -37,6 +37,7 @@ internal sealed class SourceSurfaceLoader( SourceSurfaceDefinition definition ) 
 			},
 			SoundCollection = new()
 			{
+#if !FMOD // if you are using fmod you dont care about Source 1 mount of all things
 				FootLeft = Host.GetSurfaceSound( parameters.String( "stepleft" ) ),
 				FootRight = Host.GetSurfaceSound( parameters.String( "stepright" ) ),
 				Bullet = Host.GetSurfaceSound( parameters.String( "bulletimpact" ) ),
@@ -45,6 +46,7 @@ internal sealed class SourceSurfaceLoader( SourceSurfaceDefinition definition ) 
 				ScrapeRough = Host.GetSurfaceSound( parameters.String( "scraperough" ) ),
 				ScrapeSmooth = Host.GetSurfaceSound( parameters.String( "scrapesmooth" ) ),
 				Break = Host.GetSurfaceSound( parameters.String( "break" ) )
+#endif
 			}
 		};
 	}

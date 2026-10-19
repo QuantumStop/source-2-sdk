@@ -4,7 +4,7 @@ namespace Facepunch.Steps;
 
 internal static class Bootstrap
 {
-	internal static ExitCode Run( bool verbose = false )
+	internal static ExitCode Run( bool verbose = false, bool fmod = false )
 	{
 		if ( !File.Exists( Path.Combine( "engine", "Tools", "SboxBuild", "SboxBuild.csproj" ) ) )
 		{
@@ -16,7 +16,7 @@ internal static class Bootstrap
 		var extension = OperatingSystem.IsWindows() ? ".bat" : ".sh";
 		var wrapper = (isPublic ? "Setup" : "Bootstrap") + extension;
 		var rerun = OperatingSystem.IsWindows() ? wrapper : $"./{wrapper}";
-		var stages = Build.GetStages().ToList();
+		var stages = Build.GetStages( default, default, default, default, fmod ).ToList();
 		// First, so a checkout whose later stage fails (no network, say) still refreshes itself on the next pull.
 		if ( isPublic )
 			stages.Insert( 0, ("Git hooks", new InstallGitHooks().Run) );

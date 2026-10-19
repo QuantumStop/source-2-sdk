@@ -2,7 +2,7 @@
 
 namespace Facepunch.Steps;
 
-internal class BuildManaged( bool clean = false )
+internal class BuildManaged( bool clean = false, bool fmod = false )
 {
 	internal ExitCode Run() => BuildDisplay.Run( "Build managed code", () =>
 	{
@@ -55,8 +55,8 @@ internal class BuildManaged( bool clean = false )
 			}
 
 			Log.Info( "Step 5: Build Managed" );
-			BuildDisplay.Status( "Build managed engine" );
-			if ( !Utility.RunDotnetCommand( engineDir, "build -c Release Sandbox-Engine.slnx -p:TreatWarningsAsErrors=true" ) )
+			BuildDisplay.Status( $"Build managed engine {(fmod ? "(with FMOD)" : string.Empty)}" );
+			if ( !Utility.RunDotnetCommand( engineDir, $"build -c Release Sandbox-Engine.slnx -p:TreatWarningsAsErrors=true {(fmod ? "-p:WithFMOD=true" : string.Empty)}" ) )
 				return ExitCode.Failure;
 
 			var launcherRid = OperatingSystem.IsWindows() ? "win-x64"

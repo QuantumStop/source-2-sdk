@@ -44,5 +44,9 @@
 			<Aliases>Before</Aliases>
 		</ProjectReference>
 	</ItemGroup>
+	
+	<PropertyGroup Condition="'$(WithFMOD)' == 'true'">
+		<DefineConstants>$(DefineConstants);FMOD</DefineConstants>
+	</PropertyGroup>
 
 </Project>

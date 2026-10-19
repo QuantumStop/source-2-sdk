@@ -105,11 +105,11 @@ internal class Program
 	{
 		var cmd = new Command( "bootstrap", "Set up a full or public source distribution for development" );
 		var verboseOption = new Option<bool>( "--verbose", description: "Show full build output instead of only progress and final diagnostics" );
+		var fmod = new Option<bool>( "--fmod", getDefaultValue: () => false );
+
 		cmd.AddOption( verboseOption );
-		cmd.SetHandler( ( bool verbose ) =>
-		{
-			Environment.ExitCode = (int)Bootstrap.Run( verbose );
-		}, verboseOption );
+		cmd.AddOption( fmod );
+		cmd.SetHandler( ( verbose, fmod ) => Environment.ExitCode = (int)Bootstrap.Run( verbose, fmod ), verboseOption, fmod );
 		rootCommand.Add( cmd );
 	}
 

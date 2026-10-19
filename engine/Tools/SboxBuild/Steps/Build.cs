@@ -8,9 +8,10 @@ internal static class Build
 		BuildConfiguration config = BuildConfiguration.Developer,
 		bool clean = false,
 		bool skipNative = false,
-		bool skipManaged = false )
+		bool skipManaged = false,
+		bool fmod = false )
 	{
-		foreach ( var stage in GetStages( config, clean, skipNative, skipManaged ) )
+		foreach ( var stage in GetStages( config, clean, skipNative, skipManaged, fmod ) )
 		{
 			if ( stage.Run() != ExitCode.Success )
 				return ExitCode.Failure;
@@ -23,7 +24,8 @@ internal static class Build
 		BuildConfiguration config = BuildConfiguration.Developer,
 		bool clean = false,
 		bool skipNative = false,
-		bool skipManaged = false )
+		bool skipManaged = false,
+		bool fmod = false )
 	{
 		var isPublicSource = IsPublicSourceDistribution();
 		var shouldSkipNative = skipNative || isPublicSource;
@@ -53,7 +55,7 @@ internal static class Build
 		}
 
 		if ( !skipManaged )
-			yield return ("Managed", new BuildManaged( clean ).Run);
+			yield return ($"Managed {(fmod ? "(with FMOD)" : string.Empty)}", new BuildManaged( clean, fmod ).Run);
 	}
 
 	internal static bool IsPublicSourceDistribution()

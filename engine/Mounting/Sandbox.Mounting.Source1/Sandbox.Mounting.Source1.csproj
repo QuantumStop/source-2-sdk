@@ -20,5 +20,9 @@
 	<Target Name="CopyOutputDll" AfterTargets="Build">
 		<Copy SourceFiles="$(OutputPath)\$(AssemblyName).dll" DestinationFiles="..\..\..\game\mount\source1\source1.dll" />
 	</Target>
+	
+	<PropertyGroup Condition="'$(WithFMOD)' == 'true'">
+		<DefineConstants>$(DefineConstants);FMOD</DefineConstants>
+	</PropertyGroup>
 
 </Project>
