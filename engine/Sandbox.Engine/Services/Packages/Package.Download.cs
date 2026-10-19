@@ -209,6 +209,7 @@ public partial class Package
 
 		var metric = new Api.Events.EventRecord( "package.download" );
 		metric.SetValue( "ident", FullIdent );
+		metric.SetValue( "source", "backend" );
 		metric.SetValue( "files", downloadQueue.Count );
 		metric.SetValue( "size_sum", totalSize );
 		metric.SetValue( "size_avg", downloadQueue.Average( x => x.File.Size ) );
@@ -321,6 +322,14 @@ public partial class Package
 			tracked.Mbps = 0;
 		}
 
+		if ( token.IsCancellationRequested || hasError )
+		{
+			metric.SetValue( "outcome", hasError ? "failed" : "cancelled" );
+			metric.SetValue( "time", sw.Elapsed.TotalSeconds );
+			metric.SetValue( "downloaded", Interlocked.Read( ref downloadedSize ) );
+			metric.Submit();
+		}
+
 		token.ThrowIfCancellationRequested();
 
 		if ( hasError )
@@ -346,6 +355,7 @@ public partial class Package
 		Log.Trace( $"..done in {sw.Elapsed.TotalSeconds:0.00}s" );
 		LogTextureStreaming();
 
+		metric.SetValue( "outcome", "ok" );
 		metric.SetValue( "time", sw.Elapsed.TotalSeconds );
 		metric.SetValue( "workers", workers );
 		metric.SetValue( "order", "random" );

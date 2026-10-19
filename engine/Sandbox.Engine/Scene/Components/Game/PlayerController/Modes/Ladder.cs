@@ -6,8 +6,11 @@
 [Icon( "hiking" ), Group( "Movement" ), Title( "MoveMode - Ladder" )]
 public partial class MoveModeLadder : MoveMode
 {
+	/// <summary>
+	/// Movement selection priority. Defaults above swimming so ladders can be climbed out of water.
+	/// </summary>
 	[Property]
-	public int Priority { get; set; } = 5;
+	public int Priority { get; set; } = 15;
 
 	/// <summary>
 	/// Multiplier for the ladder movement speed.
@@ -33,6 +36,7 @@ public partial class MoveModeLadder : MoveMode
 	public Rotation ClimbingRotation { get; set; }
 
 	Collider climbingCollider;
+	bool waitingToLeaveLadders;
 
 
 	public MoveModeLadder()
@@ -64,6 +68,13 @@ public partial class MoveModeLadder : MoveMode
 	{
 		Controller.IsClimbing = false;
 		Controller.Body.Velocity = Controller.Body.Velocity.ClampLength( Controller.RunSpeed );
+	}
+
+	public override void OnJump()
+	{
+		waitingToLeaveLadders = true;
+		ClimbingObject = default;
+		climbingCollider = default;
 	}
 
 	public override void PostPhysicsStep()
@@ -108,6 +119,14 @@ public partial class MoveModeLadder : MoveMode
 		if ( Controller?.Body == null )
 			return;
 
+		if ( waitingToLeaveLadders )
+		{
+			if ( Controller.Body.Touching.Any( x => x.Tags.HasAny( ClimbableTags ) ) )
+				return;
+
+			waitingToLeaveLadders = false;
+		}
+
 		var wt = WorldTransform;
 		Vector3 head = wt.PointToWorld( new Vector3( 0, 0, Controller.CurrentHeight ) );
 		Vector3 foot = wt.Position;
@@ -125,8 +144,13 @@ public partial class MoveModeLadder : MoveMode
 			{
 				ladderObject = touch.GameObject;
 				ladderCollider = touch;
+				if ( climbingCollider == touch )
+					break;
 				continue;
 			}
+
+			if ( ladderObject.IsValid() )
+				continue;
 
 			// Don't start climbing this ladder if it's below us, and we're not already climbing it
 
@@ -139,11 +163,10 @@ public partial class MoveModeLadder : MoveMode
 
 			ladderObject = touch.GameObject;
 			ladderCollider = touch;
-			break;
 
 		}
 
-		if ( ladderObject == ClimbingObject )
+		if ( ladderObject == ClimbingObject && ladderCollider == climbingCollider )
 			return;
 
 		ClimbingObject = ladderObject;
@@ -173,7 +196,7 @@ public partial class MoveModeLadder : MoveMode
 	/// </summary>
 	public override Vector3 UpdateMove( Rotation eyes, Vector3 input )
 	{
-		var wishVelocity = new Vector3( 0, 0, input.x );
+		var wishVelocity = ClimbingRotation.Up * input.x;
 		if ( eyes.Pitch() > 50f )
 		{
 			wishVelocity *= -1f;

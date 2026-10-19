@@ -52,7 +52,7 @@ public static class DevUiTabRegistry
 				RememberAssemblyOrder( asm );
 			}
 
-			AppDomain.CurrentDomain.AssemblyLoad += (_, args) =>
+			AppDomain.CurrentDomain.AssemblyLoad += ( _, args ) =>
 			{
 				if ( args?.LoadedAssembly is Assembly loaded )
 					RememberAssemblyOrder( loaded );
@@ -132,12 +132,12 @@ public static class DevUiTabRegistry
 						if ( Activator.CreateInstance( t ) is not IDevUiTab tab )
 							continue;
 
-					var id = tab.DevTabId;
-					if ( string.IsNullOrWhiteSpace( id ) )
-						id = t.FullName ?? t.Name;
+						var id = tab.DevTabId;
+						if ( string.IsNullOrWhiteSpace( id ) )
+							id = t.FullName ?? t.Name;
 
-					if ( string.IsNullOrWhiteSpace( id ) )
-						continue;
+						if ( string.IsNullOrWhiteSpace( id ) )
+							continue;
 
 						var title = tab.DevTabTitle;
 						if ( string.IsNullOrWhiteSpace( title ) )

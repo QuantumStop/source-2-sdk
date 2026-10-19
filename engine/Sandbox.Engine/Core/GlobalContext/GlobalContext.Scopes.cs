@@ -23,7 +23,7 @@ internal partial class GlobalContext
 	[ThreadStatic] static GlobalContext t_contextA, t_contextB;
 	[ThreadStatic] static ExecutionContext t_fromA, t_toA, t_fromB, t_toB;
 	[ThreadStatic] static bool t_replaceB;
-	
+
 	public struct GlobalContextScope : IDisposable
 	{
 		GlobalContext previous;

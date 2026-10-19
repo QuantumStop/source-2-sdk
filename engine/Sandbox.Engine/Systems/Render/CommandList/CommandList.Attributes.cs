@@ -48,7 +48,7 @@ public sealed partial class CommandList
 		AddEntry( &Execute, new Entry { Object1 = indices, Object2 = material, Object3 = attributes, Count = count } );
 	}
 
-	public unsafe class AttributeAccess
+	public unsafe partial class AttributeAccess
 	{
 		// Writes (Grab*Texture) and the clear (Reset) happen under the owning CommandList's _lock,
 		// so they're already serialized. GetRenderTarget is the only access not already under that

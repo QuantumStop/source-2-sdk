@@ -53,6 +53,7 @@
     <Project Path="Mounting/Sandbox.Mounting.NS2/Sandbox.Mounting.NS2.csproj" />
     <Project Path="Mounting/Sandbox.Mounting.Quake/Sandbox.Mounting.Quake.csproj" />
     <Project Path="Mounting/Sandbox.Mounting.SE3/Sandbox.Mounting.SE3.csproj" />
+    <Project Path="Mounting/Sandbox.Mounting.Source1/Sandbox.Mounting.Source1.csproj" />
     <Project Path="Mounting/Sandbox.Mounting/Sandbox.Mounting.csproj" />
   </Folder>
   <Folder Name="/Engine/Tier1/">
@@ -70,6 +71,7 @@
   <Folder Name="/Tests/">
     <Project Path="Benchmark/Benchmark.csproj" />
     <Project Path="Tests/Sandbox.Test.Engine/Sandbox.Test.Engine.csproj" />
+    <Project Path="Tests/Sandbox.Test.NetSim/Sandbox.Test.NetSim.csproj" />
     <Project Path="Tests/Sandbox.Test.Integration/Sandbox.Test.Integration.csproj" />
     <Project Path="Tests/Sandbox.Test.Text/Sandbox.Test.Text.csproj" />
     <Project Path="Tests/Sandbox.Test.Unit/Sandbox.Test.Unit.csproj" />

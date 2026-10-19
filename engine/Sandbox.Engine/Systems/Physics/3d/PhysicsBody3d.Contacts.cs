@@ -4,6 +4,16 @@ namespace Sandbox;
 
 internal sealed partial class PhysicsBody3d
 {
+	internal override void OnActive( in Transform transform, in Vector3 linearVelocity, in Vector3 angularVelocity, bool fellAsleep, bool wentOutOfBounds )
+	{
+		base.OnActive( transform, linearVelocity, angularVelocity, fellAsleep, wentOutOfBounds );
+#if !FMOD
+		if ( fellAsleep || wentOutOfBounds || !IsValid || BodyType != PhysicsBodyType.Dynamic ) return;
+
+		CollisionSoundSystem.Get( World.Scene )?.OnBodyActive( this, linearVelocity, angularVelocity );
+#endif
+	}
+
 	[StructLayout( LayoutKind.Sequential )]
 	internal struct ScrapeContact
 	{

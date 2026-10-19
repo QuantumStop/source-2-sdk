@@ -312,7 +312,7 @@ public class DevScrollView : Panel
 			if ( screenPos.x > view.Right - edge )
 				dx = (screenPos.x - (view.Right - edge)).Clamp( 0, edge ) / edge;
 			else if ( screenPos.x < view.Left + edge )
-				dx = -( (view.Left + edge) - screenPos.x ).Clamp( 0, edge ) / edge;
+				dx = -((view.Left + edge) - screenPos.x).Clamp( 0, edge ) / edge;
 		}
 
 		if ( EnableVertical && VBar.Maximum > 0.5f )
@@ -320,7 +320,7 @@ public class DevScrollView : Panel
 			if ( screenPos.y > view.Bottom - edge )
 				dy = (screenPos.y - (view.Bottom - edge)).Clamp( 0, edge ) / edge;
 			else if ( screenPos.y < view.Top + edge )
-				dy = -( (view.Top + edge) - screenPos.y ).Clamp( 0, edge ) / edge;
+				dy = -((view.Top + edge) - screenPos.y).Clamp( 0, edge ) / edge;
 		}
 
 		if ( MathF.Abs( dx ) < 0.001f && MathF.Abs( dy ) < 0.001f )

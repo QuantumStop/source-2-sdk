@@ -97,7 +97,7 @@ public static partial class Program
 				}
 
 				FastTimer fastTimer = FastTimer.StartNew();
-				var result = SyncContext.RunBlocking( ShaderCompile.Compile( c.AbsolutePath, c.RelativePath, options, default ) );
+				var result = AsyncPump.RunSynchronously( () => ShaderCompile.Compile( c.AbsolutePath, c.RelativePath, options, default ) );
 
 				if ( !result.Success )
 				{
@@ -199,7 +199,7 @@ public static partial class Program
 
 				try
 				{
-					var result = SyncContext.RunBlocking( ShaderCompile.RecompileFromCompiled( absolute, options, default ) );
+					var result = AsyncPump.RunSynchronously( () => ShaderCompile.RecompileFromCompiled( absolute, options, default ) );
 
 					if ( !result.Success || result.CompiledShader is null )
 					{

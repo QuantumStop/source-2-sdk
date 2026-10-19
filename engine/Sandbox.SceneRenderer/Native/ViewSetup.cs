@@ -27,6 +27,7 @@ internal static class ViewSetup
 	static readonly StringToken InvalidLightMaps = "invalidLightMaps";
 	static readonly StringToken PreviewLightMaps = "previewLightMaps";
 	static readonly StringToken RenderTime = "renderTime";
+	static readonly StringToken DisableScreenSpaceEffects = "DisableScreenSpaceEffects";
 
 	const string LightmapsOutOfDate = "Lightmaps are out of date !!! - Please re-bake. Rendering as FULLBRIGHT";
 	const string PreviewLighting = "Preview Lighting - Not indicative of shipping quality or performance. Please bake lightmaps.";
@@ -55,6 +56,10 @@ internal static class ViewSetup
 		var viewAttributes = setup.m_pView.GetRenderAttributesPtr();
 		SetLookups( viewAttributes );
 
+		// AO and SSR slots are frame-global. Child views have different screen coordinates
+		// and cannot consume the parent's results, even when their post processing is disabled.
+		viewAttributes.SetBoolValue( DisableScreenSpaceEffects, setup.m_pView.GetParent().IsValid );
+
 		var ambient = viewAttributes.GetVector4DValue( AmbientColor, setup.m_pAttributes.GetVector4DValue( AmbientColor, default ) );
 		viewAttributes.SetVector4DValue( ToolsAmbientLighting, ambient );
 
@@ -71,6 +76,7 @@ internal static class ViewSetup
 	{
 		var viewAttributes = setup.m_pView.GetRenderAttributesPtr();
 		SetLookups( viewAttributes );
+		viewAttributes.SetBoolValue( DisableScreenSpaceEffects, true );
 
 		var black = CSceneSystem.GetWellKnownTexture( SceneSystemWellKnownTextureObjectID.SCENE_TXTR_OPAQUE_BLACK_2x2x2 );
 		viewAttributes.SetTextureValue( FogVolume, setup.m_pAttributes.GetTextureValue( FogVolume, black ), -1 );

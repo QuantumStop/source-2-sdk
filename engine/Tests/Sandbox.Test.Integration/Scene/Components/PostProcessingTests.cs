@@ -603,7 +603,7 @@ public class PostProcessingComponentTest
 			camGo.Components.Create<AmbientOcclusion>();
 			camGo.Components.Create<DepthOfField>();
 			camGo.Components.Create<Bloom>();
-			camGo.Components.Create<ColorGrading>();
+			camGo.Components.Create<ColorGrading>().GradingMethod = ColorGrading.GradingType.TemperatureControl;
 
 			var tonemap = camGo.Components.Create<Tonemapping>();
 
@@ -783,8 +783,8 @@ public class PostProcessingComponentTest
 	/// from zero at the edge to BlendWeight once the point is BlendDistance inside, using
 	/// the unsigned edge distance - so a point OUTSIDE the box at the same distance gets
 	/// the same weight (only volume containment via the volume system keeps that from
-	/// mattering in practice). A zero BlendDistance degenerates the remap to zero weight
-	/// everywhere rather than a hard edge, infinite volumes always return BlendWeight, and
+	/// mattering in practice). A nonpositive BlendDistance uses the full BlendWeight for
+	/// a hard edge, infinite volumes always return BlendWeight, and
 	/// the volume transform offsets the test position. The VolumeSystem lookup only finds
 	/// volumes that contain the queried position.
 	/// </summary>
@@ -810,7 +810,11 @@ public class PostProcessingComponentTest
 		Assert.AreEqual( 0.125f, volume.GetWeight( Vector3.Zero ), 0.001f, "A blend distance larger than the box means even the centre is partially blended" );
 
 		volume.BlendDistance = 0.0f;
-		Assert.AreEqual( 0.0f, volume.GetWeight( Vector3.Zero ), 0.001f, "Zero blend distance degenerates the remap to zero weight, not a hard edge" );
+		Assert.AreEqual( 0.5f, volume.GetWeight( Vector3.Zero ), 0.001f, "Zero blend distance applies the full authored weight" );
+		Assert.AreEqual( 0.5f, volume.GetWeight( new Vector3( 49.99f, 0, 0 ) ), 0.001f, "A hard edge does not fade just inside the boundary" );
+
+		volume.BlendDistance = -10.0f;
+		Assert.AreEqual( 0.5f, volume.GetWeight( Vector3.Zero ), 0.001f, "Negative blend distance also uses a hard edge" );
 
 		volume.BlendDistance = 50.0f;
 		volume.BlendWeight = 0.75f;

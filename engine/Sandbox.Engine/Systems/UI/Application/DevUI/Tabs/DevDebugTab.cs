@@ -11,7 +11,7 @@ public sealed class DevDebugTab : Panel
 
 	public DevDebugTab()
 	{
-		CanDragScroll = false;	// It's really dumb that this is true by default
+		CanDragScroll = false;  // It's really dumb that this is true by default
 
 		AddClass( "devtab" );
 		AddClass( "debugtab" );

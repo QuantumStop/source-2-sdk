@@ -46,5 +46,8 @@ public static partial class DebugOverlay
 
 		if ( ShadowMapper.DebugEnabled )
 			ShadowMapper.Draw( ref pos, painter );
+
+		// Memory pressure warnings are visible even when the performance hub is closed.
+		VideoMemoryWarning.Draw( painter );
 	}
 }

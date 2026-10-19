@@ -129,6 +129,11 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 	{
 		var hadPreviousEnvironment = gameInstance is not null || AssemblyEnroller is not null || DidMountNetworkedFiles;
 
+		// The menu loaded its resources moments ago during startup, so there is nothing to reset yet.
+		var menuResourcesCurrent = !hadPreviousEnvironment && !Application.IsEditor;
+		// Bootstrap and the menu just built their type libraries, so the first game start has none to rebuild.
+		var firstStartup = !hadPreviousEnvironment && !Application.IsEditor;
+
 		using var scope = GlobalContext.GameScope();
 
 		Log.Trace( "Game Menu - ResetEnvironment" );
@@ -146,7 +151,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			PackageLoader.OnAfterHotload = OnAfterHotload;
 		}
 
-		ResourceLoader.Clear();
+		if ( !menuResourcesCurrent ) ResourceLoader.Clear();
 
 		if ( DidMountNetworkedFiles )
 		{
@@ -178,7 +183,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 
 		Screen.UpdateFromEngine();
 
-		Game.InitTypeLibrary();
+		if ( !firstStartup ) Game.InitTypeLibrary();
 
 		UserPermission.Load();
 
@@ -218,7 +223,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 				return;
 
 			Game.TypeLibrary.AddAssembly( a.Assembly, true );
-			Game.NodeLibrary.AddAssembly( a.Assembly );
+			GlobalContext.Current.AddNodeAssemblyLater( a.Assembly, logErrors: false );
 			ConVarSystem.AddAssembly( a.Assembly, "game" );
 			Cloud.UpdateTypes( a.Assembly );
 			JsonUpgrader.UpdateUpgraders( TypeLibrary );

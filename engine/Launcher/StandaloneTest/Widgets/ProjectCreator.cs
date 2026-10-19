@@ -175,7 +175,7 @@ public class ProjectCreator : Dialog
 		int i = 1;
 		while ( Path.Exists( Path.Combine( LauncherPreferences.DefaultProjectLocation, ProjectTemplateFiles.MakeIdent( name ) ) ) )
 			name = $"My Project {i++}";
-			
+
 		return name;
 	}
 

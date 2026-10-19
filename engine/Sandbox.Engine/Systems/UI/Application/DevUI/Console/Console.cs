@@ -57,7 +57,7 @@ public class Console : Panel
 	internal List<LogEvent> Entries = [];
 	internal ConsoleVirtualList Output;
 	internal TextEntry Input;
-//	internal TextEntry Filter; // kept for later, hidden for now
+	//	internal TextEntry Filter; // kept for later, hidden for now
 
 	LogEventPanel logEventPanel;
 	Panel InputBar;
@@ -119,7 +119,7 @@ public class Console : Panel
 		InputBar = Add.Panel( "inputbar" );
 		InputBar.AddEventListener( "onmousedown", OnInputBarMouseDown );
 
-		Input = InputBar.AddChild<TextEntry>();		
+		Input = InputBar.AddChild<TextEntry>();
 		Input.HistoryCookie = "console-input-history";
 		Input.AddClass( "input" );
 		Input.AutoComplete = FillAutoComplete;

@@ -20,6 +20,7 @@ internal sealed class GameStartupWindow : IDisposable
 	Bitmap backdrop;
 	Bitmap scaledBackdrop;
 	Bitmap framebuffer;
+	Bitmap background;
 	Bitmap statusImage;
 	string statusImageText;
 	int statusImageMaxWidth;
@@ -69,10 +70,10 @@ internal sealed class GameStartupWindow : IDisposable
 			if ( CommandLine.HasSwitch( "-x" ) ) x = CommandLine.GetSwitchInt( "-x", x );
 			if ( CommandLine.HasSwitch( "-y" ) ) y = CommandLine.GetSwitchInt( "-y", y );
 
-			SdlWindow.Check( Sdl.SetWindowPosition( Handle, x, y ) );
+			SdlWindow.WarnIfFailed( Sdl.SetWindowPosition( Handle, x, y ) );
 			SdlWindow.Check( Sdl.SetWindowBordered( Handle, !borderless ) );
 			SdlWindow.Check( Sdl.SetWindowResizable( Handle, true ) );
-			SdlWindow.Check( Sdl.SyncWindow( Handle ) );
+			SdlWindow.WarnIfFailed( Sdl.SyncWindow( Handle ) );
 			if ( !Sdl.FillWindowColor( Handle, 27, 36, 51, 255 ) )
 			{
 				Log.Warning( $"Couldn't fill the startup window: {Sdl.GetError()}" );
@@ -82,7 +83,8 @@ internal sealed class GameStartupWindow : IDisposable
 
 			softwareSurfaceAvailable = true;
 			SdlWindow.Check( Sdl.ShowWindow( Handle ) );
-			SdlWindow.Check( Sdl.SyncWindow( Handle ) );
+			SdlWindow.WarnIfFailed( Sdl.SyncWindow( Handle ) );
+			Bootstrap.MarkStartupWindowVisible();
 
 			logo = LoadBitmap( LogoPath, "startup logo" );
 			if ( !standalone ) backdrop = LoadBitmap( BackdropPath, "startup backdrop" );
@@ -199,12 +201,19 @@ internal sealed class GameStartupWindow : IDisposable
 		}
 
 		var handle = Handle;
+		Detach();
+		return handle;
+	}
+
+	/// <summary>Stop using the SDL window without destroying it. Its new owner is responsible for it.</summary>
+	internal void Detach()
+	{
 		Handle = IntPtr.Zero;
 		isOpen = false;
 		softwareSurfaceAvailable = false;
 		DisposeImages();
-		return handle;
 	}
+
 
 	unsafe void PumpEvents()
 	{
@@ -265,25 +274,10 @@ internal sealed class GameStartupWindow : IDisposable
 				framebuffer = new Bitmap( width, height );
 				framebufferWidth = width;
 				framebufferHeight = height;
-				DiscardScaledBackdrop();
+				DrawBackground( width, height );
 			}
 
-			framebuffer.Clear( Color.Black );
-			framebuffer.SetFill( Color.White );
-			if ( backdrop is not null )
-			{
-				PrepareBackdrop( width, height );
-				framebuffer.DrawBitmap( scaledBackdrop, new Rect( 0, 0, width, height ) );
-			}
-
-			if ( logo is not null )
-			{
-				var scale = standalone ? height / 1080.0f : 1.0f;
-				scale = Math.Min( scale, Math.Min( width / (float)logo.Width, height / (float)logo.Height ) );
-				var logoWidth = Math.Max( 1, (int)(logo.Width * scale + 0.5f) );
-				var logoHeight = Math.Max( 1, (int)(logo.Height * scale + 0.5f) );
-				framebuffer.DrawBitmap( logo, new Rect( (width - logoWidth) / 2, (height - logoHeight) / 2, logoWidth, logoHeight ) );
-			}
+			background.GetBuffer().CopyTo( framebuffer.GetBuffer() );
 
 			DrawProgress( width, height );
 			unsafe
@@ -300,6 +294,29 @@ internal sealed class GameStartupWindow : IDisposable
 			drawFailed = true;
 			Log.Warning( exception, "Couldn't draw the startup image" );
 		}
+	}
+
+	/// <summary>Compose the backdrop and logo once per size, so progress updates only have to draw the bar.</summary>
+	void DrawBackground( int width, int height )
+	{
+		background?.Dispose();
+		background = new Bitmap( width, height );
+		background.Clear( Color.Black );
+		background.SetFill( Color.White );
+		if ( backdrop is not null )
+		{
+			PrepareBackdrop( width, height );
+			background.DrawBitmap( scaledBackdrop, new Rect( 0, 0, width, height ) );
+			DiscardScaledBackdrop();
+		}
+
+		if ( logo is null ) return;
+
+		var scale = standalone ? height / 1080.0f : 1.0f;
+		scale = Math.Min( scale, Math.Min( width / (float)logo.Width, height / (float)logo.Height ) );
+		var logoWidth = Math.Max( 1, (int)(logo.Width * scale + 0.5f) );
+		var logoHeight = Math.Max( 1, (int)(logo.Height * scale + 0.5f) );
+		background.DrawBitmap( logo, new Rect( (width - logoWidth) / 2, (height - logoHeight) / 2, logoWidth, logoHeight ) );
 	}
 
 	void PrepareBackdrop( int width, int height )
@@ -380,6 +397,8 @@ internal sealed class GameStartupWindow : IDisposable
 		DiscardScaledBackdrop();
 		framebuffer?.Dispose();
 		framebuffer = null;
+		background?.Dispose();
+		background = null;
 		framebufferWidth = 0;
 		framebufferHeight = 0;
 		statusImage?.Dispose();

@@ -1008,7 +1008,7 @@ public static partial class Networking
 		if ( lobbySocket is null )
 		{
 			LoadingScreen.IsVisible = false;
-			
+
 			ReportConnectionFailure( $"Steam could not find the lobby after {retries} attempts. The host may have closed it or created a new lobby.", onFailure );
 
 			return false;

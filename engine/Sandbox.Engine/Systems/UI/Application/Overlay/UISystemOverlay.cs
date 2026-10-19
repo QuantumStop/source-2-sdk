@@ -155,15 +155,15 @@ public sealed class UISystemOverlay : RootPanel
 		// If the caller didn't explicitly set a panel type name, try to infer one from project loading settings
 		// based on the active loading context. This avoids a one-frame fallback to the default overlay when
 		// LoadingScreen.IsVisible is toggled before the overlay type is assigned.
-			if ( LoadingScreen.IsVisible || LoadingScreen.CurrentContext != LoadingScreen.Context.Unknown )
+		if ( LoadingScreen.IsVisible || LoadingScreen.CurrentContext != LoadingScreen.Context.Unknown )
+		{
+			var settingsContext = LoadingScreen.CurrentContext switch
 			{
-				var settingsContext = LoadingScreen.CurrentContext switch
-				{
-					LoadingScreen.Context.Startup => LoadingSettings.LoadingContext.Startup,
-					LoadingScreen.Context.NetworkConnect => LoadingSettings.LoadingContext.NetworkConnect,
-					LoadingScreen.Context.EditorPlay => LoadingSettings.LoadingContext.EditorPlay,
-					_ => LoadingSettings.LoadingContext.SceneTransition
-				};
+				LoadingScreen.Context.Startup => LoadingSettings.LoadingContext.Startup,
+				LoadingScreen.Context.NetworkConnect => LoadingSettings.LoadingContext.NetworkConnect,
+				LoadingScreen.Context.EditorPlay => LoadingSettings.LoadingContext.EditorPlay,
+				_ => LoadingSettings.LoadingContext.SceneTransition
+			};
 
 			var inferred = ProjectSettings.Loading?.GetPolicy( settingsContext ).OverlayPanelTypeName;
 			if ( !string.IsNullOrWhiteSpace( inferred ) )
