@@ -103,7 +103,6 @@ engine/TestResults/
 /game/screenshots
 /game/tools
 /game/aftermath_dumps
-/game/gamecache
 game/benchmark.runtimeconfig.json
 game/sbox.runtimeconfig.json
 game/sbox-dev.runtimeconfig.json

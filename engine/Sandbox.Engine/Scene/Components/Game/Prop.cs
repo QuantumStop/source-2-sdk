@@ -542,12 +542,13 @@ public class Prop : Component, Component.ExecuteInEditor, Component.IDamageable
 		{
 			if ( !surface.IsValid() )
 				continue;
-
+#if !FMOD
 			var sound = surface.SoundCollection.Break;
 			if ( sound == null )
 				continue;
 
 			Sound.Play( sound, WorldPosition );
+#endif
 		}
 	}
 

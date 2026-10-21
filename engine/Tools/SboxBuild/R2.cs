@@ -52,7 +52,9 @@ internal static class R2
 			// for the same object"), so give the SDK plenty of room to back off and retry an
 			// individual request rather than failing the whole transfer.
 			RetryMode = RequestRetryMode.Adaptive,
-			MaxErrorRetry = 8
+			MaxErrorRetry = 8,
+			// Upload bodies are copied to the request through this buffer, 8KB by default
+			BufferSize = 1024 * 1024
 		};
 
 		return (new AmazonS3Client( accessKeyId, secretAccessKey, config ), bucket);
