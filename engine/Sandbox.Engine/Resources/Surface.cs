@@ -17,7 +17,7 @@ public partial class Surface : GameResource
 	/// Each GlobalContext (Menu, Game) owns its own dictionary so that
 	/// game-session teardown never clears entries belonging to the menu.
 	/// </summary>
-	internal static Dictionary<int, Surface> All => GlobalContext.Current.Surfaces;
+	public static Dictionary<int, Surface> All => GlobalContext.Current.Surfaces;
 
 	[Hide]
 	[JsonIgnore]

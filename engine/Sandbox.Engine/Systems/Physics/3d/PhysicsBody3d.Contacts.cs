@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Sandbox;
 
-internal sealed partial class PhysicsBody3d
+partial class PhysicsBody3d
 {
 	internal override void OnActive( in Transform transform, in Vector3 linearVelocity, in Vector3 angularVelocity, bool fellAsleep, bool wentOutOfBounds )
 	{
@@ -15,7 +15,7 @@ internal sealed partial class PhysicsBody3d
 	}
 
 	[StructLayout( LayoutKind.Sequential )]
-	internal struct ScrapeContact
+	public struct ScrapeContact
 	{
 		public int OtherBodyIndex;
 		public Vector3 Point;
@@ -28,7 +28,7 @@ internal sealed partial class PhysicsBody3d
 		public readonly Surface Surface => Surface.All.GetValueOrDefault( SelfSurfaceIndex );
 	}
 
-	internal unsafe int GetScrapeContacts( Span<ScrapeContact> buffer )
+	public unsafe int GetScrapeContacts( Span<ScrapeContact> buffer )
 	{
 		if ( native.IsNull || buffer.IsEmpty )
 			return 0;
@@ -36,7 +36,7 @@ internal sealed partial class PhysicsBody3d
 			return native.GetScrapeContacts( (IntPtr)pointer, buffer.Length );
 	}
 
-	internal Vector3 GetSurfaceVelocity( int surfaceIndex )
+	public Vector3 GetSurfaceVelocity( int surfaceIndex )
 	{
 		var found = false;
 		var velocity = Vector3.Zero;

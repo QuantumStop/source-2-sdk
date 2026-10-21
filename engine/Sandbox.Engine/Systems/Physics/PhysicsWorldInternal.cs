@@ -4,10 +4,10 @@ namespace Sandbox;
 /// Internal base class for physics worlds. Contains all world functions and properties.
 /// The public <see cref="PhysicsWorld"/> wrapper delegates to an instance of this (2D or 3D).
 /// </summary>
-internal abstract partial class PhysicsWorldInternal : IValid
+public abstract partial class PhysicsWorldInternal : IValid
 {
 	[SkipHotload]
-	internal static HashSet<PhysicsWorldInternal> All = new HashSet<PhysicsWorldInternal>();
+	internal static HashSet<PhysicsWorldInternal> All = [];
 
 	PhysicsWorld _owner;
 

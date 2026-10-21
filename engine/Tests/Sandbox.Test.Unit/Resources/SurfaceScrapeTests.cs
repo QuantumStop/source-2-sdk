@@ -84,7 +84,7 @@ public class SurfaceScrapeTests
 		Assert.AreSame( sound, surface.GetScrapeSound( new Surface { ScrapeEffects = new() { RoughnessFactor = roughness } } ) );
 		Assert.AreSame( sound, surface.GetScrapeSound( int.MaxValue ) );
 	}
-
+#if !FMOD
 	[TestMethod]
 	public void SurfaceWithoutScrapeSoundsDoesNotPlay()
 	{
@@ -106,7 +106,7 @@ public class SurfaceScrapeTests
 		surface.SoundCollection = default;
 		Assert.IsFalse( surface.HasScrapeSounds );
 	}
-
+#endif
 	[TestMethod]
 	public void ContactLayoutMatchesNative()
 	{

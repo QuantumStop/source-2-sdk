@@ -6,7 +6,7 @@ namespace Sandbox;
 /// <summary>
 /// 3D physics world backed by a native Box3D/Source 2 <see cref="IPhysicsWorld"/> handle.
 /// </summary>
-internal sealed partial class PhysicsWorld3d : PhysicsWorldInternal, IHandle
+public sealed partial class PhysicsWorld3d : PhysicsWorldInternal, IHandle
 {
 	internal IPhysicsWorld native => world;
 	internal IPhysicsWorld world;

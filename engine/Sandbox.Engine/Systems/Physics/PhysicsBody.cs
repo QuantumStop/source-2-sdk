@@ -7,7 +7,7 @@ namespace Sandbox;
 [Expose]
 public sealed partial class PhysicsBody : IValid
 {
-	internal PhysicsBodyInternal _body;
+	public PhysicsBodyInternal _body;
 
 	internal PhysicsBody( PhysicsBodyInternal body )
 	{

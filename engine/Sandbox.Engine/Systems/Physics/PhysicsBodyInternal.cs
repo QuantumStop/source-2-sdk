@@ -4,7 +4,7 @@ namespace Sandbox;
 /// Internal base class for physics bodies. Contains all body functions and properties.
 /// The public <see cref="PhysicsBody"/> wrapper delegates to an instance of this.
 /// </summary>
-internal abstract partial class PhysicsBodyInternal : IValid
+public abstract partial class PhysicsBodyInternal : IValid
 {
 	public abstract bool IsValid { get; }
 
@@ -13,7 +13,7 @@ internal abstract partial class PhysicsBodyInternal : IValid
 	/// <summary>
 	/// The public wrapper for this body. Created lazily for bodies that originate native-side.
 	/// </summary>
-	internal PhysicsBody Owner => _owner ??= new PhysicsBody( this );
+	public PhysicsBody Owner => _owner ??= new PhysicsBody( this );
 
 	/// <summary>
 	/// Associates this internal body with its public wrapper (only sets it once).
