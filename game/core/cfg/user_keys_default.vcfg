@@ -6,7 +6,7 @@
 		"F1"		"gameinfo"
 		"F2"		"con_toggle"
 		"F3"		"con_focus"
-		"F11"		"perf_hub"
+		"F11"		"devtools"
 		"F6"		"video"
 	}
 	

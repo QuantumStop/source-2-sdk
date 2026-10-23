@@ -101,6 +101,8 @@ internal class GameInstance : IGameInstance
 		// Destroy resource manifests before unmounting their package or network-backed files.
 		Game.Resources.Clear();
 
+		Sandbox.Engine.Shaders.GameShaders.Shutdown();
+
 		if ( activePackage != null && !Application.IsStandalone )
 		{
 			Game.Language?.Shutdown();
@@ -466,6 +468,12 @@ internal class GameInstance : IGameInstance
 				Texture.Hotload( FileSystem.Mounted, file );
 			}
 		};
+
+		// The editor's asset system compiles shaders
+		if ( !Application.IsEditor && !Application.IsHeadless )
+		{
+			Sandbox.Engine.Shaders.ShaderHotload.Watch( FileSystem.Mounted );
+		}
 
 		var settingsWatcher = EngineFileSystem.ProjectSettings.Watch();
 		settingsWatcher.OnChanges += x =>

@@ -101,6 +101,7 @@ internal partial class NetworkSystem
 			Assigned = new ChannelInfo { Id = channel.Id },
 			IsDeveloperHost = IsDeveloperHost,
 			HostMigration = IsHostMigrationEnabled,
+			PasswordRequired = NeedsPassword( channel ),
 			HandshakeId = channel.HandshakeId
 		};
 
@@ -169,6 +170,8 @@ internal partial class NetworkSystem
 		if ( !known )
 			return;
 
+		Sandbox.Diagnostics.DevTools.NetworkLog.Session( "Peer left", source );
+
 		if ( source.State >= Connection.ChannelState.Welcome )
 		{
 			// We only need to call this if we called OnConnected, which would only
@@ -195,7 +198,7 @@ internal partial class NetworkSystem
 	/// </summary>
 	internal void OnServerDisconnection( int reasonCode, string reasonString )
 	{
-		var message = $"The server connection closed.\nReason: {reasonString} (code {reasonCode}).";
+		var message = IsBadPassword( reasonString ) ? "Wrong password." : $"The server connection closed.\nReason: {reasonString} (code {reasonCode}).";
 		if ( Connection.Local.State == Connection.ChannelState.Unconnected )
 		{
 			// Keep diagnostics for a failed join without showing another dialog after teardown.
@@ -204,6 +207,7 @@ internal partial class NetworkSystem
 		}
 
 		FailureReason = message;
+		Sandbox.Diagnostics.DevTools.NetworkLog.Session( $"Ended: {reasonString}", HostConnection, ends: true );
 		IGameInstanceDll.Current.Disconnect( FailureReason );
 	}
 

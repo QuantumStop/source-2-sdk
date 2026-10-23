@@ -302,6 +302,45 @@ public class NetworkTest
 	}
 
 	[TestMethod]
+	public void ObsoleteQueryFlagStillPollsProperty()
+	{
+		using var scope = new Scene().Push();
+		var go = new GameObject();
+		var component = go.Components.Create<QueryPropertyComponent>();
+		go.NetworkSpawn();
+
+		var table = go._net.dataTable;
+		var property = Game.TypeLibrary.GetType<QueryPropertyComponent>().GetProperty( nameof( QueryPropertyComponent.SyncInt ) );
+		var slot = NetworkObject.GetPropertySlot( property.Identity, component.Id );
+		Assert.IsTrue( table.IsRegistered( slot ) );
+
+		var data = ByteStream.Create( 32 );
+		try
+		{
+			table.WriteChanged( ref data );
+			Assert.IsFalse( table.HasAnyChanges );
+
+			component.Value = 2;
+			component.GetterCalls = 0;
+			table.QueryValues();
+			Assert.IsTrue( component.GetterCalls > 0 );
+			Assert.IsTrue( table.HasAnyChanges, "Existing Query properties must still synchronize backing value changes." );
+
+			data.Position = 0;
+			table.WriteChanged( ref data );
+			Assert.IsFalse( table.HasAnyChanges );
+
+			table.SetValue( slot, 3 );
+			Assert.AreEqual( 3, component.Value );
+			Assert.IsTrue( table.HasAnyChanges, "Explicit property updates must still synchronize." );
+		}
+		finally
+		{
+			data.Dispose();
+		}
+	}
+
+	[TestMethod]
 	public void NetworkRefreshWithParentChangeHasCorrectPosition()
 	{
 		Assert.IsNotNull( TypeLibrary.GetType<ModelRenderer>(), "TypeLibrary hasn't been given the game assembly" );
@@ -817,6 +856,7 @@ public class NetworkTest
 		Assert.AreEqual( expectedFaces, clientMesh.Mesh.FaceHandles.Count(), "Mesh geometry did not survive the snapshot" );
 	}
 
+	[TestMethod]
 	[DataRow( false, false, false, DisplayName = "Cullable + hidden -> excluded" )]
 	[DataRow( false, true, true, DisplayName = "Cullable + visible -> included" )]
 	[DataRow( true, false, true, DisplayName = "AlwaysTransmit -> included when hidden" )]
@@ -983,6 +1023,21 @@ public class NetworkTest
 	private class NetworkTestComponent : Component
 	{
 		[Sync] public int SyncInt { get; set; }
+	}
+
+	private class QueryPropertyComponent : Component
+	{
+		public int Value = 1;
+		public int GetterCalls;
+
+#pragma warning disable CS0618 // Published code can still use the obsolete flag.
+		[Sync( SyncFlags.Query )]
+#pragma warning restore CS0618
+		public int SyncInt
+		{
+			get { GetterCalls++; return Value; }
+			set { Value = value; }
+		}
 	}
 
 	private class FromHostPropertyComponent : Component
