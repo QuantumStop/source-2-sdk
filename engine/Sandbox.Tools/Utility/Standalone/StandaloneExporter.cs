@@ -242,36 +242,6 @@ public partial class StandaloneExporter
 		}
 
 		//
-		// Copy exe
-		//
-		{
-			QueueCopy( $"{engineDir}/sbox-standalone.exe", $"{baseDir}/{StandaloneManifest.ExecutableName}.exe", BuildStep.FinalizeExecutable );
-		}
-
-		//
-		// Copy sbproj for the addon - ideally we should store this in an embedded resource inside the exe
-		//
-		{
-			var sbprojPath = Path.Combine( baseDir, Standalone.GamePath, ".sbproj" );
-			QueueCopy( $"{_exportConfig.Project.ConfigFilePath}", sbprojPath, BuildStep.CopyMisc );
-		}
-
-		//
-		// Copy base binaries (.bin) required for bootstrap-time systems (we need this for our UISystem)
-		//
-		if ( _baseAssemblyFiles.Count > 0 )
-		{
-			foreach ( var (relativePath, bytes) in _baseAssemblyFiles )
-			{
-				QueueCopyFile( baseDir, new ProjectFile
-				{
-					Name = relativePath,
-					Contents = bytes
-				}, BuildStep.CopyCode );
-			}
-		}
-
-		//
 		// Copy loose files
 		//
 		{

@@ -62,15 +62,13 @@ partial class StandaloneExporter
 		"fonts/*.ttf",
 		"styles/**/*",
 		"ui/**/*",
+		"uisystem/**/*",
 
 		// Config files
 		"cfg/*",
 	];
 
-	private IEnumerable<string> GetCoreFiles( string engineDir )
-	{
-		return GetWhitelistedFiles( CoreWhitelist, Path.Combine( engineDir, "core" ) );
-	}
+	private IEnumerable<string> GetCoreFiles( string engineDir ) => GetWhitelistedFiles( CoreWhitelist, Path.Combine( engineDir, "core" ) );
 
 	private static IEnumerable<string> GetBlacklistedFiles( string[] blacklist, string absoluteDirectory )
 	{

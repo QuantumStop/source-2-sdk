@@ -8,7 +8,6 @@ using Sandbox.Utility;
 using Sandbox.VR;
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace Sandbox;
 
@@ -56,10 +55,6 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 
 			FileSystem.Mounted.CreateAndMount( EngineFileSystem.Root, "/core/" );
 
-			if ( !Application.IsStandalone )
-			{
-				FileSystem.Mounted.CreateAndMount( EngineFileSystem.Root, "/core/" );
-			}
 
 			// The editor's UI assets - stylesheets and the like - are visible while editing
 			if ( Application.IsEditor )
@@ -575,12 +570,6 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		CancelLoad();
 		Game.Close();
 
-		if ( !string.IsNullOrEmpty( message ) )
-		{
-			//	using var scope = GlobalContext.MenuScope();
-			IModalSystem.Current?.Notice( "Disconnected", message, "wifi_off" );
-		}
-
 		LoadingScreen.IsVisible = false;
 	}
 
@@ -652,21 +641,20 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		{
 			launch.End( e is OperationCanceledException ? "cancel" : "fail", e is OperationCanceledException ? null : e.Message );
 
+			ResetEnvironment();
+
 			LoadingScreen.IsVisible = false;
 			LoadingScreen.Media = null;
 
-			/*
-						using ( IMenuDll.Current?.PushScope() )
-						{
-							IMenuSystem.Current?.Popup( "error", "Loading Error", $"There was an error when loading this game. {e.Message}" );
-						}
-			*/
-			Log.Warning( e, e.Message );
-
-			if ( Application.IsEditor )
+			if ( e is not OperationCanceledException )
 			{
-				// raise in editor, load has failed and we should alert the user
-				throw;
+				Log.Warning( e, e.Message );
+
+				if ( Application.IsEditor )
+				{
+					// raise in editor, load has failed and we should alert the user
+					throw;
+				}
 			}
 		}
 
@@ -676,7 +664,6 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		return false;
 	}
 
-
 	private async Task DoLoadGamePackageAsync( string ident, GameLoadingFlags flags, CancellationToken ct )
 	{
 		//
@@ -685,8 +672,8 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		//
 		if ( gameInstance is not null && !flags.Contains( GameLoadingFlags.Reload ) )
 		{
-			Package.TryParseIdent( ident, out (string org, string package, int? version, bool local) iparts );
-			Package.TryParseIdent( gameInstance?.Ident, out (string org, string package, int? version, bool local) oparts );
+			Package.TryParseIdent( ident, out var iparts );
+			Package.TryParseIdent( gameInstance?.Ident, out var oparts );
 
 			// No need to recreate - this is the same package (and the same version)
 			if ( iparts.package == oparts.package && iparts.org == oparts.org && iparts.version == oparts.version )
@@ -735,7 +722,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 
 			if ( !Application.IsDedicatedServer && !Application.IsStandalone )
 			{
-				await Task.Delay( 10 );
+				await Task.Yield();
 			}
 
 			if ( !await newInstance.LoadAsync( AssemblyEnroller, ct ) )
