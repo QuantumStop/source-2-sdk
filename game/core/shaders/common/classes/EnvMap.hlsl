@@ -89,6 +89,9 @@ float3 CubeMapBoxProjection(float3 vReflectionCubemapLocal, float3 vPositionCube
     float3 vIntersectB = (vBoxMins - vPositionCubemapLocal) / vReflectionCubemapLocal;
 
     float3 vIntersect = max(vIntersectA, vIntersectB);
+
+    // Axes parallel to the reflection never exit, a position on that face would otherwise give 0/0
+    vIntersect = select(vReflectionCubemapLocal != 0.0f, vIntersect, 3.402823466e+38f);
     float flDistance = min(vIntersect.x, min(vIntersect.y, vIntersect.z));
 
     // Compute the reflected direction in world space
@@ -131,7 +134,7 @@ float3 CalcParallaxReflectionCubemapLocal( float3 vPositionWs, float3 vNormalWs,
 	vPositionCubemapLocal = mul( float4( vPositionWs.xyz, 1.0 ), EnvMapWorldToLocal( nEnvMap ) ).xyz;
 	vReflectionCubemapLocal = mul( float4( vReflectionWs.xyz, 0.0 ), EnvMapWorldToLocal( nEnvMap ) ).xyz;
 
-	return CubeMapBoxProjection( vReflectionCubemapLocal.xyz, vPositionCubemapLocal.xyz, EnvMapBoxMins( nEnvMap ).xyz, EnvMapBoxMaxs( nEnvMap ).xyz, EnvMapFeathering( nEnvMap ) );
+	return CubeMapBoxProjection( vReflectionCubemapLocal.xyz, vPositionCubemapLocal.xyz, EnvMapBoxMins( nEnvMap ).xyz, EnvMapBoxMaxs( nEnvMap ).xyz );
 }
 
 
@@ -154,8 +157,7 @@ float3 CalcParallaxReflectionCubemapLocal(float3 vPositionWs, float3 vNormalWs, 
         vReflectionCubemapLocal,
         vPositionCubemapLocal,
         EnvMapBoxMins(nEnvMap),
-        EnvMapBoxMaxs(nEnvMap),
-        EnvMapFeathering(nEnvMap)
+        EnvMapBoxMaxs(nEnvMap)
     );
 }
 

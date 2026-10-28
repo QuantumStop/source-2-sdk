@@ -131,6 +131,34 @@ public class MeshComponentBuildTests
 		}
 	}
 
+	/// <summary>
+	/// Standalone exports used to ship no surfaces, which threw in AddSurface and left every mesh without a model.
+	/// </summary>
+	[TestMethod]
+	public void BuildsWithoutAnySurfacesLoaded()
+	{
+		var surfaces = Surface.All.ToArray();
+		Surface.All.Clear();
+
+		var scene = Scene.CreateEditorScene();
+		try
+		{
+			using var scope = scene.Push();
+			var component = scene.CreateObject().AddComponent<MeshComponent>();
+			component.Mesh = CreateBox();
+			component.Collision = MeshComponent.CollisionType.Mesh;
+
+			AssertCollision( component, MeshComponent.CollisionType.Mesh );
+		}
+		finally
+		{
+			scene.Destroy();
+
+			foreach ( var (index, surface) in surfaces )
+				Surface.All[index] = surface;
+		}
+	}
+
 	[TestMethod]
 	[DataRow( true, true )]
 	[DataRow( true, false )]

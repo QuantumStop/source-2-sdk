@@ -399,14 +399,14 @@ public class AppSystem
 
 
 		Bootstrap.PrepareTypeLibraries();
-		startupWindow?.UpdateProgress( 0.02f, "Initializing Vulkan" );
+		startupWindow?.UpdateProgress( 0.05f, "Starting graphics" );
 		if ( !NativeEngine.EngineGlobal.SourceEnginePreInit( commandLine, _appSystem ) )
 		{
 			startupWindow?.Dispose();
 			throw new System.Exception( "SourceEnginePreInit failed" );
 		}
 		if ( !Application.IsInitialized ) Bootstrap.InitApplication( _appSystem );
-		startupWindow?.UpdateProgress( 0.04f, "Creating game window" );
+		startupWindow?.UpdateProgress( 0.16f, "Loading the engine" );
 
 		Bootstrap.PreInit( () =>
 		{
@@ -433,9 +433,9 @@ public class AppSystem
 
 		Bootstrap.BeginResourceScan();
 		gameWindow?.InitializeRendering();
-		gameWindow?.UpdateStartupProgress( 0.5f, "Loading materials" );
+		gameWindow?.UpdateStartupProgress( 0.22f, "Loading shaders" );
 		Bootstrap.Init();
-		gameWindow?.UpdateStartupProgress( 1.0f, "Ready" );
+		gameWindow?.UpdateStartupProgress( 0.4f, "Building the menu" );
 	}
 
 	protected void SetWindowTitle( string title )

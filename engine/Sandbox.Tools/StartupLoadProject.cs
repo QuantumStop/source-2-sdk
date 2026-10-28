@@ -325,7 +325,14 @@ static class StartupLoadProject
 		var projectDir = Path.GetFullPath( Project.Current.RootDirectory.FullName );
 
 		var sw = Stopwatch.StartNew();
-		var gr = AssetSystem.All.Where( x => x.AssetType == AssetType.Shader && x.HasSourceFile && Path.GetFullPath( x.AbsoluteSourcePath ).StartsWith( projectDir, StringComparison.OrdinalIgnoreCase ) ).ToArray();
+
+		// Ask for the source path now rather than using AbsoluteSourcePath, which is cached from the asset's last update
+		// and is still empty if its .shader turned up after that - HasSourceFile is live, so the two can disagree
+		var gr = AssetSystem.All
+			.Where( x => x.AssetType == AssetType.Shader && x.HasSourceFile )
+			.Select( x => (Asset: x, SourcePath: x.GetSourceFile( true )) )
+			.Where( x => !string.IsNullOrEmpty( x.SourcePath ) && Path.GetFullPath( x.SourcePath ).StartsWith( projectDir, StringComparison.OrdinalIgnoreCase ) )
+			.ToArray();
 		if ( gr.Length == 0 ) return;
 
 		var options = new ShaderCompileOptions();
@@ -336,15 +343,17 @@ static class StartupLoadProject
 		FastTimer timer = FastTimer.StartNew();
 		for ( int i = 0; i < gr.Length; i++ )
 		{
-			EditorSplashScreen.SetMessage( $"Compiling shader {i + 1}/{gr.Length} {gr[i].RelativePath}" );
+			var (asset, sourcePath) = gr[i];
+
+			EditorSplashScreen.SetMessage( $"Compiling shader {i + 1}/{gr.Length} {asset.RelativePath}" );
 			StepProgress( (float)i / gr.Length );
 
-			var result = await ShaderCompile.Compile( gr[i].AbsolutePath, gr[i].RelativePath, options, default );
+			var result = await ShaderCompile.Compile( sourcePath, asset.RelativePath, options, default );
 			if ( result.Success && !result.Skipped )
 			{
 				// Resident shaders may still have combo offsets from before the compiled file was rewritten.
 				// Reload them before any further asset loading can use those offsets against the new file.
-				ConsoleSystem.Run( $"mat_reloadshaders \"{gr[i].RelativePath}\"" );
+				ConsoleSystem.Run( $"mat_reloadshaders \"{asset.RelativePath}\"" );
 			}
 		}
 		if ( sw.Elapsed.TotalSeconds > 2 )

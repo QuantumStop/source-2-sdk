@@ -251,7 +251,7 @@ public partial class ProjectPublisher
 
 				foreach ( var path in AllAssetPaths( project ) )
 				{
-					await IncludeFiles( path, publishingOptions.Resources, cancel, matchAssetAliases: true, legacyRules: !publishingOptions.PublishUsedAssetsOnly );
+					await IncludeFiles( path, publishingOptions.Resources, cancel, allowSourceFiles: IncludeSourceFiles, matchAssetAliases: true, legacyRules: !publishingOptions.PublishUsedAssetsOnly );
 				}
 			}
 
@@ -551,9 +551,10 @@ public partial class ProjectPublisher
 				{
 					// A compiled sidecar must not bypass an exclusion matching its source alias.
 					if ( matches.HasExclusions && !matches.Matches( AssetPaths( asset ).Where( x => !string.IsNullOrWhiteSpace( x ) ).Select( NormalizePublishPath ) ) ) continue;
-					// Resource rules select assets; only the source option should also publish their source files.
+					// A matching standalone file (e.g. .ogg compiled to .vsnd_c) must also ship as-is.
+					// Other compilable assets still require the source option to publish their source files.
 					var compiled = asset.GetCompiledFile();
-					if ( !IncludeSourceFiles && (asset.IsCompileFailed || !string.IsNullOrEmpty( compiled ))
+					if ( !IncludeSourceFiles && !IsStandaloneSourceFile( asset ) && (asset.IsCompileFailed || !string.IsNullOrEmpty( compiled ))
 						&& !string.Equals( NormalizePublishPath( relative ), string.IsNullOrEmpty( compiled ) ? null : NormalizePublishPath( compiled ), StringComparison.OrdinalIgnoreCase ) ) continue;
 				}
 				await AddFile( absolute, relative );
@@ -581,6 +582,8 @@ public partial class ProjectPublisher
 				if ( file.EndsWith( ".cs", StringComparison.OrdinalIgnoreCase ) ) return false;
 				if ( file.EndsWith( ".razor", StringComparison.OrdinalIgnoreCase ) ) return false;
 				if ( file.EndsWith( ".fbx", StringComparison.OrdinalIgnoreCase ) ) return false;
+				// Editor sidecars can map a compiled resource GUID back to its raw source path.
+				if ( file.EndsWith( ".meta", StringComparison.OrdinalIgnoreCase ) ) return false;
 			}
 
 			if ( DissallowedExtensions.Any( x => file.EndsWith( x, StringComparison.OrdinalIgnoreCase ) ) )

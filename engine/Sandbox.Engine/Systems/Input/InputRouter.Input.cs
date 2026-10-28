@@ -64,6 +64,8 @@ internal static partial class InputRouter
 
 			foreach ( var context in Contexts )
 			{
+				// The release of anything held during a capture won't reach us, so it could never finish
+				context.CancelTrapping();
 				context.ReleaseAllButtons();
 			}
 		}
@@ -366,6 +368,9 @@ internal static partial class InputRouter
 
 		if ( mouse is not null )
 		{
+			// The tick's release ends a capture, so ask now - a tick that went to the capture doesn't scroll anything
+			var trapping = mouse.IsTrapping;
+
 			if ( y < 0 )
 			{
 				mouse.IN_Button( true, ButtonCode.MouseWheelDown, ButtonCode.MouseWheelDown, false, default );
@@ -377,7 +382,8 @@ internal static partial class InputRouter
 				mouse.IN_Button( false, ButtonCode.MouseWheelUp, ButtonCode.MouseWheelUp, false, default );
 			}
 
-			mouse.IN_MouseWheel( value, modifiers );
+			if ( !trapping )
+				mouse.IN_MouseWheel( value, modifiers );
 		}
 	}
 

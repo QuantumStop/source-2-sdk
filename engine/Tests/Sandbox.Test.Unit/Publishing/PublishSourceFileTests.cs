@@ -32,12 +32,57 @@ public class PublishSourceFileTests
 	}
 
 	[TestMethod]
+	[DataRow( false )]
+	[DataRow( true )]
+	public void ResourceRulesExcludeMetadataUnlessPublishingSources( bool usedOnly )
+	{
+		var directory = Path.Combine( Path.GetTempPath(), $"publish_metadata_{Guid.NewGuid():N}" );
+		var assetsPath = Path.Combine( directory, "Assets" );
+		string[] files = ["sounds/jump.wav", "sounds/jump.wav.meta", "sounds/jump.vsnd_c",
+			"music/track.ogg", "music/track.ogg.META", "music/track.vsnd_c", "textures/icon.png.meta"];
+		try
+		{
+			foreach ( var file in files )
+			{
+				var absolute = Path.Combine( assetsPath, file );
+				Directory.CreateDirectory( Path.GetDirectoryName( absolute ) );
+				File.WriteAllText( absolute, "test" );
+			}
+			var project = new Project( new DirectoryInfo( directory ) ) { Config = new Sandbox.DataModel.ProjectConfig() };
+			project.Config.Type = "game";
+			project.Config.SetMeta( "StartupScene", "" );
+			project.Config.PublishUsedAssetsOnly = usedOnly;
+			project.Config.Resources = "/sounds/*\n/music/*\n/textures/icon.png.meta";
+			foreach ( var preview in new[] { false, true } )
+				foreach ( var sources in new[] { false, true } )
+				{
+					var manifest = new ProjectPublisher.PackageManifest { IncludeSourceFiles = sources };
+					Sandbox.Tasks.AsyncPump.RunSynchronously( () => manifest.BuildFromAssets( project, previewOnly: preview ) );
+					CollectionAssert.AreEqual( Array.Empty<string>(), manifest.Errors.ToArray() );
+					var expected = files.Where( x => sources || !x.EndsWith( ".meta", StringComparison.OrdinalIgnoreCase ) ).ToArray();
+					CollectionAssert.AreEquivalent( expected, manifest.Assets.Select( x => x.Name ).ToArray(), $"usedOnly={usedOnly}, preview={preview}, sources={sources}" );
+				}
+			var sourceExport = new ProjectPublisher.PackageManifest();
+			Sandbox.Tasks.AsyncPump.RunSynchronously( () => sourceExport.BuildFromSource( project ) );
+			Assert.IsTrue( sourceExport.Assets.Any( x => x.Name.EndsWith( "jump.wav.meta", StringComparison.OrdinalIgnoreCase ) ) );
+		}
+		finally
+		{
+			Directory.Delete( directory, true );
+		}
+	}
+
+	[TestMethod]
 	[DataRow( "exact", true )]
 	[DataRow( "wildcard", true )]
 	[DataRow( "folder", true )]
+	[DataRow( "extension", true )]
+	[DataRow( "compiled", true )]
+	[DataRow( "exclude", true )]
+	[DataRow( "extension", false )]
 	[DataRow( "exact", false )]
 	[DataRow( "wildcard", false )]
-	public async Task ResourceIncludesPublishCompiledAssetsAndOnlyOptInSources( string selection, bool usedOnly )
+	public void ResourceIncludesKeepRuntimeSourcesButRequireOptInForAssetDefinitions( string selection, bool usedOnly )
 	{
 		var directory = Path.Combine( Path.GetTempPath(), $"publish_sources_{Guid.NewGuid():N}" );
 		var folder = selection == "folder" ? "Resources" : "levels";
@@ -46,10 +91,17 @@ public class PublishSourceFileTests
 		var all = (Dictionary<ulong, Asset>)typeof( AssetSystem ).GetField( "allAssets", BindingFlags.Static | BindingFlags.NonPublic ).GetValue( null );
 		var byPath = (ConcurrentDictionary<string, Asset>)typeof( AssetSystem ).GetField( "assetsByPath", BindingFlags.Static | BindingFlags.NonPublic ).GetValue( null );
 		var scene = new PublishAsset( assetsPath, $"{folder}/rounds.scene", $"{folder}/rounds.scene_c" );
-		var sound = new PublishAsset( assetsPath, $"{folder}/music.wav", $"{folder}/music.vsnd_c" );
+		var sounds = new[] { "wav", "ogg", "mp3" }.Select( extension => new PublishAsset( assetsPath,
+			$"{folder}/music_{extension}.{extension}", $"{folder}/music_{extension}.vsnd_c", $"{folder}/music_{extension}.vsnd" ) ).ToArray();
 		var material = new PublishAsset( assetsPath, "material.vmat", "material.vmat_c" );
-		scene.References.Add( material );
-		PublishAsset[] assets = [scene, sound, material];
+		var texture = new PublishAsset( assetsPath, "texture.vtex", "texture.vtex_c" );
+		var image = new PublishAsset( assetsPath, $"{folder}/icon.png", $"{folder}/icon.vtex_c", $"{folder}/icon.vtex" );
+		var data = new PublishAsset( assetsPath, $"{folder}/extra.data", $"{folder}/extra.custom_c", $"{folder}/extra.custom" );
+		var definition = new PublishAsset( assetsPath, "definition.custom", "definition.custom_c" );
+		var prefab = new PublishAsset( assetsPath, "prop.prefab", "prop.prefab_c" );
+		scene.References.AddRange( [material, texture, definition, prefab] );
+		PublishAsset[] assets = [scene, .. sounds, material, texture, image, data, definition, prefab];
+		var selected = assets.Where( x => selection != "exclude" || !x.RelativePath.EndsWith( ".ogg" ) ).ToArray();
 		var aliases = new List<string>();
 		try
 		{
@@ -64,28 +116,35 @@ public class PublishSourceFileTests
 				File.WriteAllText( asset.AbsolutePath, "source" );
 			}
 			File.WriteAllText( Path.Combine( assetsPath, $"{folder}/data.json" ), "{}" );
-			File.WriteAllText( Path.Combine( assetsPath, $"{folder}/icon.png" ), "runtime image" );
 			var project = new Project( new DirectoryInfo( directory ) ) { Config = new Sandbox.DataModel.ProjectConfig() };
 			project.Config.Type = "game";
 			project.Config.SetMeta( "StartupScene", "" );
 			project.Config.PublishUsedAssetsOnly = usedOnly;
 			project.Config.Resources = selection switch
 			{
-				"exact" => $"{folder}/rounds.scene\n{folder}/music.wav\n{folder}/data.json\n{folder}/icon.png",
+				"exact" => $"{folder}/rounds.scene\n{folder}/data.json\n{folder}/icon.png\n{folder}/extra.data\n" + string.Join( "\n", sounds.Select( x => x.RelativePath ) ),
+				"extension" => $"/{folder}/*.ogg\n/{folder}/*.mp3\n/{folder}/*.wav\n{folder}/rounds.scene\n{folder}/*.json\n{folder}/*.png\n{folder}/*.data",
+				"compiled" => $"{folder}/*.vsnd\n{folder}/rounds.scene\n{folder}/*.json\n{folder}/*.vtex\n{folder}/*.custom",
+				"exclude" => $"{folder}/*\n!{folder}/*.ogg",
 				"wildcard" => $"{folder}/*",
 				_ => ""
 			};
+			if ( selection != "folder" ) project.Config.Resources += "\nmaterial.vmat\ntexture.vtex\ndefinition.custom\nprop.prefab";
 			foreach ( var preview in new[] { false, true } )
 				foreach ( var sources in new[] { false, true } )
 				{
 					// Start without compiler output each time: checking for an existing _c before collection is insufficient.
 					foreach ( var asset in assets ) File.Delete( asset.AbsoluteCompiledPath );
 					var manifest = new ProjectPublisher.PackageManifest { IncludeSourceFiles = sources };
-					await manifest.BuildFromAssets( project, previewOnly: preview );
+					// Match the editor thread context while asset collection awaits parallel work.
+					Sandbox.Tasks.AsyncPump.RunSynchronously( () => manifest.BuildFromAssets( project, previewOnly: preview ) );
 					CollectionAssert.AreEqual( Array.Empty<string>(), manifest.Errors.ToArray() );
-					var expected = new List<string> { $"{folder}/rounds.scene_c", $"{folder}/music.vsnd_c", "material.vmat_c", $"{folder}/data.json", $"{folder}/icon.png" };
-					if ( sources ) expected.AddRange( assets.Select( x => x.RelativePath ) );
-					CollectionAssert.AreEquivalent( expected, manifest.Assets.Select( x => x.Name ).ToList(), $"{selection}, usedOnly={usedOnly}, preview={preview}, sources={sources}" );
+					var expected = selected.Select( x => x.GetCompiledFile() ).ToHashSet( StringComparer.OrdinalIgnoreCase );
+					expected.Add( $"{folder}/data.json" );
+					if ( selection != "compiled" )
+						expected.UnionWith( selected.Where( x => sounds.Contains( x ) || x == image || x == data ).Select( x => x.RelativePath ) );
+					if ( sources ) expected.UnionWith( selected.Select( x => x.RelativePath ) );
+					CollectionAssert.AreEquivalent( expected.ToArray(), manifest.Assets.Select( x => x.Name ).ToArray(), $"{selection}, usedOnly={usedOnly}, preview={preview}, sources={sources}" );
 					Assert.AreEqual( preview, manifest.Assets.All( x => x.Hash is null ) );
 				}
 		}

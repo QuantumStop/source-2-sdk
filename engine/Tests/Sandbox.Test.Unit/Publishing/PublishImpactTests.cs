@@ -70,6 +70,26 @@ public class PublishImpactTests
 	}
 
 	[TestMethod]
+	[DataRow( false )]
+	[DataRow( true )]
+	public void IncludedSoundFootprintCountsRawSourceOnlyWhenPublished( bool includeRawSource )
+	{
+		var manifest = new ProjectPublisher.PackageManifest();
+		var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+		var graph = (Dictionary<string, ReviewSizeNode>)typeof( ProjectPublisher.PackageManifest ).GetField( "reviewSizeGraph", flags ).GetValue( manifest );
+		graph["music.vsnd"] = new( Files( "music.vsnd_c", 20 ), [], RootFiles: Files( "music.ogg", 50 ) );
+		var aliases = (Dictionary<string, string>)typeof( ProjectPublisher.PackageManifest ).GetField( "reviewAssetAliases", flags ).GetValue( manifest );
+		aliases["music.vsnd_c"] = "music.vsnd";
+		aliases["music.ogg"] = "music.vsnd";
+		var included = (HashSet<string>)typeof( ProjectPublisher.PackageManifest ).GetField( "reviewIncludedFiles", flags ).GetValue( manifest );
+		included.Add( "music.vsnd_c" );
+		if ( includeRawSource ) included.Add( "music.ogg" );
+
+		Assert.AreEqual( new PublishImpact( includeRawSource ? 70 : 20, 0, false, false ), manifest.GetPublishFootprint( ["music.vsnd_c", "music.ogg"] ) );
+		Assert.AreEqual( new PublishImpact( includeRawSource ? 0 : 50, 0, false, false ), manifest.GetPublishImpact( ["music.ogg"] ) );
+	}
+
+	[TestMethod]
 	public void ImpactCacheIsNotUploaded()
 	{
 		var manifest = new ProjectPublisher.PackageManifest();

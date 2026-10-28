@@ -53,6 +53,7 @@ internal sealed class Skybox3DPipeline
 
 		var translucent = NativeLayers.Add( view, "3DSkybox Translucent Forward", viewport, ForwardMode, color, depth, RenderColorSpace.RENDER_SRGB,
 			LayerFlags.NeedsFullSort | LayerFlags.NeedsPerViewLightingConstants | LayerFlags.CountArtistTriangles );
+		translucent.LayerEnum = SceneLayerType.Translucent;
 		translucent.AddObjectFlagsRequiredMask( SceneObjectFlags.IsTranslucent );
 		var attributes = translucent.GetRenderAttributesPtr();
 		attributes.SetComboValue( "D_SKYBOX", 1 );

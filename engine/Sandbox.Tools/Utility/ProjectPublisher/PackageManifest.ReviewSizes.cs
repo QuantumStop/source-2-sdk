@@ -48,7 +48,7 @@ public partial class ProjectPublisher
 				foreach ( var alias in new[] { asset.RelativePath, source, compiled }.Where( x => !string.IsNullOrWhiteSpace( x ) ) )
 					reviewAssetAliases.TryAdd( ReviewPath( alias ), assetPath );
 				if ( IncludeSourceFiles ) AddFileSize( source, asset.GetSourceFile( true ) );
-				else if ( string.IsNullOrEmpty( compiled ) && !asset.IsCompileFailed && !string.IsNullOrEmpty( source ) && LooseFileAllowed( source, false ) )
+				else if ( (string.IsNullOrEmpty( compiled ) || IsStandaloneSourceFile( asset )) && !asset.IsCompileFailed && !string.IsNullOrEmpty( source ) && LooseFileAllowed( source, false ) )
 					rootFiles[ReviewPath( source )] = ReadReviewFileSize( asset.GetSourceFile( true ) );
 
 				foreach ( var file in asset.GetAdditionalGameFiles() ) AddFileSize( file, FileSystem.Mounted.GetFullPath( file ) );
@@ -88,21 +88,21 @@ public partial class ProjectPublisher
 		public PublishImpact GetPublishImpact( IEnumerable<string> paths )
 			=> GetReviewSize( paths, reviewImpactCache, reviewIncludedFiles );
 
-		/// <summary>Total direct and transitive size, including already published files. Shared files count once.</summary>
+		/// <summary>Direct and transitive size of files in this publish manifest. Shared files count once.</summary>
 		public PublishImpact GetPublishFootprint( IEnumerable<string> paths )
-			=> GetReviewSize( paths, reviewFootprintCache, [] );
+			=> GetReviewSize( paths, reviewFootprintCache, [], reviewIncludedFiles );
 
-		PublishImpact GetReviewSize( IEnumerable<string> paths, Dictionary<string, PublishImpact> cache, IEnumerable<string> included )
+		PublishImpact GetReviewSize( IEnumerable<string> paths, Dictionary<string, PublishImpact> cache, IEnumerable<string> included, IReadOnlySet<string> filesToCount = null )
 		{
 			var roots = paths.Select( ReviewPath ).Select( x => reviewAssetAliases.GetValueOrDefault( x, x ) )
 				.Distinct( StringComparer.OrdinalIgnoreCase ).Order( StringComparer.OrdinalIgnoreCase ).ToArray();
 			var key = string.Join( '\n', roots );
 			if ( !cache.TryGetValue( key, out var impact ) )
-				cache[key] = impact = CalculatePublishImpact( roots, reviewSizeGraph, included );
+				cache[key] = impact = CalculatePublishImpact( roots, reviewSizeGraph, included, filesToCount );
 			return impact;
 		}
 
-		internal static PublishImpact CalculatePublishImpact( IEnumerable<string> paths, IReadOnlyDictionary<string, ReviewSizeNode> graph, IEnumerable<string> included )
+		internal static PublishImpact CalculatePublishImpact( IEnumerable<string> paths, IReadOnlyDictionary<string, ReviewSizeNode> graph, IEnumerable<string> included, IReadOnlySet<string> filesToCount = null )
 		{
 			var roots = paths.Distinct( StringComparer.OrdinalIgnoreCase ).ToArray();
 			var seenFiles = new HashSet<string>( included, StringComparer.OrdinalIgnoreCase );
@@ -114,6 +114,7 @@ public partial class ProjectPublisher
 				if ( files is null ) return;
 				foreach ( var (path, size) in files )
 				{
+					if ( filesToCount is not null && !filesToCount.Contains( path ) ) continue;
 					if ( !seenFiles.Add( path ) ) continue;
 					if ( size is { } bytes ) total += bytes;
 					else unknown = true;

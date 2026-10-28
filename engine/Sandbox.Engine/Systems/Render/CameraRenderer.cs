@@ -101,13 +101,15 @@ internal ref struct CameraRenderer
 
 		// Bind an explicit zero-weight value too, so a previous view cannot leak its fog.
 		var fog = camera.ResolveFog( config ) ?? default( FogSetup );
-		Attributes.SetData( FogConstants.BufferName, fog.ToConstants() );
+		var viewDirection = (config.Transform?.Rotation ?? camera.Rotation).Forward;
+		Attributes.SetData( FogConstants.BufferName, fog.ToConstants( viewDirection: viewDirection ) );
 
 		// Prepare the skybox from this submission's override, before the camera can be reused.
 		var skybox = camera.World?.native.Get3DSkyboxOriginAndScale() ?? default;
 		if ( skybox.w > 0 )
 		{
-			Attributes.SetData( "SkyboxFogConstants", fog.ToConstants( skybox.w, skybox.z ) );
+			var skyFog = camera.ResolveFogForSkybox( config ) ?? default( FogSetup );
+			Attributes.SetData( "SkyboxFogConstants", skyFog.ToConstants( skybox.w, skybox.z, viewDirection ) );
 		}
 
 		// Set clear flags

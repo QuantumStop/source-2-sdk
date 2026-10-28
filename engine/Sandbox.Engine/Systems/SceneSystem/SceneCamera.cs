@@ -172,16 +172,24 @@ public sealed partial class SceneCamera : IDisposable, IManagedCamera
 	/// </summary>
 	internal FogSetup? ResolveFog( in ViewSetup setup )
 	{
-		if ( setup.Fog.HasValue )
+		if ( !CanInheritFog( setup ) )
 			return setup.Fog;
-
-		// ViewSetup.EnablePostprocessing controls fullscreen effects only. The camera's switch
-		// disables inherited camera fog, and explicit legacy captures keep their own fog settings.
-		if ( setup.GradientFog.HasValue || !EnablePostProcessing )
-			return null;
 
 		return Fog;
 	}
+
+	internal FogSetup? ResolveFogForSkybox( in ViewSetup setup )
+	{
+		if ( !CanInheritFog( setup ) )
+			return setup.Fog;
+
+		return World?.GetRenderingSkybox()?.ResolveFog( this ) ?? Fog;
+	}
+
+	// ViewSetup.EnablePostprocessing controls fullscreen effects only. The camera's switch
+	// disables inherited camera fog, and explicit legacy captures keep their own fog settings.
+	bool CanInheritFog( in ViewSetup setup ) =>
+		!setup.Fog.HasValue && !setup.GradientFog.HasValue && EnablePostProcessing;
 
 	/// <summary>
 	/// Define the rotations for each of the 6 cube faces (right, left, up, down, front, back)
