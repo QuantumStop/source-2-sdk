@@ -27,6 +27,7 @@ internal partial class PainterBatcher
 	internal void AddBackdrop( in Painter.BackdropData data, Matrix localTransform, int localClip, BlendMode blendMode )
 	{
 		Flush();
+		Volatile++;
 		var target = Destination;
 		var transform = localTransform * target.Transform;
 		var clipIndex = GetOrAddDrawClip( localClip, target.Transform, GetOrAddScissor( target.Scissor ) );
@@ -50,6 +51,7 @@ internal partial class PainterBatcher
 	// CSS backdrops can reuse a capture while the intervening drawing is independent.
 	internal void AddBackdrop( in Painter.BackdropData data, BlendMode blendMode )
 	{
+		Volatile++;
 		var reuseGrab = PrepareBackdrop( data );
 		ApplyDestinationAttributes( objectSpace: true );
 		var attributes = _commands.BeginDrawAttributes();

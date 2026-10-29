@@ -103,6 +103,25 @@ struct HostLeavingAckMsg
 }
 
 /// <summary>
+/// Sent through the host when a direct route to a peer starts working: everything we sent through the host
+/// before this has arrived once it does.
+/// </summary>
+[Expose]
+struct DirectRouteMsg
+{
+	public Guid Token { get; set; }
+}
+
+/// <summary>
+/// Peer received <see cref="DirectRouteMsg"/>.
+/// </summary>
+[Expose]
+struct DirectRouteAckMsg
+{
+	public Guid Token { get; set; }
+}
+
+/// <summary>
 /// The leaving host gives the successor the game.
 /// </summary>
 [Expose]

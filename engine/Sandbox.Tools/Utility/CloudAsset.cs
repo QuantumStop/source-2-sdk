@@ -45,8 +45,15 @@ public class CloudAsset
 	[ConCmd( "install", ConVarFlags.Protected )]
 	public static async Task InstallSingle( string ident )
 	{
-		var asset = await AssetSystem.InstallAsync( ident );
-		EditorUtility.InspectorObject = asset;
+		try
+		{
+			var asset = await AssetSystem.InstallAsync( ident );
+			EditorUtility.InspectorObject = asset;
+		}
+		catch ( AggregateException ex )
+		{
+			Log.Warning( ex, $"Error installing package {ident}" );
+		}
 	}
 
 
@@ -122,7 +129,14 @@ public class CloudAsset
 			progress.Current = ++i;
 
 			Log.Info( $"Installing '{package.FullIdent}' (version: {package.Revision.VersionId})" );
-			await AssetSystem.InstallAsync( package, false, null, cancel );
+			try
+			{
+				await AssetSystem.InstallAsync( package, false, null, cancel );
+			}
+			catch ( AggregateException ex )
+			{
+				Log.Warning( ex, $"Error installing package {ident}" );
+			}
 
 		}, token: cancel, maxRunning: 8 );
 

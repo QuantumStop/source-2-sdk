@@ -26,7 +26,11 @@ public partial class Panel
 		if ( layered )
 		{
 			stats.LayerPanels++;
-			layer = painter.Target( PanelLayerRTName, PanelLayerBounds );
+			var paint = _paintCache.Layer;
+			// Roots executed outside the normal per-frame pass can skip frames, and manual ones scale opacity at execute time
+			var root = FindRootPanel();
+			var uncached = root is null || root.RenderedManually || root.IsWorldPanel;
+			layer = uncached ? painter.Target( PanelLayerRTName, paint.Bounds, paint.Mips ) : painter.Target( PanelLayerRTName, paint.Bounds, paint.Mips, ref paint.Cache );
 		}
 
 		try

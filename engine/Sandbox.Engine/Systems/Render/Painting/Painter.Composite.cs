@@ -17,36 +17,27 @@ public readonly ref partial struct Painter
 
 		foreach ( var shadow in shadows )
 		{
-			var offset = new Vector2( shadow.OffsetX, shadow.OffsetY );
-			var padding = MathF.Max( MathF.Abs( offset.x ), MathF.Abs( offset.y ) ) + MathF.Ceiling( shadow.Blur * 3 ) + 1;
-			var rect = bounds.Grow( padding );
-			ResetCompositeAttributes( commands );
-			attributes.Set( "FilterDropShadowScale", bounds.Size / rect.Size );
-			attributes.Set( "FilterDropShadowOffset", offset );
+			attributes.Set( "FilterDropShadowOffset", new Vector2( shadow.OffsetX, shadow.OffsetY ) );
 			attributes.Set( "FilterDropShadowBlur", shadow.Blur );
 			attributes.Set( "FilterDropShadowColor", shadow.Color );
-			commands.DrawQuad( rect, Material.UI.DropShadow, Color.White );
+			commands.DrawQuad( bounds, Material.UI.DropShadow, Color.White );
 			Output.CountDraw();
 		}
 
 		if ( borderWidth > 0 )
 		{
-			var rect = bounds.Grow( borderWidth );
-			ResetCompositeAttributes( commands );
-			attributes.Set( "FilterBorderWrapColorScale", bounds.Size / rect.Size );
 			attributes.Set( "FilterBorderWrapColor", borderColor );
 			attributes.Set( "FilterBorderWrapWidth", borderWidth );
-			commands.DrawQuad( rect, Material.UI.BorderWrap, Color.White );
+			commands.DrawQuad( bounds, Material.UI.BorderWrap, Color.White );
 			Output.CountDraw();
 		}
 
-		ResetCompositeAttributes( commands );
 		attributes.Set( "PainterSourceGamma", false );
 		attributes.Set( "PainterScissorIndex", -1 );
 		SetFilterAttributes( attributes, bounds, filter, mask, maskScope );
 
 		attributes.SetCombo( "D_BLENDMODE", InheritedBlendMode );
-		commands.DrawQuad( bounds.Grow( MathF.Ceiling( filter.Blur * 3 ) ).Ceiling(), Material.UI.Filter, Color.White );
+		commands.DrawQuad( bounds, Material.UI.Filter, Color.White );
 		Output.CountDraw();
 
 		// Restore the world-space WorldMat for batched draws.
@@ -58,6 +49,7 @@ public readonly ref partial struct Painter
 		var context = ActiveContext;
 		var output = context.Batcher;
 		output.Flush();
+		output.Volatile++;
 		var commands = output.CommandList;
 		var attributes = commands.BeginDrawAttributes();
 		var target = output.Destination;
@@ -79,7 +71,7 @@ public readonly ref partial struct Painter
 		filter = filter with { Tint = filter.Tint.WithAlphaMultiplied( context.State.Opacity * context.InheritedOpacity * opacity ) };
 		SetFilterAttributes( attributes, bounds, filter, mask, MaskScope.Default );
 		attributes.SetCombo( "D_BLENDMODE", context.State.OverrideBlendMode );
-		commands.DrawQuad( bounds.Grow( MathF.Ceiling( filter.Blur * 3 ) ), Material.UI.Filter, Color.White, attributes );
+		commands.DrawQuad( bounds, Material.UI.Filter, Color.White, attributes );
 		output.CountDraw();
 	}
 
@@ -118,16 +110,5 @@ public readonly ref partial struct Painter
 				Filter = m.Sampling
 			} ) );
 		}
-	}
-
-	static void ResetCompositeAttributes( CommandList commands )
-	{
-		var attributes = commands.Attributes;
-		attributes.Set( "FilterDropShadowScale", 0 );
-		attributes.Set( "FilterDropShadowOffset", 0 );
-		attributes.Set( "FilterDropShadowBlur", 0 );
-		attributes.Set( "FilterDropShadowColor", 0 );
-		attributes.Set( "FilterBorderWrapColor", 0 );
-		attributes.Set( "FilterBorderWrapWidth", 0 );
 	}
 }

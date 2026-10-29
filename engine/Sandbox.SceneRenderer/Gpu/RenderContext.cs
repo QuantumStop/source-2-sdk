@@ -1005,7 +1005,7 @@ internal sealed class RenderContext : IDisposable
 	public void BuildDepthChain( Texture depth, bool multisampled, Texture chain, int width, int height, DepthResolveMode resolve = DepthResolveMode.Sample0 )
 	{
 		Invalidate();
-		SharedPasses.BuildDepthChain( context, depth, chain, multisampled, width, height, resolve );
+		SharedPasses.BuildDepthChain( context, depth, chain, multisampled, width, height, resolve, fuseResolve: !AsyncCompute );
 		// Finish the producer's layout transition before graphics and compute sample the chain concurrently.
 		if ( AsyncCompute )
 		{

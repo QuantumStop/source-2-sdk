@@ -362,7 +362,7 @@ public partial class ProjectPublisher
 			Publish = true,
 			Meta = Meta.Count > 0 ? Json.Serialize( Meta ) : null,
 			EngineApi = Sandbox.Engine.Protocol.Api,
-			VerifyCompile = true
+			VerifyCompile = Project.Config.Type == "game"
 		};
 
 		publish.Config = new ManifestConfig

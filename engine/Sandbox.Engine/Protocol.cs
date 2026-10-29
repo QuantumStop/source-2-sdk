@@ -13,7 +13,7 @@ public static class Protocol
 	/// <summary>
 	/// We cannot talk to servers or clients with a network protocol different to this.
 	/// </summary>
-	public static int Network => 1113;
+	public static int Network => 1114;
 }
 
 // Api Versions
@@ -33,6 +33,7 @@ public static class Protocol
 
 
 // Network Versions
+// 1114. 29 October 2026 - ParticleFloat uses an explicit BytePack format
 // 1113. 26th October 2026 - ServerInfo says which version of the game's workshop item the host has
 // 1112. 25th October 2026 - ServerInfo carries the host's SteamId
 // 1109. 14th October 2026 - Network rebuild: delta snapshot clusters, 32 bit snapshot ids, multicast relays, raw typed RPCs, targeted messages removed
