@@ -91,6 +91,7 @@ internal static class EngineLoop
 					FrameEnd();
 				}
 				IToolsDll.Current?.RunFrame();
+				Bootstrap.TryFinishStartup();
 			}
 			catch ( System.Exception e )
 			{

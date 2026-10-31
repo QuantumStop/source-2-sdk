@@ -722,6 +722,29 @@ public class ContentBuilderTests
 	}
 
 	[TestMethod]
+	public void FallbackNeverShadowsARootsOwnOutput()
+	{
+		// The menu ships compiled copies of cloud assets: a project that builds the same paths reads its own
+		using var fx = new Fixture();
+		var shipped = Path.Combine( fx.Dir, "shipped" );
+		Directory.CreateDirectory( shipped );
+		File.WriteAllText( Path.Combine( shipped, "m.vmat_c" ), "shipped stale" );
+		fx.Write( "m.vmat", "project fresh" );
+		fx.Write( "b.vmdl", "reads *m.vmat" );
+
+		var report = ContentBuilder.Build( new BuildRequest
+		{
+			Roots = [new ContentRoot( "unit", fx.Root, fx.State )],
+			OutputRoots = new Dictionary<string, string> { ["transient"] = Path.Combine( fx.Dir, "project" ) },
+			OutputFallbacks = new Dictionary<string, string> { ["transient"] = shipped },
+		}, fx.Compiler );
+
+		Assert.IsTrue( report.Success, report.Log.ToString() );
+		AssertJobs( report, "m.vmat", "b.vmdl" );
+		StringAssert.Contains( fx.Read( "b.vmdl_c" ), "project fresh" );
+	}
+
+	[TestMethod]
 	public void OutsideCompileWhoseGeneratedFileIsInTheFallbackIsAdoptedFromThere()
 	{
 		using var fx = new Fixture();

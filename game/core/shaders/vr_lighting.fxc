@@ -67,6 +67,9 @@ bool g_bShowLPVVoxels < Attribute( "g_bShowLPVVoxels" ); >;
 #ifndef S_TRANSMISSIVE
 #define S_TRANSMISSIVE 0
 #endif
+#ifndef S_DIFFUSE_TWO_SIDED
+#define S_DIFFUSE_TWO_SIDED 0
+#endif
 float g_flLightRangeForSelfShadowNormals < Default( 0.707 ); Range( 0.0, 1.0 ); UiGroup( "Normal" ); >;
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -187,7 +190,9 @@ void ComputeDiffuseAndSpecularTerms( out float3 o_vDiffuseTerm, out float3 o_vSp
 			#else
 			{
 				float flDiffuseExponent = ( vDiffuseExponent.x + vDiffuseExponent.y ) * 0.5;
-				o_vDiffuseTerm.rgb = pow( flNDotL, flDiffuseExponent ) * ( ( flDiffuseExponent + 1.0 ) * 0.5 ).xxx;
+				// Two-sided diffuse leaves the clamped N.L used by specular unchanged.
+				float flDiffuseNdotL = S_DIFFUSE_TWO_SIDED ? abs( dot( f.vNormalWs.xyz, vPositionToLightDirWs.xyz ) ) : flNDotL;
+				o_vDiffuseTerm.rgb = pow( flDiffuseNdotL, flDiffuseExponent ) * ( ( flDiffuseExponent + 1.0 ) * 0.5 ).xxx;
 			}
 			#endif
 		}
@@ -195,7 +200,7 @@ void ComputeDiffuseAndSpecularTerms( out float3 o_vDiffuseTerm, out float3 o_vSp
 
 	// Specular
 	o_vSpecularTerm = float3( 0.0, 0.0, 0.0 );
-	[branch] if ( bSpecular )
+	[branch] if ( bSpecular && ( !S_DIFFUSE_TWO_SIDED || flNDotL > 0.0 ) )
 	{
 		float3 vHalfAngleDirWs = normalize( vPositionToLightDirWs.xyz + vPositionToCameraDirWs.xyz );
 
@@ -335,7 +340,7 @@ void ComputeDirectLightingForLight( const FinalCombinerInput_t f, float3 vReceiv
 	// Cone and facing tests share one branch so their light data loads in one round trip; bitwise |, && would split it
 	bool bReject = !bBaked && ( flConeToDirection <= 0.0 );
 
-	#if ( !S_TRANSMISSIVE && !S_SUBSURFACE_SCATTERING )
+	#if ( !S_TRANSMISSIVE && !S_SUBSURFACE_SCATTERING && !S_DIFFUSE_TWO_SIDED )
 		// Facing away: diffuse is pow( N.L ) and every specular lobe is scaled by N.L, so the light adds nothing.
 		// S_TRANSMISSIVE_BACKFACE_NDOTL is a spec constant, so #if would always read it as 0
 		if ( S_TRANSMISSIVE_BACKFACE_NDOTL == 0 )

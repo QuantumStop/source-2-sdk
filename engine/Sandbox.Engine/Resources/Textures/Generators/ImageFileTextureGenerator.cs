@@ -1,4 +1,5 @@
 ﻿using Sandbox.UI;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 
@@ -24,6 +25,12 @@ public class ImageFileGenerator : TextureGenerator
 	/// The maximum size of the image in pixels. If the imported image is larger than this (after cropping), it will be downscaled to fit.
 	/// </summary>
 	public int MaxSize { get; set; } = 4096;
+
+	/// <summary>
+	/// Store the image losslessly, without block compression or mips. For pixel art and UI that compression artifacts would spoil;
+	/// otherwise the texture is compressed, which is much smaller on disk and in memory.
+	/// </summary>
+	public bool Lossless { get; set; }
 
 	/// <summary>
 	/// When enabled, the output texture will be a normal map generated from the heightmap of the image.
@@ -127,7 +134,14 @@ public class ImageFileGenerator : TextureGenerator
 	public override bool CacheToDisk => true;
 
 	[Hide]
-	public override ImageFormat? FormatOverride => ConvertHeightToNormals ? null : ImageFormat.RGBA8888;
+	public override ImageFormat? FormatOverride => Lossless && !ConvertHeightToNormals ? ImageFormat.RGBA8888 : null;
+
+	public override void Deserialize( JsonObject obj )
+	{
+		// Saved before lossless was opt-in, when every image file was stored losslessly
+		Lossless = obj is not null && !obj.ContainsKey( nameof( Lossless ) );
+		base.Deserialize( obj );
+	}
 
 	// Don't continually load from disk, cache that shit
 	[JsonIgnore, Hide]

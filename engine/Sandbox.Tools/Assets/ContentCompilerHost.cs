@@ -26,7 +26,7 @@ internal static class ContentCompilerHost
 	internal static void InitializeCompilers( IReadOnlyList<Assembly> assemblies, IEnumerable<(string Mod, string Path)> mounts )
 	{
 		// The build's roots are the content, where the editor has its project's. Generated resources (an embedded
-		// texture) go to the build's "transient" output root, mounted last, where the editor has its project's
+		// texture) go to the build's "transient" output root, mounted under the roots, where the editor has its project's
 		// transient folder. Everything is mounted, as the editor mounts it for a compile to read: the engine's core
 		// content first, under everything else, as the resource compiler has it.
 		var content = new AggregateFileSystem();

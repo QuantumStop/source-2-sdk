@@ -349,52 +349,31 @@ public abstract class BaseVirtualPanel : Panel
 
 		var data = _items[i];
 		var needsRebuild = !_cellData.TryGetValue( i, out var last ) || !EqualityComparer<object>.Default.Equals( last, data );
+		var created = false;
 
-		if ( !_created.TryGetValue( i, out var panel ) )
+		if ( !_created.TryGetValue( i, out var panel ) || needsRebuild )
 		{
-			if ( OnBindCell is not null && _pool.Count > 0 )
-			{
-				var lastPoolIndex = _pool.Count - 1;
-				panel = _pool[lastPoolIndex];
-				_pool.RemoveAt( lastPoolIndex );
-			}
-			else
-			{
-				panel = Add.Panel( "cell" );
-				panel.Style.Position = PositionMode.Absolute;
-				panel.ChildContent = Item?.Invoke( data );
-				OnCreateCell?.Invoke( panel, data );
-			}
+			panel?.Delete( true );
+
+			panel = Add.Panel( "cell" );
+			created = true;
+			panel.Style.Position = PositionMode.Absolute;
+			panel.ChildContent = Item?.Invoke( data );
 
 			_created[i] = panel;
-			needsRebuild = true;
+			_cellData[i] = data;
+
+			OnCreateCell?.Invoke( panel, data );
 
 			if ( _items.Count - 1 == i )
 			{
 				OnCreatedLastCell();
 			}
 		}
-		else if ( needsRebuild && OnBindCell is null )
-		{
-			panel.Delete( true );
 
-			panel = Add.Panel( "cell" );
-			panel.Style.Position = PositionMode.Absolute;
-			panel.ChildContent = Item?.Invoke( data );
-
-			_created[i] = panel;
-
-			OnCreateCell?.Invoke( panel, data );
-		}
-
-		if ( needsRebuild )
-		{
-			_cellData[i] = data;
-			OnBindCell?.Invoke( panel, data );
-		}
-
-		panel.Style.Display = DisplayMode.Flex;
 		PositionPanel( i, panel );
+
+		if ( created ) panel.TickInternal();
 	}
 
 	// Re-render existing cells when the Item template has been set again, like a normal razor child would be.

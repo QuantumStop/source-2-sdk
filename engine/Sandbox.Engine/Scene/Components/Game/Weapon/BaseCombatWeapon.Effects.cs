@@ -109,7 +109,10 @@ public partial class BaseCombatWeapon
 		// pellet flies its own, so a shotgun blast is a fan of them.
 		Vector3? hitPoint = shot.Hit || shot.HitPosition != default ? shot.HitPosition : null;
 		if ( hitPoint.HasValue )
+		{
+			WaterBody.CreateBulletSplash( Scene, GetShotOrigin( shot ), hitPoint.Value );
 			WeaponModel?.DoTracerEffect( hitPoint.Value, shot.Origin );
+		}
 
 		if ( shot.NoEvents ) return;
 
@@ -132,14 +135,15 @@ public partial class BaseCombatWeapon
 	/// Worked out on each peer rather than sent with the shot.
 	/// </summary>
 	protected Vector3 GetShotDirection( in ShotEffect shot )
+		=> (shot.HitPosition - GetShotOrigin( shot )).Normal;
+
+	Vector3 GetShotOrigin( in ShotEffect shot )
 	{
 		var owner = Owner;
-		var from = shot.Origin
+		return shot.Origin
 			?? (!IsProxy ? AimRay.Position
 			: owner.IsValid() ? owner.EyeTransform.Position
 			: GetMuzzleTransform().Position);
-
-		return (shot.HitPosition - from).Normal;
 	}
 
 	/// <summary>

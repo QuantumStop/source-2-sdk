@@ -205,7 +205,8 @@ public class EditorStartupContentBuild
 
 	/// <summary>
 	/// A project's own compiler, its code edited in an open editor: what it compiled stays as it is, and a source written
-	/// after the hotload compiles with the new code (the build's workers have it).
+	/// after the hotload compiles with the new code (the build's workers have it). An unchanged broken texture
+	/// isn't retried just because code hotloaded; the next asset edit still retries it.
 	/// </summary>
 	[TestMethod, TestCategory( "Slow" )]
 	public void ProjectCompilerEditedWhileOpenCompilesNewSourcesWithTheNewCode()
@@ -218,6 +219,7 @@ public class EditorStartupContentBuild
 		Directory.CreateDirectory( Path.GetDirectoryName( code ) );
 		File.WriteAllText( code, LiveGraphSource.Replace( "MARKER", "compiler 1" ) );
 		project.Write( "graphs/a.lvg", """{ "Name": "a" }""" );
+		project.Write( "textures/broken.vtex", "invalid texture" );
 		var a = Path.Combine( project.Assets, "graphs", "a.lvg_c" );
 		var b = Path.Combine( project.Assets, "graphs", "b.lvg_c" );
 
@@ -225,10 +227,18 @@ public class EditorStartupContentBuild
 			bool Marked( string path, string marker ) => System.IO.File.Exists( path ) && System.Text.Encoding.UTF8.GetString( System.IO.File.ReadAllBytes( path ) ).Contains( marker );
 			var before = Marked( @"{{a}}", "compiler 1" );
 			var written = System.IO.File.GetLastWriteTimeUtc( @"{{a}}" );
+			var contentBuild = typeof( Editor.AssetSystem ).Assembly.GetType( "Editor.EditorContentBuild" );
+			int BuildState( string name ) => (int)contentBuild.GetField( name, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic ).GetValue( null );
+			var generation = BuildState( "codeGeneration" );
+			var builtEpoch = BuildState( "builtEpoch" );
 
-			// New code, given time to hotload, then a new source
+			// Wait for the actual hotload, then check it did not schedule another content pass before editing an asset.
 			System.IO.File.WriteAllText( @"{{code}}", {{System.Text.Json.JsonSerializer.Serialize( LiveGraphSource.Replace( "MARKER", "compiler 2" ) )}} );
-			await Task.Delay( 20000 );
+			var hotload = System.Diagnostics.Stopwatch.StartNew();
+			while ( BuildState( "codeGeneration" ) == generation && hotload.ElapsedMilliseconds < 90000 ) await Task.Delay( 25 );
+			if ( BuildState( "codeGeneration" ) == generation ) return "code did not hotload";
+			if ( BuildState( "builtEpoch" ) != builtEpoch ) return "hotload scheduled a content rebuild";
+
 			System.IO.File.WriteAllText( @"{{project.Assets}}\graphs\b.lvg", "{ \"Name\": \"b\" }" );
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 			while ( !Marked( @"{{b}}", "compiler 2" ) && timer.ElapsedMilliseconds < 120000 )
@@ -238,10 +248,10 @@ public class EditorStartupContentBuild
 			return $"built with 1 {before}, kept {kept}, new source with 2 {Marked( @"{{b}}", "compiler 2" )}";
 			""" );
 
-		StringAssert.Contains( live.Summary, $"Content local.{EditorProject.Ident}: 1 compiles, 0 failed", live.ToString() );
+		StringAssert.Contains( live.Summary, $"Content local.{EditorProject.Ident}: 2 compiles, 1 failed", live.ToString() );
 		StringAssert.Contains( live.Live, "built with 1 True, kept True, new source with 2 True", live.ToString() );
 		Assert.AreEqual( 1, Regex.Matches( live.Live, @"Content build: \d+ compiles" ).Count, live.ToString() );
-		Assert.AreEqual( 1, Regex.Matches( live.Live, @"Content build: 1 compiles, 0 adopted, 0 failed" ).Count, live.ToString() );
+		Assert.AreEqual( 1, Regex.Matches( live.Live, @"Content build: 2 compiles, 0 adopted, 1 failed" ).Count, live.ToString() );
 	}
 
 	/// <summary>
@@ -405,6 +415,67 @@ public class EditorStartupContentBuild
 		StringAssert.Contains( live.Live, "Content build: 2 compiles", live.ToString() );
 		StringAssert.Contains( live.Live, "source changed True", live.ToString() );
 		StringAssert.Contains( live.Live, "copy current True", live.ToString() );
+	}
+
+	/// <summary>
+	/// A native load or reload must not compile inside the resource loader. The normal content build must still
+	/// compile and publish the edit afterwards, including when that compile reads an animated model's base model.
+	/// </summary>
+	[TestMethod, TestCategory( "Slow" )]
+	[DataRow( false )]
+	[DataRow( true )]
+	public void LoadingAModelWithABaseModelDefersCompilation( bool reload )
+	{
+		if ( Environment.GetEnvironmentVariable( "SBOX_EDITOR_TESTS" ) is null )
+			Assert.Inconclusive( "Opens an editor: set SBOX_EDITOR_TESTS=1 to run" );
+
+		using var project = new EditorProject();
+		project.Copy( Sources.ImageA, "materials/a.tga" );
+		project.Copy( Sources.ImageB, "materials/b.tga" );
+		project.Write( "materials/a.vmat", Sources.Material( "TextureColor", "materials/a.tga" ) );
+		project.Write( "materials/b.vmat", Sources.Material( "TextureColor", "materials/b.tga" ) );
+		project.Copy( $"{Sources.BonnetFolder}/easter_bonnet.fbx", "models/bonnet.fbx" );
+		project.Copy( $"{Sources.BonnetFolder}/easter_bonnet_citizen_idle_anim.fbx", "models/idle.fbx" );
+		project.Write( "models/base.vmdl", Sources.Mesh( "models/bonnet.fbx", "materials/a.vmat" ) );
+		project.Write( "models/derived.vmdl", Sources.MeshAnimated( "models/bonnet.fbx", "materials/a.vmat", "models/base.vmdl", "models/idle.fbx" ) );
+		var source = Path.Combine( project.Assets, "models", "derived.vmdl" );
+		var output = source + "_c";
+
+		var live = project.Open( $$"""
+			var reload = {{(reload ? "true" : "false")}};
+			if ( reload )
+			{
+				var model = Model.Load( "models/derived.vmdl" );
+				if ( model is null || model.IsError ) return "initial model failed";
+			}
+			var before = System.IO.File.GetLastWriteTimeUtc( @"{{output}}" );
+			var text = System.IO.File.ReadAllText( @"{{source}}" );
+			System.IO.File.WriteAllText( @"{{source}}", text.Replace( "materials/a.vmat", "materials/b.vmat" ) );
+			Editor.AssetSystem.RegisterFile( @"{{source}}" );
+			// Exercise the native load before yielding to the debounced content build.
+			if ( reload )
+			{
+				var resourceSystem = typeof( Model ).Assembly.GetType( "NativeEngine.g_pResourceSystem", true );
+				resourceSystem.GetMethod( "ReloadResource", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic )
+					.Invoke( null, new object[] { "models/derived.vmdl" } );
+			}
+			else
+			{
+				Model.Load( "models/derived.vmdl" );
+			}
+			if ( System.IO.File.GetLastWriteTimeUtc( @"{{output}}" ) != before ) return "compiled inside the resource load";
+			var timer = System.Diagnostics.Stopwatch.StartNew();
+			while ( timer.Elapsed.TotalSeconds < 60 )
+			{
+				if ( System.IO.File.GetLastWriteTimeUtc( @"{{output}}" ) != before ) return "deferred compile published";
+				await Task.Delay( 50 );
+			}
+			return "deferred compile did not publish";
+			""" );
+
+		StringAssert.Contains( live.Summary, $"Content local.{EditorProject.Ident}: 4 compiles, 0 failed", live.ToString() );
+		StringAssert.Contains( live.Live, "deferred compile published", live.ToString() );
+		StringAssert.Contains( live.Live, "Content build: 1 compiles", live.ToString() );
 	}
 
 	/// <summary>

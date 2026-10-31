@@ -66,6 +66,9 @@ internal partial class ShadowMapper
 			CameraPosition = view.GetCameraPosition(),
 			ViewportSize = new Vector2( mainViewport.Rect.Width, mainViewport.Rect.Height ),
 			IsSkybox = view.GetRenderAttributesPtr().GetBoolValue( "IsSkybox", false ),
+			IsReflection = view.GetRenderAttributesPtr().GetBoolValue( "IsReflection", false ),
+			NoShadows = view.GetRenderAttributesPtr().GetBoolValue( "IsReflection", false )
+				&& !view.GetRenderAttributesPtr().GetBoolValue( "ReflectionShadows", false ),
 		};
 	}
 
@@ -179,7 +182,8 @@ internal partial class ShadowMapper
 
 		public uint GetShadowMaskIndex( object light )
 		{
-			if ( !ContactShadows.Enabled || light is not SceneLight sceneLight || !sceneLight.ContactShadows )
+			// Reflections don't render contact shadows, and the main view's mask doesn't line up with them
+			if ( !ContactShadows.Enabled || mapper.View.IsReflection || light is not SceneLight sceneLight || !sceneLight.ContactShadows )
 				return 0;
 
 			return sceneLight.GetShadowMask( mapper.SceneView ) is { } mask ? (uint)mask.Index : 0;

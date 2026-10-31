@@ -39,14 +39,15 @@ public sealed class BuildRequest
 	public IReadOnlyDictionary<string, string> OutputFallbacks { get; init; } = new Dictionary<string, string>();
 
 	/// <summary>
-	/// What a compile mounts, by mod name, each shadowing the ones before: the roots, then each output root after
-	/// its fallback, so what is written there wins over what was shipped.
+	/// What a compile mounts, by mod name, each shadowing the ones before: each output root after its fallback,
+	/// so what is written there wins over what was shipped, then the roots. The editor mounts transients last,
+	/// so a root's own outputs win over a same-named file there (the menu's shipped cloud assets).
 	/// </summary>
 	public IReadOnlyList<(string Mod, string Path)> Mounts =>
 	[
+		.. OutputRoots.SelectMany( x => OutputFallbacks.TryGetValue( x.Key, out var fallback ) ? [(x.Key, fallback), (x.Key, x.Value)] : new[] { (x.Key, x.Value) } ),
 		.. ReadOnlyMounts,
 		.. Roots.Select( x => (x.Mod, x.Path) ),
-		.. OutputRoots.SelectMany( x => OutputFallbacks.TryGetValue( x.Key, out var fallback ) ? [(x.Key, fallback), (x.Key, x.Value)] : new[] { (x.Key, x.Value) } ),
 	];
 
 	/// <summary>

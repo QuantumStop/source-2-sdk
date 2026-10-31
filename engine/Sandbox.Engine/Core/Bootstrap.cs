@@ -24,24 +24,35 @@ internal static class Bootstrap
 	internal static Api.Events.EventRecord StartupTiming;
 
 	static readonly Stopwatch StartupClock = new();
+	static TimeSpan timeBeforeClock;
 	static int? timeToWindow;
+	static int? timeToLoaded;
 
 	internal static void StartStartupClock()
 	{
+		// The user started waiting when the process launched, not when we got here
+		using var process = Process.GetCurrentProcess();
+		timeBeforeClock = DateTime.UtcNow - process.StartTime.ToUniversalTime();
 		timeToWindow = null;
+		timeToLoaded = null;
 		StartupClock.Restart();
 	}
+
+	/// <summary>
+	/// Milliseconds since the process launched.
+	/// </summary>
+	static int TimeSinceLaunch => (int)(timeBeforeClock + StartupClock.Elapsed).TotalMilliseconds;
 
 	internal static void MarkStartupWindowVisible()
 	{
 		if ( StartupClock.IsRunning )
-			timeToWindow = (int)StartupClock.ElapsedMilliseconds;
+			timeToWindow = TimeSinceLaunch;
 	}
 
 	internal static void MarkMenuReady()
 	{
 		if ( StartupClock.IsRunning )
-			StartupTiming?.SetValue( "TimeToMenu", (int)StartupClock.ElapsedMilliseconds );
+			StartupTiming?.SetValue( "TimeToMenu", TimeSinceLaunch );
 	}
 
 	/// <summary>
@@ -157,10 +168,9 @@ internal static class Bootstrap
 
 
 			StartupTiming = new Api.Events.EventRecord( $"StartupTiming.{(Application.IsEditor ? "Editor" : (Application.IsHeadless ? "Server" : "Game"))}" );
+			StartupTiming.SetValue( "Launch", TimeSinceLaunch );
 			if ( timeToWindow is { } windowTime )
 				StartupTiming.SetValue( "TimeToWindow", windowTime );
-
-			StartupTiming.StartTimer( "Time" );
 
 			// This also calls SetSynchronizationContext
 			SyncContext.Init();
@@ -274,7 +284,6 @@ internal static class Bootstrap
 	{
 		try
 		{
-			Material.Preload();
 			using ( var _ = StartupTiming?.ScopeTimer( "Material Preload" ) )
 				Material.Preload();
 			GameWindow.Current?.UpdateStartupProgress( 0.24f, "Starting the engine" );
@@ -502,28 +511,46 @@ internal static class Bootstrap
 	}
 
 	/// <summary>
-	/// Should be called when startup has finished.
-	/// If we have a client, this is when the menu is first entered.
+	/// Should be called when the engine has finished loading. Startup carries on until the first frames
+	/// have shown it, see <see cref="TryFinishStartup"/>.
 	/// </summary>
 	internal static void LoadingFinished()
 	{
 		if ( StartupTiming != null )
 		{
-			StartupTiming.FinishTimer( "Time" );
+			timeToLoaded = TimeSinceLaunch;
 			StartupTiming.SetValue( "package.ident", Application.GameIdent );
-			StartupTiming.Submit( true );
-			try
-			{
-				StartupProfiler.Write( StartupTiming );
-			}
-			catch ( Exception ex )
-			{
-				Log.Warning( ex, "Couldn't write startup profile" );
-			}
 		}
 
 		if ( Application.IsBenchmark )
 			BenchmarkOrchestrator.InitFromCli();
+	}
+
+	/// <summary>
+	/// Called after every frame. Startup has finished once loading has and nothing covers it any more,
+	/// as a game's startup screen stays over the menu until the menu has finished coming in.
+	/// </summary>
+	internal static void TryFinishStartup()
+	{
+		if ( StartupTiming is not { } timing || timeToLoaded is not { } loaded || StartupScreen.IsCovering )
+			return;
+
+		// Nothing should add to it once it's been submitted
+		StartupTiming = null;
+
+		var time = TimeSinceLaunch;
+		timing.SetValue( "First Frames", time - loaded );
+		timing.SetValue( "Time", time );
+		timing.Submit( true );
+
+		try
+		{
+			StartupProfiler.Write( timing );
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( ex, "Couldn't write startup profile" );
+		}
 	}
 
 	static void InitEngineConVars()

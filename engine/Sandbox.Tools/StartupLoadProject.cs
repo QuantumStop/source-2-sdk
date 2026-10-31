@@ -278,7 +278,7 @@ static class StartupLoadProject
 		// Import custom asset type files from content directories (including mounted ones)
 		//
 		Step( "Importing custom assets" );
-		using ( var _ = Bootstrap.StartupTiming?.ScopeTimer( $"Load Project: Register CustomAssetTypes" ) )
+		using ( var _ = Bootstrap.StartupTiming?.ScopeTimer( $"Load Project: Import CustomAssetTypes" ) )
 		{
 			AssetType.ImportCustomTypeFiles();
 		}

@@ -55,6 +55,15 @@ internal ref struct CameraRenderer
 		camera.Attributes.MergeTo( Attributes );
 		Attributes.Set( "LightModulatorsDisabled", config.EnableLightModulators == false );
 
+		if ( config.Reflection )
+		{
+			Attributes.Set( "IsReflection", true );
+			Attributes.Set( "ReflectionShadows", CommandList.ReflectionShadows );
+
+			// No screen-space effects run in a reflection, so nothing reads prepass normals.
+			Attributes.Set( "NeedsDepthNormals", false );
+		}
+
 		if ( _world.IsValid() && !Graphics.IsActive )
 		{
 			_world.UpdateObjectsForRendering( camera.Position, camera.ZFar );
@@ -95,7 +104,9 @@ internal ref struct CameraRenderer
 			Attributes.Set( "ToolsVisMode", (int)DebugOverlay.ToolsVisualization.mat_toolsvis );
 		}
 
-		camera.GatherVolumetricFog( Attributes );
+		// Reflections skip volumetric fog, which would also share the camera's fog history with its main view.
+		if ( !config.Reflection )
+			camera.GatherVolumetricFog( Attributes );
 		camera.GatherTonemapper( Attributes );
 		camera.CubemapFog?.Write( Attributes );
 
@@ -188,6 +199,17 @@ internal ref struct CameraRenderer
 		{
 			if ( world is null ) continue;
 			if ( world == _world ) continue;
+
+			Native.AddSceneWorld( world );
+		}
+
+		if ( config.EnableDebugOverlays == false )
+			return;
+
+		foreach ( var world in camera.DebugWorlds )
+		{
+			if ( world is null ) continue;
+			if ( world == _world || camera.Worlds.Contains( world ) ) continue;
 
 			Native.AddSceneWorld( world );
 		}

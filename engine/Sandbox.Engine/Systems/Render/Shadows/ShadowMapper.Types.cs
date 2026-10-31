@@ -98,6 +98,17 @@ internal struct ShadowViewInfo
 	/// A 3D skybox view: fully static and baked, so the sun lights it but casts no cascades.
 	/// </summary>
 	public bool IsSkybox;
+
+	/// <summary>
+	/// A reflection view: no contact shadows, and its cascades fit a mirrored camera, so no other view may reuse them.
+	/// </summary>
+	public bool IsReflection;
+
+	/// <summary>
+	/// A reflection without shadows (<c>r.reflections.shadows</c> off): lit but unshadowed, so it never waits on a
+	/// shadow map and can render before every view.
+	/// </summary>
+	public bool NoShadows;
 }
 
 /// <summary>

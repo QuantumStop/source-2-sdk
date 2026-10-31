@@ -85,6 +85,16 @@ public partial class RenderSettings
 		}
 	}
 
+	public WaterQuality WaterQuality
+	{
+		get => VideoSettings.Get<WaterQuality>( "water.quality", WaterQuality.High );
+		set
+		{
+			VideoSettings.Set<WaterQuality>( "water.quality", value );
+			Config.SetGroupConVars( "WaterQuality", value.ToString() );
+		}
+	}
+
 	public float MotionBlurScale
 	{
 		get => VideoSettings.Get<float>( "motionblur.scale", 1.0f );

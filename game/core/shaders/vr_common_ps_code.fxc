@@ -36,7 +36,11 @@
 #if ( S_UNLIT )
 	BoolAttribute( unlit, true );
 #else
-	BoolAttribute( NeedsLightProbe, true );
+	// Allow lit shaders to opt out of legacy baked light-probe binding.
+	#ifndef NEEDS_LIGHT_PROBE
+		#define NEEDS_LIGHT_PROBE true
+	#endif
+	BoolAttribute( NeedsLightProbe, NEEDS_LIGHT_PROBE );
 #endif
 
 bool g_bFogEnabled < Default( 1.0f ); UiType( CheckBox ); UiGroup( "Fog,300" ); >;
