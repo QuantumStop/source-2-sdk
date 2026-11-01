@@ -15,6 +15,7 @@ public sealed class WebSurface : IDisposable
 
 	Task<HTML_BrowserReady_t> initTask;
 	Action _initQueue;
+	bool _disposed;
 
 	uint BrowserId;
 
@@ -88,8 +89,18 @@ public sealed class WebSurface : IDisposable
 		if ( initTask == null )
 			return;
 
-		BrowserId = s.UnBrowserHandle;
 		initTask = null;
+
+		// Disposed while waiting for the browser, remove it before it loads anything
+		if ( _disposed )
+		{
+			if ( s.UnBrowserHandle != 0 )
+				steamHTMLSurface.RemoveBrowser( s.UnBrowserHandle );
+
+			return;
+		}
+
+		BrowserId = s.UnBrowserHandle;
 
 		lock ( All )
 		{
@@ -107,6 +118,11 @@ public sealed class WebSurface : IDisposable
 
 	public void Dispose()
 	{
+		_disposed = true;
+		_initQueue = null;
+		OnTexture = null;
+		GC.SuppressFinalize( this );
+
 		if ( BrowserId == 0 )
 			return;
 

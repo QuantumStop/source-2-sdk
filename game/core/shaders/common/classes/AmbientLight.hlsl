@@ -84,7 +84,7 @@ struct AmbientLight
             // Compute diffuse lighting from environment map
             const float3 localNormal = mul(float4(WorldNormal, 0.0f), EnvMapWorldToLocal(index)).xyz;
 
-            float3 envMapColor = SampleEnvironmentMapLevel(WorldNormal, 1.0f, index, EnvMapTexture(asDynamicUniform(UniformIndex(index))));
+            float3 envMapColor = SampleEnvironmentMapLevel(localNormal, 1.0f, index, EnvMapTexture(asDynamicUniform(UniformIndex(index))));
 
             // Adjust for subsurface scattering if enabled
             /*#if (S_SUBSURFACE_SCATTERING == SUBSURFACE_SCATTERING_PREINTEGRATED)

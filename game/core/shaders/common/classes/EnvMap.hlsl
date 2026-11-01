@@ -55,9 +55,10 @@ struct EnvMap
 
             // Calculate parallax reflection in local cubemap space
             float3 vParallaxReflectionCubemapLocal = CalcParallaxReflectionCubemapLocal(WorldPosition, WorldNormal, index);
+            float3 vNormalCubemapLocal = normalize(mul(float4(WorldNormal, 0.0f), EnvMapWorldToLocal(index)).xyz);
 
             // Specular environment map sampling
-            float3 vNormalWarpWs = normalize(lerp(vParallaxReflectionCubemapLocal, WorldNormal, vLevel.x)); // Used to reduce specular aliasing
+            float3 vNormalWarpWs = normalize(lerp(vParallaxReflectionCubemapLocal, vNormalCubemapLocal, vLevel.x)); // Used to reduce specular aliasing
             float3 vCubeSample = SampleEnvironmentMapLevel(vNormalWarpWs, vLevel.x, index, EnvMapTexture(asDynamicUniform(UniformIndex(index))));
 
             // Accumulate color contribution
