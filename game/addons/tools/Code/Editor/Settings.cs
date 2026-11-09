@@ -24,11 +24,11 @@ public static class SettingsMenus
 		set => EditorUtility.RenderSettings.MaxFrameRate = 60;
 	}
 
-	[Menu( "Editor", "Settings/Frame Rate Limit/120fps" )]
-	public static bool Frame120
+	[Menu( "Editor", "Settings/Frame Rate Limit/144fps" )]
+	public static bool Frame144
 	{
-		get => EditorUtility.RenderSettings.MaxFrameRate == 120;
-		set => EditorUtility.RenderSettings.MaxFrameRate = 120;
+		get => EditorUtility.RenderSettings.MaxFrameRate == 144;
+		set => EditorUtility.RenderSettings.MaxFrameRate = 144;
 	}
 
 	[Menu( "Editor", "Settings/Frame Rate Limit/240fps" )]
